@@ -253,6 +253,9 @@ println("\n -- Running main() -- \n")
 @time main()
 
 
+# TODO:
+# Add factor of sqrt(γ11*γ22)/γ0 to real part of radiation interactions
+
 
 # Consider using StaticArrays in some places?
 
