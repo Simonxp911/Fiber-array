@@ -1,0 +1,378 @@
+
+
+#================================================
+    Functions pertaining to the propagation constant
+================================================#
+"""
+Find the roots of the fiber eigenequation.
+
+Using either NonlinearSolve or HomotopyContinuation to do so 
+is determined by method = "NLsolve", "HTcont"
+"""
+function calc_propConst(ω, ρf, n, method="NLsolve")
+    xspan = (ω + eps(ω), n*ω - eps(n*ω))
+    params = (ω, ρf, n)
+    
+    if method == "NLsolve"
+        prob = IntervalNonlinearProblem(fiber_equation, xspan, params)
+        sol = NonlinearSolve.solve(prob)
+        return sol.u
+    elseif method == "HTcont"
+        throw(ArgumentError("HomotopyContinuation approach is not implemented in calc_propConst..."))
+    else
+        throw(ArgumentError("method=$method was not recognized in calc_propConst..."))
+    end
+end
+
+
+function scan_propConst(SP, overwrite_bool=false)
+    postfix = get_postfix(SP.ω_specs, SP.ρf_specs, SP.n_specs)
+    filename = "kappa_" * postfix
+    
+    if isfile(saveDir * filename * ".jld2")
+        if overwrite_bool 
+            println("The propagation constant for \n   $filename\nhas already been calculated.\n" *
+                    "Recalculating and overwriting in 5 seconds...")
+            sleep(5)
+        else
+            println("Loading propagation constant")
+            return load_as_jld2(saveDir, filename)
+        end
+    end
+    
+    κ = calc_propConst.(reshape(SP.ω_range,  (length(SP.ω_range), 1, 1)),
+                        reshape(SP.ρf_range, (1, length(SP.ρf_range), 1)),
+                        reshape(SP.n_range,  (1, 1, length(SP.n_range))))
+    
+    save_as_jld2(κ, saveDir, filename)
+    return κ
+end
+
+
+"""
+Calculate the derivative of roots of the fiber eigenequation with respect to frequency
+"""
+function calc_propConstDerivative(ω, ρf, n; dω = 1e-9)
+    κ_p = calc_propConst(ω + dω/2, ρf, n)
+    κ_m = calc_propConst(ω - dω/2, ρf, n)
+    return (κ_p - κ_m)/dω
+end
+
+
+#================================================
+    Functions pertaining to calculating the driving and couplings of the system
+================================================#
+function get_parameterMatrices(fiber, Δ, d, να, ηα, array)
+    
+    # TODO: implement saving and loading of these quantities
+    
+    tildeΩ   = get_tildeΩ(fiber, d, ηα, array)
+    tildeΩα  = get_tildeΩα(fiber, d, ηα, array)
+    tildeG   = get_tildeG(fiber, Δ, d, ηα, array)
+    tildeFα  = get_tildeFα(tildeG, να)
+    tildeGα1, tildeGα2 = get_tildeGα(fiber, d, ηα, array)
+    
+    return tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2
+end
+
+
+function get_tildeΩ(fiber, d::String, ηα, array)
+    if d == "chiral"
+        # Set up coordinates and guided mode components (including their first and second order derivatives)
+        ρa = array[1][1]
+        zn = [site[3] for site in array]
+        κ = fiber.propagation_constant
+        eρ   , eϕ   , ez    = guidedModeComps(fiber, ρa)
+        eρ_ρ , eϕ_ρ , ez_ρ  = guidedModeComps(fiber, ρa, 1)
+        eρ_ρρ, eϕ_ρρ, ez_ρρ = guidedModeComps(fiber, ρa, 2)
+        eρ, eρ_ρ, eρ_ρρ = -1im.*[eρ, eρ_ρ, eρ_ρρ] #remove overall imaginary unit for ease of expressions
+        dNorm = sqrt(eρ^2 + ez^2)
+        propPhase = exp.(1im*κ*zn)
+        
+        # Put together the driving 
+        Ωn = sqrt(8)*eρ*ez/dNorm*propPhase
+        Ωnαα = [sqrt(2)*(ez*eρ_ρρ + eρ*ez_ρρ)/dNorm*propPhase,
+                -sqrt(2)*ez*(3*eρ + 2*eϕ)/(dNorm*ρa^2)*propPhase + sqrt(2)*(ez*eρ_ρ + eρ*ez_ρ)/(dNorm*ρa)*propPhase,
+                -κ^2*Ωn]
+    else
+        throw(ArgumentError("Dipole moment = '{d}' was not recognized in get_tildeΩ"))
+    end
+    return Ωn + sum(@. ηα^2*Ωnαα)/(2*ωa^2)
+end
+
+
+function get_tildeΩ(fiber, d, ηα, array)
+    # Calculate incoming field and its second derivative
+    En = (Egm.(Ref(fiber), 1, 1, array) + Egm.(Ref(fiber), -1, 1, array))/sqrt(2)
+    Enαα = [(Egm.(Ref(fiber), 1, 1, array, 2, α) + Egm.(Ref(fiber), -1, 1, array, 2, α))/sqrt(2) for α in 1:3]
+    
+    # Put together the driving
+    Ωn = Ref(d').*En
+    Ωnαα = [Ref(d').*Enαα[α] for α in 1:3]
+    return Ωn + sum(@. ηα^2*Ωnαα)/(2*ωa^2)
+end
+
+
+function get_tildeΩα(fiber, d::String, ηα, array)
+    if d == "chiral"
+        # Set up coordinates and guided mode components (including their first and second order derivatives)
+        ρa = array[1][1]
+        zn = [site[3] for site in array]
+        κ = fiber.propagation_constant
+        eρ   , eϕ   , ez   = guidedModeComps(fiber, ρa)
+        eρ_ρ , eϕ_ρ , ez_ρ = guidedModeComps(fiber, ρa, 1)
+        eρ, eρ_ρ = -1im.*[eρ, eρ_ρ] #remove overall imaginary unit for ease of expressions
+        dNorm = sqrt(eρ^2 + ez^2)
+        propPhase = exp.(1im*κ*zn)
+        
+        # Put together the driving 
+        Ωnα = [sqrt(2)*(ez*eρ_ρ + eρ*ez_ρ)/dNorm*propPhase,
+               zeros(ComplexF64, size(propPhase)),
+               1im*κ*sqrt(8)*eρ*ez/dNorm*propPhase]
+    else
+        throw(ArgumentError("Dipole moment = '{d}' was not recognized in get_tildeΩ"))
+    end
+    return ηα.*Ωnα/ωa
+end
+
+
+function get_tildeΩα(fiber, d, ηα, array)
+    # Calculate incoming field and its second derivative
+    Enα = [(Egm.(Ref(fiber), 1, 1, array, 1, α) + Egm.(Ref(fiber), -1, 1, array, 1, α))/sqrt(2) for α in 1:3]
+    
+    # Put together the driving
+    Ωnα = [Ref(d').*Enα[α] for α in 1:3]
+    return ηα.*Ωnα/ωa
+end
+
+
+function get_tildeG(fiber, Δ, d::String, ηα, array)
+    # TODO: Implement non-lazy version of this? Presumably significantly faster when exploiting knowledge of which components etc. are actually needed, but also very messy...
+    if d == "chiral"
+        ρa = array[1][1]
+        if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
+        d = chiralDipoleMoment(fiber, ρa)
+        return get_tildeG(fiber, Δ, d, ηα, array)
+    else
+        throw(ArgumentError("get_tildeG(d::String) is only implemented for d = 'chiral'"))
+    end
+end
+
+
+function get_tildeG(fiber, Δ, d, ηα, array)
+    N = length(array)
+    
+    if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
+    
+    # Calculate the guided mode Green's function and the needed derivatives (notice that Ggm_αα12 consists of vectors)
+    Ggm_     =  Ggm.(Ref(fiber), reshape(array, N, 1), reshape(array, 1, N))
+    Ggm_αα11 = [Ggm.(Ref(fiber), reshape(array, N, 1), reshape(array, 1, N), Ref((2, 0)), α) for α in 1:3]
+    Ggm_αα22 = [Ggm.(Ref(fiber), reshape(array, N, 1), reshape(array, 1, N), Ref((0, 2)), α) for α in 1:3]
+    Ggm_αα12 = [Ggm.(Ref(fiber), array, array, Ref((1, 1)), α) for α in 1:3]
+    
+    # Calculate the radiation mode Green's function and the needed derivatives (notice that Grm_αα12 consists of vectors)
+    Grm_     =  Grm.(Ref(fiber), ωa, reshape(array, N, 1), reshape(array, 1, N))
+    Grm_αα11 = [Grm.(Ref(fiber), ωa, reshape(array, N, 1), reshape(array, 1, N), Ref((2, 0)), α) for α in 1:3]
+    Grm_αα22 = [Grm.(Ref(fiber), ωa, reshape(array, N, 1), reshape(array, 1, N), Ref((0, 2)), α) for α in 1:3]
+    Grm_αα12 = [Grm.(Ref(fiber), ωa, array, array, Ref((1, 1)), α) for α in 1:3]
+    
+    # Put together the full Green's function
+    G      = Ggm_ + Grm_
+    G_αα11 = Ggm_αα11 + Grm_αα11
+    G_αα22 = Ggm_αα22 + Grm_αα22
+    G_αα12 = Ggm_αα12 + Grm_αα12
+    
+    # Get the couplings by appropriately multiplying with the dipole moment and some constants
+    Gnm     =     3*π/ωa*(Ref(d').*G.*Ref(d))
+    Gnmαα11 = [   3*π/ωa*(Ref(d').*G_αα11[α].*Ref(d)) for α in 1:3]
+    Gnmαα22 = [   3*π/ωa*(Ref(d').*G_αα22[α].*Ref(d)) for α in 1:3]
+    Gnnαα12 = [Di(3*π/ωa*(Ref(d').*G_αα12[α].*Ref(d))) for α in 1:3]
+    
+    # Put together tildeG
+    return Δ*I + Gnm + sum(@. ηα^2*(Gnmαα11 + Gnmαα22 + 2*Gnnαα12))/(2*ωa^2)
+end
+
+
+function get_tildeFα(tildeG, να)
+    return [tildeG - να[α]*I for α in 1:3]
+end
+
+
+function get_tildeGα(fiber, d::String, ηα, array)
+    # TODO: Implement non-lazy version of this? Presumably significantly faster when exploiting knowledge of which components etc. are actually needed, but also very messy...
+    if d == "chiral"
+        ρa = array[1][1]
+        if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
+        d = chiralDipoleMoment(fiber, ρa)
+        return get_tildeGα(fiber, d, ηα, array)
+    else
+        throw(ArgumentError("get_tildeGα(d::String) is only implemented for d = 'chiral'"))
+    end
+end
+
+
+function get_tildeGα(fiber, d, ηα, array)
+    # TODO: Implement saving and loading of GFs
+    
+    N = length(array)
+    
+    if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
+    
+    # Calculate the guided mode Green's function and the needed derivatives
+    Ggm_α1 = [Ggm.(Ref(fiber), reshape(array, N, 1), reshape(array, 1, N), Ref((1, 0)), α) for α in 1:3]
+    Ggm_α2 = [Ggm.(Ref(fiber), reshape(array, N, 1), reshape(array, 1, N), Ref((0, 1)), α) for α in 1:3]
+    
+    # Calculate the radiation mode Green's function and the needed derivatives
+    Grm_α1 = [Grm.(Ref(fiber), ωa, reshape(array, N, 1), reshape(array, 1, N), Ref((1, 0)), α) for α in 1:3]
+    Grm_α2 = [Grm.(Ref(fiber), ωa, reshape(array, N, 1), reshape(array, 1, N), Ref((0, 1)), α) for α in 1:3]
+    
+    # Put together the full Green's function
+    G_α1 = Ggm_α1 + Grm_α1
+    G_α2 = Ggm_α2 + Grm_α2
+    
+    # Get the couplings by appropriately multiplying with the dipole moment and some constants
+    Gnmα1 = [3*π/ωa*(Ref(d').*G_α1[α].*Ref(d)) for α in 1:3]
+    Gnmα2 = [3*π/ωa*(Ref(d').*G_α2[α].*Ref(d)) for α in 1:3]
+    
+    # Put together tildeGα1
+    return ηα.*Gnmα1/ωa, ηα.*Gnmα2/ωa
+end
+
+
+#================================================
+    Functions pertaining to the time evolution of the atomic and phononic degrees of freedom
+================================================#
+"""
+Calculate the steady state values of atomic coherences σ and the atom-phonon correlations Bα
+"""
+function calc_σBα_steadyState(fiber, Δ, d, να, ηα, array, arrayDescription, overwrite_bool=false)
+    postfix = get_postfix(Δ, d, να, ηα, arrayDescription, fiber.postfix)
+    filename = "sigmaBalpha_" * postfix
+    
+    if isfile(saveDir * filename * ".jld2")
+        if overwrite_bool 
+            println("The σ and Bα for \n   $filename\nhave already been calculated.\n" *
+                    "Recalculating and overwriting in 5 seconds...")
+            sleep(5)
+        else
+            # println("Loading σ and Bα")
+            return load_as_jld2(saveDir, filename)
+        end
+    end
+    
+    # Prepare parameters and calculate steady state σBα
+    tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(fiber, Δ, d, να, ηα, array)
+    σBα = σBα_steadyState(tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2)
+    
+    save_as_jld2(σBα, saveDir, filename)
+    return σBα
+end
+
+
+"""
+Calculate the steady state values of atomic coherences σ and the atom-phonon correlations Bα 
+for parameters given by SP and a given detuning
+"""
+function calc_σBα_steadyState(SP, Δ)
+    return calc_σBα_steadyState(SP.fiber, Δ, SP.d, SP.να, SP.ηα, SP.array, SP.arrayDescription)
+end
+
+
+"""
+Scan the steady state values of atomic coherences σ and the atom-phonon correlations Bα over the detuning
+"""
+function scan_σBα_steadyState(SP)
+    return calc_σBα_steadyState.(Ref(SP), SP.Δ_range)
+end
+
+
+"""
+Perform time evolution of the atomic and phononic degrees of freedom
+"""
+function timeEvolution(fiber, Δ, d, να, ηα, N, array, arrayDescription, initialState, initialStateDescription, tspan, dtmax, overwrite_bool=false)
+    postfix = get_postfix(Δ, d, να, ηα, arrayDescription, fiber.postfix, initialStateDescription, tspan, dtmax)
+    filename = "TE_" * postfix
+    
+    if isfile(saveDir * filename * ".txt")
+        if overwrite_bool 
+            println("The time evolution for \n   $filename\nhas already been calculated.\n" *
+                    "Recalculating and overwriting in 5 seconds...")
+            sleep(5)
+        else
+            println("Loading time evolution")
+            return load_as_txt(saveDir, filename)
+        end
+    end
+    
+    # Prepare empty vectors for in-place updating during time evolution
+    σ   , Bα    = empty_σBαVectors(N)
+    dσdt, dBαdt = empty_σBαVectors(N)
+    
+    # We have args = dσdt, dBαdt, σ, Bα, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2
+    args = dσdt, dBαdt, σ, Bα, get_parameterMatrices(fiber, Δ, d, να, ηα, array)...
+    
+    # Perform the time evolution
+    prob = ODEProblem(EoMs_wrap, initialState, tspan, args)
+    sol = OrdinaryDiffEq.solve(prob, Tsit5(), dtmax=dtmax)
+    
+    # Pack and save data
+    formattedResult = vectorOfRows2Matrix([vcat(sol.t[i], sol.u[i]) for i in eachindex(sol.t)])
+    save_as_txt(formattedResult, saveDir, filename)
+    
+    return formattedResult
+end
+
+
+"""
+Perform time evolution for parameters given by SP
+"""
+function timeEvolution(SP, Δ)
+    return timeEvolution(SP.fiber, Δ, SP.d, SP.να, SP.ηα, SP.N, SP.array, SP.arrayDescription, SP.initialState, SP.initialStateDescription, SP.tspan, SP.dtmax)
+end
+    
+
+"""
+Scan time evolutions over the detuning
+"""
+function scan_timeEvolution(SP)
+    return timeEvolution.(Ref(SP), SP.Δ_range)
+end
+
+
+#================================================
+    Functions pertaining to transmission through the fiber
+================================================#
+"""
+Calculate the transmission of light through the fiber
+"""
+function calc_transmission(σBα, fiber, d, ηα, array)
+    # postfix = get_postfix()
+    # filename = "t_" * postfix
+    
+    # if isfile(saveDir * filename * ".txt")
+    #     if overwrite_bool 
+    #         println("The transmission for \n   $filename\nhas already been calculated.\n" *
+    #                 "Recalculating and overwriting in 5 seconds...")
+    #         sleep(5)
+    #     else
+    #         println("Loading transmission")
+    #         return load_as_txt(saveDir, filename)
+    #     end
+    # end
+    
+    # Prepare some parameters and calculate transmission
+    tildeΩ  = get_tildeΩ(fiber, d, ηα, array)
+    tildeΩα = get_tildeΩα(fiber, d, ηα, array)
+    t = transmission(σBα..., tildeΩ, tildeΩα, fiber)
+    
+    # save_as_txt(t, saveDir, filename)
+    return t
+end
+
+
+"""
+Calculate the transmission of light through the fiber for parameters given by SP
+"""
+function calc_transmission(SP, σBα)
+    return calc_transmission(σBα, SP.fiber, SP.d, SP.ηα, SP.array)
+end
