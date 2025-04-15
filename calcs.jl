@@ -62,15 +62,15 @@ end
 #================================================
     Functions pertaining to calculating the driving and couplings of the system
 ================================================#
-function get_parameterMatrices(fiber, Δ, d, να, ηα, array, approx_Re_Grm_trans)
+function get_parameterMatrices(fiber, Δ, d, να, ηα, incField_lf, array, approx_Re_Grm_trans)
     # TODO: implement saving and loading of these quantities?
     
     if all(ηα .== 0)
-        tildeΩ = get_tildeΩs(fiber, d, array)
+        tildeΩ = get_tildeΩs(fiber, d, incField_lf, array)
         tildeG = get_tildeGs(fiber, Δ, d, array, approx_Re_Grm_trans)
         return tildeΩ, tildeG
     else
-        tildeΩ, tildeΩα            = get_tildeΩs(fiber, d, ηα, array)
+        tildeΩ, tildeΩα            = get_tildeΩs(fiber, d, ηα, incField_lf, array)
         tildeG, tildeGα1, tildeGα2 = get_tildeGs(fiber, Δ, d, ηα, array, approx_Re_Grm_trans)
         tildeFα                    = get_tildeFα(tildeG, να)
         return tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2
@@ -78,13 +78,13 @@ function get_parameterMatrices(fiber, Δ, d, να, ηα, array, approx_Re_Grm_tr
 end
 
 
-function get_tildeΩs(fiber, d::String, array)
+function get_tildeΩs(fiber, d::String, incField_lf, array)
     if d == "chiral"
         # Set up coordinates and guided mode components (including their first and second order derivatives)
         ρa = array[1][1]
         zn = [site[3] for site in array]
         κ = fiber.propagation_constant
-        eρ, eϕ, ez    = guidedModeComps(fiber, ρa)
+        eρ, eϕ, ez = guidedModeComps(fiber, ρa)
         eρ = -1im*eρ #remove overall imaginary unit for ease of expressions
         dNorm = sqrt(eρ^2 + ez^2)
         propPhase = exp.(1im*κ*zn)
@@ -98,7 +98,7 @@ function get_tildeΩs(fiber, d::String, array)
 end
 
 
-function get_tildeΩs(fiber, d::String, ηα, array)
+function get_tildeΩs(fiber, d::String, ηα, incField_lf, array)
     if d == "chiral"
         # Set up coordinates and guided mode components (including their first and second order derivatives)
         ρa = array[1][1]
@@ -126,9 +126,13 @@ function get_tildeΩs(fiber, d::String, ηα, array)
 end
 
 
-function get_tildeΩs(fiber, d, array)
-    # Calculate incoming field and its second derivative
-    En = (Egm.(Ref(fiber), 1, 1, array) + Egm.(Ref(fiber), -1, 1, array))/sqrt(2)
+function get_tildeΩs(fiber, d, incField_lf, array)
+    # Calculate incoming field
+    En = fill(zeros(ComplexF64, 3), size(array))
+    for (w, l, f) in incField_lf
+        En += w*Egm.(Ref(fiber), l, f, array)
+    end
+    En /= sqrt(sum([abs2(w) for (w, l, f) in incField_lf]))
     
     # Put together the driving
     Ωn = Ref(d').*En
@@ -136,11 +140,24 @@ function get_tildeΩs(fiber, d, array)
 end
 
 
-function get_tildeΩs(fiber, d, ηα, array)
+function get_tildeΩs(fiber, d, ηα, incField_lf, array)
     # Calculate incoming field and its second derivative
-    En   =  (Egm.(Ref(fiber), 1, 1, array)       + Egm.(Ref(fiber), -1, 1, array)      )/sqrt(2)
-    Enα  = [(Egm.(Ref(fiber), 1, 1, array, 1, α) + Egm.(Ref(fiber), -1, 1, array, 1, α))/sqrt(2) for α in 1:3]
-    Enαα = [(Egm.(Ref(fiber), 1, 1, array, 2, α) + Egm.(Ref(fiber), -1, 1, array, 2, α))/sqrt(2) for α in 1:3]
+    En   = fill(zeros(ComplexF64, 3), size(array))
+    Enα  = [deepcopy(En) for α in 1:3]
+    Enαα = deepcopy(Enα)
+    for (w, l, f) in incField_lf
+        En += w*Egm.(Ref(fiber), l, f, array)
+        for α in 1:3
+            Enα[α]  += w*Egm.(Ref(fiber), l, f, array, 1, α)
+            Enαα[α] += w*Egm.(Ref(fiber), l, f, array, 2, α)
+        end
+    end
+    normFactor = sqrt(sum([abs2(w) for (w, l, f) in incField_lf]))
+    En /= normFactor
+    for α in 1:3
+        Enα[α]  /= normFactor
+        Enαα[α] /= normFactor
+    end
     
     # Put together the driving
     Ωn   =  Ref(d').*En
@@ -270,7 +287,7 @@ end
 """
 Calculate the steady state values of atomic coherences σ and the atom-phonon correlations Bα
 """
-function calc_σBα_steadyState(fiber, Δ, d, να, ηα, array, arrayDescription, approx_Re_Grm_trans, overwrite_bool=false)
+function calc_σBα_steadyState(fiber, Δ, d, να, ηα, incField_lf, array, arrayDescription, approx_Re_Grm_trans, overwrite_bool=false)
     postfix = get_postfix(Δ, d, να, ηα, arrayDescription, fiber.postfix)
     if all(ηα .== 0) filename = "sigma_" * postfix
     else filename = "sigmaBalpha_" * postfix end
@@ -281,17 +298,17 @@ function calc_σBα_steadyState(fiber, Δ, d, να, ηα, array, arrayDescriptio
                     "Recalculating and overwriting in 5 seconds...")
             sleep(5)
         else
-            println("Loading σ and Bα")
+            # println("Loading σ and Bα")
             return load_as_jld2(saveDir, filename)
         end
     end
     
     if all(ηα .== 0)
         # Prepare parameters and calculate steady state σ
-        result = σ_steadyState(get_parameterMatrices(fiber, Δ, d, να, ηα, array, approx_Re_Grm_trans)...)
+        result = σ_steadyState(get_parameterMatrices(fiber, Δ, d, να, ηα, incField_lf, array, approx_Re_Grm_trans)...)
     else
         # Prepare parameters and calculate steady state σBα
-        result = σBα_steadyState(get_parameterMatrices(fiber, Δ, d, να, ηα, array, approx_Re_Grm_trans)...)
+        result = σBα_steadyState(get_parameterMatrices(fiber, Δ, d, να, ηα, incField_lf, array, approx_Re_Grm_trans)...)
     end
     
     save_as_jld2(result, saveDir, filename)
@@ -304,7 +321,7 @@ Calculate the steady state values of atomic coherences σ and the atom-phonon co
 for parameters given by SP and a given detuning
 """
 function calc_σBα_steadyState(SP, Δ)
-    return calc_σBα_steadyState(SP.fiber, Δ, SP.d, SP.να, SP.ηα, SP.array, SP.arrayDescription, SP.approx_Re_Grm_trans)
+    return calc_σBα_steadyState(SP.fiber, Δ, SP.d, SP.να, SP.ηα, SP.incField_lf, SP.array, SP.arrayDescription, SP.approx_Re_Grm_trans)
 end
 
 
@@ -319,7 +336,7 @@ end
 """
 Perform time evolution of the atomic and phononic degrees of freedom
 """
-function timeEvolution(fiber, Δ, d, να, ηα, N, array, arrayDescription, initialState, initialStateDescription, tspan, dtmax, approx_Re_Grm_trans, overwrite_bool=false)
+function timeEvolution(fiber, Δ, d, να, ηα, incField_lf, N, array, arrayDescription, initialState, initialStateDescription, tspan, dtmax, approx_Re_Grm_trans, overwrite_bool=false)
     postfix = get_postfix(Δ, d, να, ηα, arrayDescription, fiber.postfix, initialStateDescription, tspan, dtmax)
     if all(ηα .== 0) filename = "TE_noPh_" * postfix
     else filename = "TE_" * postfix end
@@ -338,14 +355,14 @@ function timeEvolution(fiber, Δ, d, να, ηα, N, array, arrayDescription, ini
     if all(ηα .== 0)
         # We have args = dσdt, σ, tildeΩ, tildeG
         args = empty_σVector(N), empty_σVector(N), 
-               get_parameterMatrices(fiber, Δ, d, να, ηα, array, approx_Re_Grm_trans)...
+               get_parameterMatrices(fiber, Δ, d, να, ηα, incField_lf, array, approx_Re_Grm_trans)...
         
         # Prepare the time evolution problem
         prob = ODEProblem(EoMs_wrap_noPh, initialState, tspan, args)
     else
         # We have args = dσdt, dBαdt, σ, Bα, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2
         args = empty_σVector(N), empty_BαVector(N), empty_σVector(N), empty_BαVector(N), 
-               get_parameterMatrices(fiber, Δ, d, να, ηα, array, approx_Re_Grm_trans)...
+               get_parameterMatrices(fiber, Δ, d, να, ηα, incField_lf, array, approx_Re_Grm_trans)...
         
         # Prepare the time evolution problem
         prob = ODEProblem(EoMs_wrap, initialState, tspan, args)
@@ -366,7 +383,7 @@ end
 Perform time evolution for parameters given by SP
 """
 function timeEvolution(SP, Δ)
-    return timeEvolution(SP.fiber, Δ, SP.d, SP.να, SP.ηα, SP.N, SP.array, SP.arrayDescription, SP.initialState, SP.initialStateDescription, SP.tspan, SP.dtmax, SP.approx_Re_Grm_trans)
+    return timeEvolution(SP.fiber, Δ, SP.d, SP.να, SP.ηα, SP.incField_lf, SP.N, SP.array, SP.arrayDescription, SP.initialState, SP.initialStateDescription, SP.tspan, SP.dtmax, SP.approx_Re_Grm_trans)
 end
     
 
@@ -384,7 +401,7 @@ end
 """
 Calculate the transmission of light through the fiber (in the case of no phonons)
 """
-function calc_transmission(σ, fiber, d, array)
+function calc_transmission(σ, fiber, d, incField_lf, array)
     # postfix = get_postfix()
     # filename = "t_noPh_" * postfix
     
@@ -400,7 +417,7 @@ function calc_transmission(σ, fiber, d, array)
     # end
     
     # Prepare some parameters and calculate transmission
-    tildeΩ = get_tildeΩs(fiber, d, array)
+    tildeΩ = get_tildeΩs(fiber, d, incField_lf, array)
     t = transmission(σ, tildeΩ, fiber)
     
     # save_as_txt(t, saveDir, filename)
@@ -411,7 +428,7 @@ end
 """
 Calculate the transmission of light through the fiber
 """
-function calc_transmission(σBα, fiber, d, ηα, array)
+function calc_transmission(σBα, fiber, d, ηα, incField_lf, array)
     # postfix = get_postfix()
     # filename = "t_" * postfix
     
@@ -427,7 +444,7 @@ function calc_transmission(σBα, fiber, d, ηα, array)
     # end
     
     # Prepare some parameters and calculate transmission
-    tildeΩ, tildeΩα = get_tildeΩs(fiber, d, ηα, array)
+    tildeΩ, tildeΩα = get_tildeΩs(fiber, d, ηα, incField_lf, array)
     t = transmission(σBα..., tildeΩ, tildeΩα, fiber)
     
     # save_as_txt(t, saveDir, filename)
@@ -442,8 +459,8 @@ The function assumes that σBα contains only σ if the Lamb-Dicke parameters ar
 """
 function calc_transmission(SP, σBα)
     if all(SP.ηα .== 0)
-        return calc_transmission(σBα, SP.fiber, SP.d, SP.array)
+        return calc_transmission(σBα, SP.fiber, SP.d, SP.incField_lf, SP.array)
     else
-        return calc_transmission(σBα, SP.fiber, SP.d, SP.ηα, SP.array)
+        return calc_transmission(σBα, SP.fiber, SP.d, SP.ηα, SP.incField_lf, SP.array)
     end
 end

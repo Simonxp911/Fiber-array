@@ -145,7 +145,7 @@ function define_SP()
     n_range  = range(n_specs...)
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs  = (-300, 300, 1000)
+    Δ_specs  = (-100, 100, 300)
     Δ_range  = ro.(range(Δ_specs...))
     
     # Time spand and maximum time step allowed in time evolution
@@ -164,17 +164,22 @@ function define_SP()
     
     # Lamb-Dicke parameters
     ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
-    ηα = [0., 0., 0.]
+    # ηα = [0., 0., 0.]
     
     # Prepare initial state for time evolution, as well as description for postfix
     initialState = groundstate(N, all(ηα .== 0))
     initialStateDescription = "gs"
     
     # Atomic dipole moment
-    # d = []
-    # d = chiralDipoleMoment(fiber, ρa)
-    d = "chiral"
+    # d = [1im, 0, -1]/sqrt(2)
+    d = chiralDipoleMoment(fiber, ρa)
+    # d = "chiral"
     
+    # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
+    incField_lf = [(1, 1, 1), (1, -1, 1)]
+    
+    
+    # TODO: update or remove this check (other things also make this assumption, so they should be checked too? Make overall check of SP?)
     if d == "chiral" && any([site[1] != ρa || site[2] != 0 for site in array]) throw(ArgumentError("d = 'dipole' assumes an array (ρa, 0, z)")) end
     
     # Whether to approximate the real part of the transverse part of the radiation Green's function 
@@ -191,7 +196,7 @@ function define_SP()
             N=N, ρa=ρa, a=a, array=array, arrayDescription=arrayDescription,
             initialState=initialState, initialStateDescription=initialStateDescription,
             να=να, ηα=ηα,
-            d=d,
+            d=d, incField_lf=incField_lf,
             approx_Re_Grm_trans=approx_Re_Grm_trans)
 end
 
@@ -262,8 +267,11 @@ println("\n -- Running main() -- \n")
 
 # TODO list:
 
-# Consider whether it indeed makes sense to fix the chosen guided mode's frequency at ωa? Maybe it should instead be chosen
-# such that κ = ωa? Does it indeed not matter that ω is tuned by an amount proportional to (hundreds of) γ?
+# Figure out how to add (super-)titles to figures
+    # Possibly define function that takes a plot and adds the title to it, by moving existing plots around
+# Related to this, figure out how to define proper, nice-looking, robust layouts of plots
+
+# Calculate the free-space emitted E-field and plot it, to see where the atoms "leak"
 
 # Consider making structs for x-vector and σBα, to make their structure easier to get an overview of
 
@@ -288,3 +296,9 @@ println("\n -- Running main() -- \n")
     # Invent some packing/unpacking scheme to put any kind of data into real matrices
 
 # Consider using StaticArrays in some places?
+
+# Consider writing tests...
+    # Test/check validity of SP (d is normalized, some parameters are non-negative), which could also serve as a reminder of the implicit assumptions regarding parameters
+    # Test that transmission is only a phase for 1 atom and no coupling to radiation spectrum
+    # Test that long-time time evolution matches with steady state
+    # Test calculations in a limit where it can be done analytically? (One atom...)
