@@ -126,7 +126,7 @@ function fig_transmission_vs_Δ(Δ_range, t)
     fig = plot(reuse=false, size=(800, 600), layout=(1, 2))
     
     # Plot the propagation constant, and the lines y = ω and y = nω
-    plot!(Δ_range, abs.(t)  , label=L"$ |t| $"   , c=:blue, subplot=1)
+    plot!(Δ_range, abs2.(t)  , label=L"$ |t|^2 $"   , c=:blue, subplot=1)
     plot!(Δ_range, angle.(t), label=L"arg$ (t) $", c=:red , subplot=2)
 
     # Finish figure
@@ -136,7 +136,7 @@ function fig_transmission_vs_Δ(Δ_range, t)
     # ylims!(-3.1415, 3.1415, subplot=2) #for some reason using π gives an error from Python
     xlabel!(L"$ \Delta/\gamma $")
     # ylabel!(L"")
-    title!("Transmission magnitude", subplot=1)
+    title!("Transmission coefficient", subplot=1)
     title!("Transmission phase", subplot=2)
     display(fig)
 end
