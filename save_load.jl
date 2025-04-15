@@ -29,7 +29,7 @@ end
 """
 For calculation of steady state σ and Bα
 """
-function get_postfix(Δ, d, να, ηα, arrayDescription, fiberPostfix)
+function get_postfix(Δ, d, να, ηα, incField_wlf, arrayDescription, fiberPostfix)
     if typeof(d) == String
         dipole_moment_string = "d_$d"
     else
@@ -41,6 +41,7 @@ function get_postfix(Δ, d, να, ηα, arrayDescription, fiberPostfix)
         dipole_moment_string,
         "trapFreqs_$(join(να, ","))",
         "LamDic_$(join(ηα, ","))",
+        "wlf_$(join(incField_wlf, ","))",
         arrayDescription,
         fiberPostfix
     ]
@@ -51,7 +52,7 @@ end
 """
 For time evolution
 """
-function get_postfix(Δ, d, να, ηα, arrayDescription, fiberPostfix, initialStateDescription, tspan, dtmax)
+function get_postfix(Δ, d, να, ηα, incField_wlf, arrayDescription, fiberPostfix, initialStateDescription, tspan, dtmax)
     if typeof(d) == String
         dipole_moment_string = "d_$d"
     else
@@ -63,6 +64,7 @@ function get_postfix(Δ, d, να, ηα, arrayDescription, fiberPostfix, initialS
         dipole_moment_string,
         "trapFreqs_$(join(να, ","))",
         "LamDic_$(join(ηα, ","))",
+        "wlf_$(join(incField_wlf, ","))",
         arrayDescription,
         fiberPostfix,
         initialStateDescription,

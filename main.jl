@@ -145,7 +145,7 @@ function define_SP()
     n_range  = range(n_specs...)
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs  = (-100, 100, 300)
+    Δ_specs  = (-1, 1, 100)
     Δ_range  = ro.(range(Δ_specs...))
     
     # Time spand and maximum time step allowed in time evolution
@@ -153,7 +153,7 @@ function define_SP()
     dtmax = 0.01
     
     # Set array specs and generate array, as well as description for postfix
-    N  = 5
+    N  = 1
     ρa = ρa0_ul
     a  = a0_ul
     array = get_array(N, ρa, a)
@@ -164,19 +164,20 @@ function define_SP()
     
     # Lamb-Dicke parameters
     ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
-    # ηα = [0., 0., 0.]
+    ηα = [0., 0., 0.]
     
     # Prepare initial state for time evolution, as well as description for postfix
     initialState = groundstate(N, all(ηα .== 0))
     initialStateDescription = "gs"
     
     # Atomic dipole moment
-    # d = [1im, 0, -1]/sqrt(2)
-    d = chiralDipoleMoment(fiber, ρa)
+    d = [1im, 0, -1]/sqrt(2)
+    # d = chiralDipoleMoment(fiber, ρa)
     # d = "chiral"
     
     # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
-    incField_lf = [(1, 1, 1), (1, -1, 1)]
+    # incField_wlf = [(1, 1, 1), (1, -1, 1)]
+    incField_wlf = [(1, 1, 1)]
     
     
     # TODO: update or remove this check (other things also make this assumption, so they should be checked too? Make overall check of SP?)
@@ -196,7 +197,7 @@ function define_SP()
             N=N, ρa=ρa, a=a, array=array, arrayDescription=arrayDescription,
             initialState=initialState, initialStateDescription=initialStateDescription,
             να=να, ηα=ηα,
-            d=d, incField_lf=incField_lf,
+            d=d, incField_wlf=incField_wlf,
             approx_Re_Grm_trans=approx_Re_Grm_trans)
 end
 
