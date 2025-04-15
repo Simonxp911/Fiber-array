@@ -299,7 +299,7 @@ end
 """
 Calculates the radiation mode Green's function or its derivatives 
 """
-function Grm(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1)
+function Grm(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, approx_Re_Grm_trans=false)
     # The Green's function is calculated in terms of the contributions: the longitudinal part, the imaginary transverse part, and the real transverse part
     
     # First, we calculate the longitudinal part
@@ -309,8 +309,7 @@ function Grm(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1)
     Im_Grm_tr = Im_Grm_trans(fiber, ω, r_field, r_source, derivOrder, α)
     
     # Finally, the real transverse part
-    # Re_Grm_trans = Re_Grm_trans(fiber, ω, r_field, r_source, derivOrder, α)
-    Re_Grm_tr = Re_G0_trans(ω, r_field, r_source, derivOrder, α)
+    Re_Grm_tr = Re_Grm_trans(fiber, ω, r_field, r_source, derivOrder, α, approx_Re_Grm_trans)
     
     return G0_lo + 1im*Im_Grm_tr + Re_Grm_tr
 end
@@ -365,6 +364,8 @@ Calculates the longitudinal part of the vacuum Green's function or its derivativ
 
 If the function is evaluated at the origin, r_field = r_source, where it is not defined,
 it simply returns zero (corresponding to absorbing the divergence in the definition of ωa)
+
+Note that this part of the Green's function is purely real
 """
 function G0_long(ω, r_field, r_source, derivOrder=(0, 0), α=1)
     # Set up rvec and its length, as well as the coordinate with respect to which we are deriving
@@ -396,6 +397,15 @@ end
 
 
 """
+Calculates the real part of the transverse part of the vacuum Green's function or its derivatives,
+which can be be used to approximate the corresponding part of radiation Green's function
+"""
+function Re_G0_trans(ω, r_field, r_source, derivOrder=(0, 0), α=1)
+    return real(G0(ω, r_field, r_source, derivOrder, α)) - G0_long(ω, r_field, r_source, derivOrder, α)
+end
+
+
+"""
 Small wrapper for the calculation of the imaginary part of the transverse part of radiation mode 
 Green's function or its derivatives that explots the Onsager reciprocity to simpilify calculations
 """
@@ -405,7 +415,7 @@ function Im_Grm_trans(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1)
     else
         return Im_Grm_trans_calc(fiber, ω, r_field, r_source, derivOrder, α)
     end
-end    
+end
 
 
 # TODO: only calculate needed components, and exploit that some entries appear to be zero depending on derivOrder and α,
@@ -469,16 +479,13 @@ end
 """
 Calculates the real part of the transverse part of radiation mode Green's function or its derivatives 
 """
-function Re_Grm_trans(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1)
-    
-    # Calculate from imaginary part using Kramers-Kronig relation
-    
-end
-
-
-# TODO: make it explicit that this approximation is being made - make it possible to choose this approximation in SP or so
-function Re_G0_trans(ω, r_field, r_source, derivOrder=(0, 0), α=1)
-    return real(G0(ω, r_field, r_source, derivOrder, α)) - G0_long(ω, r_field, r_source, derivOrder, α)
+function Re_Grm_trans(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, approx_Re_Grm_trans=false)
+    if approx_Re_Grm_trans
+        return Re_G0_trans(ω, r_field, r_source, derivOrder, α)
+    else
+        # Calculate from imaginary part using Kramers-Kronig relation
+        throw(ArgumentError("The non-approximate calculation of real part of the transverse part of radiation mode Green's function or its derivatives in Re_Grm_trans has not been implemented"))
+    end
 end
 
 

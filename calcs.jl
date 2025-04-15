@@ -62,21 +62,19 @@ end
 #================================================
     Functions pertaining to calculating the driving and couplings of the system
 ================================================#
-function get_parameterMatrices(fiber, Δ, d, να, ηα, array)
+function get_parameterMatrices(fiber, Δ, d, να, ηα, array, approx_Re_Grm_trans)
     
-    # TODO: implement saving and loading of these quantities
+    # TODO: implement saving and loading of these quantities?
     
-    tildeΩ   = get_tildeΩ(fiber, d, ηα, array)
-    tildeΩα  = get_tildeΩα(fiber, d, ηα, array)
-    tildeG   = get_tildeG(fiber, Δ, d, ηα, array)
-    tildeFα  = get_tildeFα(tildeG, να)
-    tildeGα1, tildeGα2 = get_tildeGα(fiber, d, ηα, array)
+    tildeΩ, tildeΩα            = get_tildeΩs(fiber, d, ηα, array)
+    tildeG, tildeGα1, tildeGα2 = get_tildeGs(fiber, Δ, d, ηα, array, approx_Re_Grm_trans)
+    tildeFα                    = get_tildeFα(tildeG, να)
     
     return tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2
 end
 
 
-function get_tildeΩ(fiber, d::String, ηα, array)
+function get_tildeΩs(fiber, d::String, ηα, array)
     if d == "chiral"
         # Set up coordinates and guided mode components (including their first and second order derivatives)
         ρa = array[1][1]
@@ -90,152 +88,103 @@ function get_tildeΩ(fiber, d::String, ηα, array)
         propPhase = exp.(1im*κ*zn)
         
         # Put together the driving 
-        Ωn = sqrt(8)*eρ*ez/dNorm*propPhase
+        Ωn   =  sqrt(8)*eρ*ez/dNorm*propPhase
+        Ωnα  = [sqrt(2)*(ez*eρ_ρ + eρ*ez_ρ)/dNorm*propPhase,
+                zeros(ComplexF64, size(propPhase)),
+                1im*κ*sqrt(8)*eρ*ez/dNorm*propPhase]
         Ωnαα = [sqrt(2)*(ez*eρ_ρρ + eρ*ez_ρρ)/dNorm*propPhase,
                 -sqrt(2)*ez*(3*eρ + 2*eϕ)/(dNorm*ρa^2)*propPhase + sqrt(2)*(ez*eρ_ρ + eρ*ez_ρ)/(dNorm*ρa)*propPhase,
                 -κ^2*Ωn]
     else
-        throw(ArgumentError("Dipole moment = '{d}' was not recognized in get_tildeΩ"))
+        throw(ArgumentError("Dipole moment = '{d}' was not recognized in get_tildeΩs"))
     end
-    return Ωn + sum(@. ηα^2*Ωnαα)/(2*ωa^2)
+    return Ωn + sum(@. ηα^2*Ωnαα)/(2*ωa^2), ηα.*Ωnα/ωa
 end
 
 
-function get_tildeΩ(fiber, d, ηα, array)
+function get_tildeΩs(fiber, d, ηα, array)
     # Calculate incoming field and its second derivative
-    En = (Egm.(Ref(fiber), 1, 1, array) + Egm.(Ref(fiber), -1, 1, array))/sqrt(2)
+    En   =  (Egm.(Ref(fiber), 1, 1, array)       + Egm.(Ref(fiber), -1, 1, array)      )/sqrt(2)
+    Enα  = [(Egm.(Ref(fiber), 1, 1, array, 1, α) + Egm.(Ref(fiber), -1, 1, array, 1, α))/sqrt(2) for α in 1:3]
     Enαα = [(Egm.(Ref(fiber), 1, 1, array, 2, α) + Egm.(Ref(fiber), -1, 1, array, 2, α))/sqrt(2) for α in 1:3]
     
     # Put together the driving
-    Ωn = Ref(d').*En
+    Ωn   =  Ref(d').*En
+    Ωnα  = [Ref(d').*Enα[α]  for α in 1:3]
     Ωnαα = [Ref(d').*Enαα[α] for α in 1:3]
-    return Ωn + sum(@. ηα^2*Ωnαα)/(2*ωa^2)
+    return Ωn + sum(@. ηα^2*Ωnαα)/(2*ωa^2), ηα.*Ωnα/ωa
 end
 
 
-function get_tildeΩα(fiber, d::String, ηα, array)
-    if d == "chiral"
-        # Set up coordinates and guided mode components (including their first and second order derivatives)
-        ρa = array[1][1]
-        zn = [site[3] for site in array]
-        κ = fiber.propagation_constant
-        eρ   , eϕ   , ez   = guidedModeComps(fiber, ρa)
-        eρ_ρ , eϕ_ρ , ez_ρ = guidedModeComps(fiber, ρa, 1)
-        eρ, eρ_ρ = -1im.*[eρ, eρ_ρ] #remove overall imaginary unit for ease of expressions
-        dNorm = sqrt(eρ^2 + ez^2)
-        propPhase = exp.(1im*κ*zn)
-        
-        # Put together the driving 
-        Ωnα = [sqrt(2)*(ez*eρ_ρ + eρ*ez_ρ)/dNorm*propPhase,
-               zeros(ComplexF64, size(propPhase)),
-               1im*κ*sqrt(8)*eρ*ez/dNorm*propPhase]
-    else
-        throw(ArgumentError("Dipole moment = '{d}' was not recognized in get_tildeΩ"))
-    end
-    return ηα.*Ωnα/ωa
-end
-
-
-function get_tildeΩα(fiber, d, ηα, array)
-    # Calculate incoming field and its second derivative
-    Enα = [(Egm.(Ref(fiber), 1, 1, array, 1, α) + Egm.(Ref(fiber), -1, 1, array, 1, α))/sqrt(2) for α in 1:3]
-    
-    # Put together the driving
-    Ωnα = [Ref(d').*Enα[α] for α in 1:3]
-    return ηα.*Ωnα/ωa
-end
-
-
-function get_tildeG(fiber, Δ, d::String, ηα, array)
+function get_tildeGs(fiber, Δ, d::String, ηα, array, approx_Re_Grm_trans)
     # TODO: Implement non-lazy version of this? Presumably significantly faster when exploiting knowledge of which components etc. are actually needed, but also very messy...
     if d == "chiral"
         ρa = array[1][1]
         if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
         d = chiralDipoleMoment(fiber, ρa)
-        return get_tildeG(fiber, Δ, d, ηα, array)
+        return get_tildeGs(fiber, Δ, d, ηα, array, approx_Re_Grm_trans)
     else
-        throw(ArgumentError("get_tildeG(d::String) is only implemented for d = 'chiral'"))
+        throw(ArgumentError("get_tildeGs(d::String) is only implemented for d = 'chiral'"))
     end
 end
 
 
-function get_tildeG(fiber, Δ, d, ηα, array)
+function get_tildeGs(fiber, Δ, d, ηα, array, approx_Re_Grm_trans)
     N = length(array)
     
     if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
     
     # Calculate the guided mode Green's function and the needed derivatives (notice that Ggm_αα12 consists of vectors)
     Ggm_     =  Ggm.(Ref(fiber), reshape(array, N, 1), reshape(array, 1, N))
+    Ggm_α1   = [Ggm.(Ref(fiber), reshape(array, N, 1), reshape(array, 1, N), Ref((1, 0)), α) for α in 1:3]
+    Ggm_α2   = [Ggm.(Ref(fiber), reshape(array, N, 1), reshape(array, 1, N), Ref((0, 1)), α) for α in 1:3]
     Ggm_αα11 = [Ggm.(Ref(fiber), reshape(array, N, 1), reshape(array, 1, N), Ref((2, 0)), α) for α in 1:3]
     Ggm_αα22 = [Ggm.(Ref(fiber), reshape(array, N, 1), reshape(array, 1, N), Ref((0, 2)), α) for α in 1:3]
     Ggm_αα12 = [Ggm.(Ref(fiber), array, array, Ref((1, 1)), α) for α in 1:3]
     
     # Calculate the radiation mode Green's function and the needed derivatives (notice that Grm_αα12 consists of vectors)
-    Grm_     =  Grm.(Ref(fiber), ωa, reshape(array, N, 1), reshape(array, 1, N))
-    Grm_αα11 = [Grm.(Ref(fiber), ωa, reshape(array, N, 1), reshape(array, 1, N), Ref((2, 0)), α) for α in 1:3]
-    Grm_αα22 = [Grm.(Ref(fiber), ωa, reshape(array, N, 1), reshape(array, 1, N), Ref((0, 2)), α) for α in 1:3]
-    Grm_αα12 = [Grm.(Ref(fiber), ωa, array, array, Ref((1, 1)), α) for α in 1:3]
+    Grm_     =  Grm.(Ref(fiber), ωa, reshape(array, N, 1), reshape(array, 1, N), Ref((0, 0)), 1, approx_Re_Grm_trans)
+    Grm_α1   = [Grm.(Ref(fiber), ωa, reshape(array, N, 1), reshape(array, 1, N), Ref((1, 0)), α, approx_Re_Grm_trans) for α in 1:3]
+    Grm_α2   = [Grm.(Ref(fiber), ωa, reshape(array, N, 1), reshape(array, 1, N), Ref((0, 1)), α, approx_Re_Grm_trans) for α in 1:3]
+    Grm_αα11 = [Grm.(Ref(fiber), ωa, reshape(array, N, 1), reshape(array, 1, N), Ref((2, 0)), α, approx_Re_Grm_trans) for α in 1:3]
+    Grm_αα22 = [Grm.(Ref(fiber), ωa, reshape(array, N, 1), reshape(array, 1, N), Ref((0, 2)), α, approx_Re_Grm_trans) for α in 1:3]
+    Grm_αα12 = [Grm.(Ref(fiber), ωa, array, array, Ref((1, 1)), α, approx_Re_Grm_trans) for α in 1:3]
+
+    # Scale the real part of the radiation GF with the local radiation decay rates (if Re_Grm_trans is being approximated)
+    if approx_Re_Grm_trans
+        gammas = 2*imag(3*π/ωa*(Ref(d').*diag(Grm_).*Ref(d)))
+        scaleFactors = sqrt.(gammas*gammas')
+        Grm_     =  real(Grm_)       .*scaleFactors + 1im*imag(Grm_)
+        Grm_α1   = [real(Grm_α1[α])  .*scaleFactors + 1im*imag(Grm_α1[α])   for α in 1:3]
+        Grm_α2   = [real(Grm_α2[α])  .*scaleFactors + 1im*imag(Grm_α2[α])   for α in 1:3]
+        Grm_αα11 = [real(Grm_αα11[α]).*scaleFactors + 1im*imag(Grm_αα11[α]) for α in 1:3]
+        Grm_αα22 = [real(Grm_αα22[α]).*scaleFactors + 1im*imag(Grm_αα22[α]) for α in 1:3]
+        # Grm_αα12 is purely imaginary
+    end
     
     # Put together the full Green's function
     G      = Ggm_ + Grm_
+    G_α1   = Ggm_α1 + Grm_α1
+    G_α2   = Ggm_α2 + Grm_α2
     G_αα11 = Ggm_αα11 + Grm_αα11
     G_αα22 = Ggm_αα22 + Grm_αα22
     G_αα12 = Ggm_αα12 + Grm_αα12
     
     # Get the couplings by appropriately multiplying with the dipole moment and some constants
-    Gnm     =     3*π/ωa*(Ref(d').*G.*Ref(d))
-    Gnmαα11 = [   3*π/ωa*(Ref(d').*G_αα11[α].*Ref(d)) for α in 1:3]
-    Gnmαα22 = [   3*π/ωa*(Ref(d').*G_αα22[α].*Ref(d)) for α in 1:3]
+    Gnm     =     3*π/ωa*(Ref(d').*G        .*Ref(d))
+    Gnmα1   = [   3*π/ωa*(Ref(d').*G_α1[α]  .*Ref(d))  for α in 1:3]
+    Gnmα2   = [   3*π/ωa*(Ref(d').*G_α2[α]  .*Ref(d))  for α in 1:3]
+    Gnmαα11 = [   3*π/ωa*(Ref(d').*G_αα11[α].*Ref(d))  for α in 1:3]
+    Gnmαα22 = [   3*π/ωa*(Ref(d').*G_αα22[α].*Ref(d))  for α in 1:3]
     Gnnαα12 = [Di(3*π/ωa*(Ref(d').*G_αα12[α].*Ref(d))) for α in 1:3]
     
     # Put together tildeG
-    return Δ*I + Gnm + sum(@. ηα^2*(Gnmαα11 + Gnmαα22 + 2*Gnnαα12))/(2*ωa^2)
+    return Δ*I + Gnm + sum(@. ηα^2*(Gnmαα11 + Gnmαα22 + 2*Gnnαα12))/(2*ωa^2), ηα.*Gnmα1/ωa, ηα.*Gnmα2/ωa
 end
 
 
 function get_tildeFα(tildeG, να)
     return [tildeG - να[α]*I for α in 1:3]
-end
-
-
-function get_tildeGα(fiber, d::String, ηα, array)
-    # TODO: Implement non-lazy version of this? Presumably significantly faster when exploiting knowledge of which components etc. are actually needed, but also very messy...
-    if d == "chiral"
-        ρa = array[1][1]
-        if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
-        d = chiralDipoleMoment(fiber, ρa)
-        return get_tildeGα(fiber, d, ηα, array)
-    else
-        throw(ArgumentError("get_tildeGα(d::String) is only implemented for d = 'chiral'"))
-    end
-end
-
-
-function get_tildeGα(fiber, d, ηα, array)
-    # TODO: Implement saving and loading of GFs
-    
-    N = length(array)
-    
-    if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
-    
-    # Calculate the guided mode Green's function and the needed derivatives
-    Ggm_α1 = [Ggm.(Ref(fiber), reshape(array, N, 1), reshape(array, 1, N), Ref((1, 0)), α) for α in 1:3]
-    Ggm_α2 = [Ggm.(Ref(fiber), reshape(array, N, 1), reshape(array, 1, N), Ref((0, 1)), α) for α in 1:3]
-    
-    # Calculate the radiation mode Green's function and the needed derivatives
-    Grm_α1 = [Grm.(Ref(fiber), ωa, reshape(array, N, 1), reshape(array, 1, N), Ref((1, 0)), α) for α in 1:3]
-    Grm_α2 = [Grm.(Ref(fiber), ωa, reshape(array, N, 1), reshape(array, 1, N), Ref((0, 1)), α) for α in 1:3]
-    
-    # Put together the full Green's function
-    G_α1 = Ggm_α1 + Grm_α1
-    G_α2 = Ggm_α2 + Grm_α2
-    
-    # Get the couplings by appropriately multiplying with the dipole moment and some constants
-    Gnmα1 = [3*π/ωa*(Ref(d').*G_α1[α].*Ref(d)) for α in 1:3]
-    Gnmα2 = [3*π/ωa*(Ref(d').*G_α2[α].*Ref(d)) for α in 1:3]
-    
-    # Put together tildeGα1
-    return ηα.*Gnmα1/ωa, ηα.*Gnmα2/ωa
 end
 
 
@@ -245,7 +194,7 @@ end
 """
 Calculate the steady state values of atomic coherences σ and the atom-phonon correlations Bα
 """
-function calc_σBα_steadyState(fiber, Δ, d, να, ηα, array, arrayDescription, overwrite_bool=false)
+function calc_σBα_steadyState(fiber, Δ, d, να, ηα, array, arrayDescription, approx_Re_Grm_trans, overwrite_bool=false)
     postfix = get_postfix(Δ, d, να, ηα, arrayDescription, fiber.postfix)
     filename = "sigmaBalpha_" * postfix
     
@@ -261,7 +210,7 @@ function calc_σBα_steadyState(fiber, Δ, d, να, ηα, array, arrayDescriptio
     end
     
     # Prepare parameters and calculate steady state σBα
-    tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(fiber, Δ, d, να, ηα, array)
+    tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(fiber, Δ, d, να, ηα, array, approx_Re_Grm_trans)
     σBα = σBα_steadyState(tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2)
     
     save_as_jld2(σBα, saveDir, filename)
@@ -274,7 +223,7 @@ Calculate the steady state values of atomic coherences σ and the atom-phonon co
 for parameters given by SP and a given detuning
 """
 function calc_σBα_steadyState(SP, Δ)
-    return calc_σBα_steadyState(SP.fiber, Δ, SP.d, SP.να, SP.ηα, SP.array, SP.arrayDescription)
+    return calc_σBα_steadyState(SP.fiber, Δ, SP.d, SP.να, SP.ηα, SP.array, SP.arrayDescription, SP.approx_Re_Grm_trans)
 end
 
 
@@ -289,7 +238,7 @@ end
 """
 Perform time evolution of the atomic and phononic degrees of freedom
 """
-function timeEvolution(fiber, Δ, d, να, ηα, N, array, arrayDescription, initialState, initialStateDescription, tspan, dtmax, overwrite_bool=false)
+function timeEvolution(fiber, Δ, d, να, ηα, N, array, arrayDescription, initialState, initialStateDescription, tspan, dtmax, approx_Re_Grm_trans, overwrite_bool=false)
     postfix = get_postfix(Δ, d, να, ηα, arrayDescription, fiber.postfix, initialStateDescription, tspan, dtmax)
     filename = "TE_" * postfix
     
@@ -309,7 +258,7 @@ function timeEvolution(fiber, Δ, d, να, ηα, N, array, arrayDescription, ini
     dσdt, dBαdt = empty_σBαVectors(N)
     
     # We have args = dσdt, dBαdt, σ, Bα, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2
-    args = dσdt, dBαdt, σ, Bα, get_parameterMatrices(fiber, Δ, d, να, ηα, array)...
+    args = dσdt, dBαdt, σ, Bα, get_parameterMatrices(fiber, Δ, d, να, ηα, array, approx_Re_Grm_trans)...
     
     # Perform the time evolution
     prob = ODEProblem(EoMs_wrap, initialState, tspan, args)
@@ -327,7 +276,7 @@ end
 Perform time evolution for parameters given by SP
 """
 function timeEvolution(SP, Δ)
-    return timeEvolution(SP.fiber, Δ, SP.d, SP.να, SP.ηα, SP.N, SP.array, SP.arrayDescription, SP.initialState, SP.initialStateDescription, SP.tspan, SP.dtmax)
+    return timeEvolution(SP.fiber, Δ, SP.d, SP.να, SP.ηα, SP.N, SP.array, SP.arrayDescription, SP.initialState, SP.initialStateDescription, SP.tspan, SP.dtmax, SP.approx_Re_Grm_trans)
 end
     
 

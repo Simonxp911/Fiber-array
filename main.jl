@@ -153,7 +153,7 @@ function define_SP()
     dtmax = 0.1
     
     # Set array specs and generate array, as well as description for postfix
-    N  = 40
+    N  = 1
     ρa = ρa0_ul
     a  = a0_ul
     array = get_array(N, ρa, a)
@@ -177,6 +177,11 @@ function define_SP()
     
     if d == "chiral" && any([site[1] != ρa || site[2] != 0 for site in array]) throw(ArgumentError("d = 'dipole' assumes an array (ρa, 0, z)")) end
     
+    # Whether to approximate the real part of the transverse part of the radiation Green's function 
+    # using the corresponding part of the vacuum GF, as well as whether to scale the real part of the rad. GF
+    # with the local radiation decay rates
+    approx_Re_Grm_trans = true
+    
     return (λ0=λ0, ω0=ω0, ρf0=ρf0, n0=n0, ρa0=ρa0, a0=a0, να0=να0, νR0=νR0, ηα0=ηα0,
             fiber=fiber,
             ω_specs=ω_specs, ρf_specs=ρf_specs, n_specs=n_specs,
@@ -186,7 +191,8 @@ function define_SP()
             N=N, ρa=ρa, a=a, array=array, arrayDescription=arrayDescription,
             initialState=initialState, initialStateDescription=initialStateDescription,
             να=να, ηα=ηα,
-            d=d)
+            d=d,
+            approx_Re_Grm_trans=approx_Re_Grm_trans)
 end
 
 
@@ -253,9 +259,9 @@ println("\n -- Running main() -- \n")
 @time main()
 
 
-# TODO:
-# Add factor of sqrt(γ11*γ22)/γ0 to real part of radiation interactions
 
+
+# TODO list:
 
 # Consider using StaticArrays in some places?
 
