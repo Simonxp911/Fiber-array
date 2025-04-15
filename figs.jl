@@ -51,6 +51,35 @@ end
 
 
 """
+Plot time evolved atomic coherences σ
+and the corresponding analytically calculated steady state values
+(for the case of no phonons)
+"""
+function fig_σTrajectories_σSS(times, σTrajectories, σ_SS)
+    colors = distinguishable_colors(length(σTrajectories), [RGB(1, 1, 1), RGB(0, 0, 0)], dropseed=true)
+    
+    # Start figure 
+    fig = plot(reuse=false, size=(800, 600))
+
+    # Plot the trajectories
+    for (i, traj) in enumerate(σTrajectories)
+        plot!(times, real.(traj), label=false, c=colors[i], ls=:solid)
+        plot!(times, imag.(traj), label=false, c=colors[i], ls=:dash )
+        plot!([times[end] - (times[end] - times[1])/10, times[end]], real.(σ_SS[i])*ones(2),  label=false, c=colors[i], ls=:dashdot)
+        plot!([times[end] - (times[end] - times[1])/10, times[end]], imag.(σ_SS[i])*ones(2),  label=false, c=colors[i], ls=:dashdot)
+    end
+    
+    # Finish figure
+    plot!(ticks=:native)
+    xlims!(extrema(times))
+    xlabel!(L"$ γt $")
+    # ylabel!(L"")
+    title!(L"$ σ $ trajectories")
+    display(fig)
+end
+
+
+"""
 Plot time evolved atomic coherences σ and the atom-phonon correlations Bα 
 and the corresponding analytically calculated steady state values
 """

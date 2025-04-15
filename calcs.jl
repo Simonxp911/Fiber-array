@@ -65,11 +65,36 @@ end
 function get_parameterMatrices(fiber, Δ, d, να, ηα, array, approx_Re_Grm_trans)
     # TODO: implement saving and loading of these quantities?
     
-    tildeΩ, tildeΩα            = get_tildeΩs(fiber, d, ηα, array)
-    tildeG, tildeGα1, tildeGα2 = get_tildeGs(fiber, Δ, d, ηα, array, approx_Re_Grm_trans)
-    tildeFα                    = get_tildeFα(tildeG, να)
-    
-    return tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2
+    if all(ηα .== 0)
+        tildeΩ = get_tildeΩs(fiber, d, array)
+        tildeG = get_tildeGs(fiber, Δ, d, array, approx_Re_Grm_trans)
+        return tildeΩ, tildeG
+    else
+        tildeΩ, tildeΩα            = get_tildeΩs(fiber, d, ηα, array)
+        tildeG, tildeGα1, tildeGα2 = get_tildeGs(fiber, Δ, d, ηα, array, approx_Re_Grm_trans)
+        tildeFα                    = get_tildeFα(tildeG, να)
+        return tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2
+    end
+end
+
+
+function get_tildeΩs(fiber, d::String, array)
+    if d == "chiral"
+        # Set up coordinates and guided mode components (including their first and second order derivatives)
+        ρa = array[1][1]
+        zn = [site[3] for site in array]
+        κ = fiber.propagation_constant
+        eρ, eϕ, ez    = guidedModeComps(fiber, ρa)
+        eρ = -1im*eρ #remove overall imaginary unit for ease of expressions
+        dNorm = sqrt(eρ^2 + ez^2)
+        propPhase = exp.(1im*κ*zn)
+        
+        # Put together the driving 
+        Ωn = sqrt(8)*eρ*ez/dNorm*propPhase
+    else
+        throw(ArgumentError("Dipole moment = '{d}' was not recognized in get_tildeΩs"))
+    end
+    return Ωn
 end
 
 
@@ -101,6 +126,16 @@ function get_tildeΩs(fiber, d::String, ηα, array)
 end
 
 
+function get_tildeΩs(fiber, d, array)
+    # Calculate incoming field and its second derivative
+    En = (Egm.(Ref(fiber), 1, 1, array) + Egm.(Ref(fiber), -1, 1, array))/sqrt(2)
+    
+    # Put together the driving
+    Ωn = Ref(d').*En
+    return Ωn 
+end
+
+
 function get_tildeΩs(fiber, d, ηα, array)
     # Calculate incoming field and its second derivative
     En   =  (Egm.(Ref(fiber), 1, 1, array)       + Egm.(Ref(fiber), -1, 1, array)      )/sqrt(2)
@@ -115,6 +150,19 @@ function get_tildeΩs(fiber, d, ηα, array)
 end
 
 
+function get_tildeGs(fiber, Δ, d::String, array, approx_Re_Grm_trans)
+    # TODO: Implement non-lazy version of this? Presumably significantly faster when exploiting knowledge of which components etc. are actually needed, but also very messy...
+    if d == "chiral"
+        ρa = array[1][1]
+        if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
+        d = chiralDipoleMoment(fiber, ρa)
+        return get_tildeGs(fiber, Δ, d, array, approx_Re_Grm_trans)
+    else
+        throw(ArgumentError("get_tildeGs(d::String) is only implemented for d = 'chiral'"))
+    end
+end
+
+
 function get_tildeGs(fiber, Δ, d::String, ηα, array, approx_Re_Grm_trans)
     # TODO: Implement non-lazy version of this? Presumably significantly faster when exploiting knowledge of which components etc. are actually needed, but also very messy...
     if d == "chiral"
@@ -125,6 +173,35 @@ function get_tildeGs(fiber, Δ, d::String, ηα, array, approx_Re_Grm_trans)
     else
         throw(ArgumentError("get_tildeGs(d::String) is only implemented for d = 'chiral'"))
     end
+end
+
+
+function get_tildeGs(fiber, Δ, d, array, approx_Re_Grm_trans)
+    N = length(array)
+    
+    if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
+    
+    # Calculate the guided mode Green's function and the needed derivatives
+    Ggm_ = Ggm.(Ref(fiber), reshape(array, N, 1), reshape(array, 1, N))
+    
+    # Calculate the radiation mode Green's function and the needed derivatives
+    Grm_ = Grm.(Ref(fiber), ωa, reshape(array, N, 1), reshape(array, 1, N), Ref((0, 0)), 1, approx_Re_Grm_trans)
+
+    # Scale the real part of the radiation GF with the local radiation decay rates (if Re_Grm_trans is being approximated)
+    if approx_Re_Grm_trans
+        gammas = 2*imag(3*π/ωa*(Ref(d').*diag(Grm_).*Ref(d)))
+        scaleFactors = sqrt.(gammas*gammas')
+        Grm_ = real(Grm_).*scaleFactors + 1im*imag(Grm_)
+    end
+    
+    # Put together the full Green's function
+    G = Ggm_ + Grm_
+    
+    # Get the couplings by appropriately multiplying with the dipole moment and some constants
+    Gnm = 3*π/ωa*(Ref(d').*G.*Ref(d))
+    
+    # Put together tildeG
+    return Δ*I + Gnm
 end
 
 
@@ -208,12 +285,18 @@ function calc_σBα_steadyState(fiber, Δ, d, να, ηα, array, arrayDescriptio
         end
     end
     
-    # Prepare parameters and calculate steady state σBα
-    tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(fiber, Δ, d, να, ηα, array, approx_Re_Grm_trans)
-    σBα = σBα_steadyState(tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2)
+    if all(ηα .== 0)
+        filename = filename[1:5] * filename[12:end]
+        
+        # Prepare parameters and calculate steady state σ
+        result = σ_steadyState(get_parameterMatrices(fiber, Δ, d, να, ηα, array, approx_Re_Grm_trans)...)
+    else
+        # Prepare parameters and calculate steady state σBα
+        result = σBα_steadyState(get_parameterMatrices(fiber, Δ, d, να, ηα, array, approx_Re_Grm_trans)...)
+    end
     
-    save_as_jld2(σBα, saveDir, filename)
-    return σBα
+    save_as_jld2(result, saveDir, filename)
+    return result
 end
 
 
@@ -252,15 +335,25 @@ function timeEvolution(fiber, Δ, d, να, ηα, N, array, arrayDescription, ini
         end
     end
     
-    # Prepare empty vectors for in-place updating during time evolution
-    σ   , Bα    = empty_σBαVectors(N)
-    dσdt, dBαdt = empty_σBαVectors(N)
-    
-    # We have args = dσdt, dBαdt, σ, Bα, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2
-    args = dσdt, dBαdt, σ, Bα, get_parameterMatrices(fiber, Δ, d, να, ηα, array, approx_Re_Grm_trans)...
+    if all(ηα .== 0)
+        filename = filename[1:3] * "noPh_" * filename[4:end]
+        
+        # We have args = dσdt, σ, tildeΩ, tildeG
+        args = empty_σVector(N), empty_σVector(N), 
+               get_parameterMatrices(fiber, Δ, d, να, ηα, array, approx_Re_Grm_trans)...
+        
+        # Prepare the time evolution problem
+        prob = ODEProblem(EoMs_wrap_noPh, initialState, tspan, args)
+    else
+        # We have args = dσdt, dBαdt, σ, Bα, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2
+        args = empty_σVector(N), empty_BαVector(N), empty_σVector(N), empty_BαVector(N), 
+               get_parameterMatrices(fiber, Δ, d, να, ηα, array, approx_Re_Grm_trans)...
+        
+        # Prepare the time evolution problem
+        prob = ODEProblem(EoMs_wrap, initialState, tspan, args)
+    end
     
     # Perform the time evolution
-    prob = ODEProblem(EoMs_wrap, initialState, tspan, args)
     sol = OrdinaryDiffEq.solve(prob, Tsit5(), dtmax=dtmax)
     
     # Pack and save data
@@ -291,6 +384,33 @@ end
     Functions pertaining to transmission through the fiber
 ================================================#
 """
+Calculate the transmission of light through the fiber (in the case of no phonons)
+"""
+function calc_transmission(σ, fiber, d, array)
+    # postfix = get_postfix()
+    # filename = "t_noPh_" * postfix
+    
+    # if isfile(saveDir * filename * ".txt")
+    #     if overwrite_bool 
+    #         println("The transmission for \n   $filename\nhas already been calculated.\n" *
+    #                 "Recalculating and overwriting in 5 seconds...")
+    #         sleep(5)
+    #     else
+    #         println("Loading transmission")
+    #         return load_as_txt(saveDir, filename)
+    #     end
+    # end
+    
+    # Prepare some parameters and calculate transmission
+    tildeΩ = get_tildeΩs(fiber, d, array)
+    t = transmission(σ, tildeΩ, fiber)
+    
+    # save_as_txt(t, saveDir, filename)
+    return t
+end
+
+
+"""
 Calculate the transmission of light through the fiber
 """
 function calc_transmission(σBα, fiber, d, ηα, array)
@@ -319,7 +439,13 @@ end
 
 """
 Calculate the transmission of light through the fiber for parameters given by SP
+    
+The function assumes that σBα contains only σ if the Lamb-Dicke parameters are zero
 """
 function calc_transmission(SP, σBα)
-    return calc_transmission(σBα, SP.fiber, SP.d, SP.ηα, SP.array)
+    if all(SP.ηα .== 0)
+        return calc_transmission(σBα, SP.fiber, SP.d, SP.array)
+    else
+        return calc_transmission(σBα, SP.fiber, SP.d, SP.ηα, SP.array)
+    end
 end

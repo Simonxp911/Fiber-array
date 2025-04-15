@@ -55,19 +55,10 @@ end
 
 
 """
-Returns the length of the x-vector for a given N
+Prepare an empty x-vector (i.e. all entries are zero), for the case of no phonons
 """
-function lengthx_fromN(N)
-    return 2*(N + 3*N^2)
-end
-
-
-"""
-Returns the value of N for a given x-vector
-"""
-function N_fromx(x)
-     #if length(x) = 2(N + 3N^2), then 6*length(x) + 1 = (6N + 1)^2, and N is equal to the following
-    return Int((sqrt(6*length(x) + 1) - 1)/6)
+function empty_xVector_noPh(N)
+    return zeros(2*N)
 end
 
 
@@ -75,22 +66,50 @@ end
 Prepare an empty x-vector (i.e. all entries are zero)
 """
 function empty_xVector(N)
-    return zeros(lengthx_fromN(N))
+    return zeros(2*(N + 3*N^2))
 end
 
 
 """
-Prepare σBα vectors (i.e. all entries are zero)
+Prepare an empty σ vector (i.e. all entries are zero)
 """
-function empty_σBαVectors(N)
-    return zeros(ComplexF64, N), [zeros(ComplexF64, N, N) for α in 1:3]
+function empty_σVector(N)
+    return zeros(ComplexF64, N)
+end
+
+
+"""
+Prepare an empty Bα vector (i.e. all entries are zero)
+"""
+function empty_BαVector(N)
+    return [zeros(ComplexF64, N, N) for α in 1:3]
+end
+
+
+"""
+Pack the σ entries into the x vector to facilitate NonlinearSolve
+
+Assumes that σ is an N-vector, and x is a 2N-vector
+"""
+function pack_σIntox!(σ, x)
+    N = length(σ)
+    x[1     : N]   .= real.(σ)
+    x[1 + N : 2*N] .= imag.(σ)
+end
+
+
+function pack_σIntox(σ)
+    N = length(σ)
+    x = empty_xVector_noPh(N)
+    pack_σIntox!(σ, x)
+    return x
 end
 
 
 """
 Pack the σ and Bα entries into the x vector to facilitate NonlinearSolve
 
-Assumes that σ is an N_vector, Bα is a 3-vector consisting of NxN-matrices, and x is a 2(N + 3N^2)-vector
+Assumes that σ is an N-vector, Bα is a 3-vector consisting of NxN-matrices, and x is a 2(N + 3N^2)-vector
 """
 function pack_σBαIntox!(σ, Bα, x)
     N = length(σ)
@@ -112,9 +131,28 @@ end
 
 
 """
+Unpack the σ entries from the x vector
+
+Assumes that σ is an N-vector, and x is a 2N-vector
+"""
+function unpack_σFromx!(σ, x)
+    N = length(σ)
+    σ .= x[1 : N] + 1im*x[1 + N : 2*N]
+end
+
+
+function unpack_σFromx(x)
+    N = Int(length(x)/2) #if length(x) = 2N
+    σ = empty_σVector(N)
+    unpack_σFromx!(σ, x)
+    return σ
+end
+
+
+"""
 Unpack the σ and Bα entries from the x vector
 
-Assumes that σ is an N_vector, Bα is a 3-vector consisting of NxN-matrices, and x is a 2(N + 3N^2)-vector
+Assumes that σ is an N-vector, Bα is a 3-vector consisting of NxN-matrices, and x is a 2(N + 3N^2)-vector
 """
 function unpack_σBαFromx!(σ, Bα, x)
     N = length(σ)
@@ -126,7 +164,7 @@ end
 
 
 function unpack_σBαFromx(x)
-    N = N_fromx(x)
+    N = Int((sqrt(6*length(x) + 1) - 1)/6) #if length(x) = 2(N + 3N^2), then 6*length(x) + 1 = (6N + 1)^2, and N is equal to the following
     σ, Bα = empty_σBαVectors(N)
     unpack_σBαFromx!(σ, Bα, x)
     return σ, Bα

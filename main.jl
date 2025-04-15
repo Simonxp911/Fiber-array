@@ -149,8 +149,8 @@ function define_SP()
     Δ_range  = ro.(range(Δ_specs...))
     
     # Time spand and maximum time step allowed in time evolution
-    tspan = (0, 2)
-    dtmax = 0.1
+    tspan = (0, 5)
+    dtmax = 0.01
     
     # Set array specs and generate array, as well as description for postfix
     N  = 5
@@ -159,16 +159,16 @@ function define_SP()
     array = get_array(N, ρa, a)
     arrayDescription = standardArrayDescription(N, ρa, a)
     
-    # Prepare initial state for time evolution, as well as description for postfix
-    initialState = groundstate(N)
-    initialStateDescription = "gs"
-    
     # Phonon bare energies, i.e. trap frequencies
     να = να0_ul #assumes an atomic array of the type (ρa, 0, z)
     
     # Lamb-Dicke parameters
     ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
     ηα = [0., 0., 0.]
+    
+    # Prepare initial state for time evolution, as well as description for postfix
+    initialState = groundstate(N, all(ηα .== 0))
+    initialStateDescription = "gs"
     
     # Atomic dipole moment
     # d = []
@@ -230,11 +230,16 @@ end
 
 function plot_σBαTrajectories_σBαSS(SP)
     Δ = 0.0
-    σ_SS, Bα_SS = calc_σBα_steadyState(SP, Δ)
+    σBα_SS = calc_σBα_steadyState(SP, Δ)
     xTrajectories = timeEvolution(SP, Δ)
     
-    times, σTrajectories, BαTrajectories = prep_times_σBαTrajectories(xTrajectories, SP.N)
-    fig_σBαTrajectories_σBαSS(times, σTrajectories, BαTrajectories, σ_SS, Bα_SS)
+    if all(SP.ηα .== 0)
+        times, σTrajectories = prep_times_σTrajectories(xTrajectories, SP.N)
+        fig_σTrajectories_σSS(times, σTrajectories, σBα_SS)
+    else
+        times, σTrajectories, BαTrajectories = prep_times_σBαTrajectories(xTrajectories, SP.N)
+        fig_σBαTrajectories_σBαSS(times, σTrajectories, BαTrajectories, σBα_SS...)
+    end
 end
 
 
@@ -256,8 +261,6 @@ println("\n -- Running main() -- \n")
 
 
 # TODO list:
-
-# If calculating with zero etas, a reduced version of the calculations should be used (no need to include phonons or Taylor expansion-related parameters)
 
 # Consider whether it indeed makes sense to fix the chosen guided mode's frequency at ωa? Maybe it should instead be chosen
 # such that κ = ωa? Does it indeed not matter that ω is tuned by an amount proportional to (hundreds of) γ?

@@ -546,6 +546,17 @@ end
     Functions pertaining to the time evolution of the atomic and phononic degrees of freedom
 ================================================#
 """
+Implements the equations of motion for the atomic of freedom
+to first order in the driving (for the case of no phonons)
+"""
+function EoMs!(dσdt, σ, tildeΩ, tildeG)
+    dσdt  .= -1im*(
+                   -tildeΩ - tildeG*σ
+                  )
+end
+
+
+"""
 Implements the equations of motion for the atomic and phononic degrees of freedom
 to first order in the driving and to second order in the Lamb-Dicke parameter
 """
@@ -556,6 +567,27 @@ function EoMs!(dσdt, dBαdt, σ, Bα, tildeΩ, tildeΩα, tildeG, tildeFα, til
     dBαdt .= -1im*(
                    -Bα.*transpose.(tildeFα) - Di.(tildeΩα + tildeGα1.*Ref(σ)) - Ref(Di(σ)).*transpose.(tildeGα2)
                   )
+end
+
+
+"""
+Wraps the EoMs to conform with the requirements of NonlinearSolve (in the case of no phonons).
+
+args = dσdt, σ, tildeΩ, tildeG
+"""
+function EoMs_wrap_noPh(dxdt, x, args, t)
+    # Unpack args
+    dσdt, σ = args[1:2]
+    
+    # Unpack σ from x
+    unpack_σFromx!(σ, x)
+    
+    # Calculate and update dσdt
+    # EoMs!(dσdt, σ, args[3:end]...)
+    EoMs!(args...)
+        
+    # Pack dσdt into dxdt
+    pack_σIntox!(dσdt, dxdt)
 end
 
 
@@ -577,6 +609,15 @@ function EoMs_wrap(dxdt, x, args, t)
         
     # Pack dσdt and dBαdt into dxdt
     pack_σBαIntox!(dσdt, dBαdt, dxdt)
+end
+
+
+"""
+Implements the analytical solution for the steady state values of the atomic 
+degrees of freedom to first order in the driving (in the case of no phonons)
+"""
+function σ_steadyState(tildeΩ, tildeG)
+    return -tildeG\tildeΩ
 end
 
 
@@ -609,8 +650,20 @@ Prepare the groundstate in terms of the x-vector for time-evolution
 
 Shallow function, but allows for a good abstraction
 """
-function groundstate(N)
-    return empty_xVector(N)
+function groundstate(N, noPh=false)
+    if noPh
+        return empty_xVector_noPh(N)
+    else
+        return empty_xVector(N)
+    end
+end
+
+
+"""
+Calculates the transmission through the guided mode (in the case of no phonons)
+"""
+function transmission(σ, tildeΩ, fiber)
+    return 1 + 3im*π*fiber.propagation_constant_derivative/(2*ωa^2)*sum( conj(tildeΩ).*σ )
 end
 
 
