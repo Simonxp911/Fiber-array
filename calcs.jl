@@ -272,7 +272,8 @@ Calculate the steady state values of atomic coherences σ and the atom-phonon co
 """
 function calc_σBα_steadyState(fiber, Δ, d, να, ηα, array, arrayDescription, approx_Re_Grm_trans, overwrite_bool=false)
     postfix = get_postfix(Δ, d, να, ηα, arrayDescription, fiber.postfix)
-    filename = "sigmaBalpha_" * postfix
+    if all(ηα .== 0) filename = "sigma_" * postfix
+    else filename = "sigmaBalpha_" * postfix end
     
     if isfile(saveDir * filename * ".jld2")
         if overwrite_bool 
@@ -280,14 +281,12 @@ function calc_σBα_steadyState(fiber, Δ, d, να, ηα, array, arrayDescriptio
                     "Recalculating and overwriting in 5 seconds...")
             sleep(5)
         else
-            # println("Loading σ and Bα")
+            println("Loading σ and Bα")
             return load_as_jld2(saveDir, filename)
         end
     end
     
     if all(ηα .== 0)
-        filename = filename[1:5] * filename[12:end]
-        
         # Prepare parameters and calculate steady state σ
         result = σ_steadyState(get_parameterMatrices(fiber, Δ, d, να, ηα, array, approx_Re_Grm_trans)...)
     else
@@ -322,8 +321,9 @@ Perform time evolution of the atomic and phononic degrees of freedom
 """
 function timeEvolution(fiber, Δ, d, να, ηα, N, array, arrayDescription, initialState, initialStateDescription, tspan, dtmax, approx_Re_Grm_trans, overwrite_bool=false)
     postfix = get_postfix(Δ, d, να, ηα, arrayDescription, fiber.postfix, initialStateDescription, tspan, dtmax)
-    filename = "TE_" * postfix
-    
+    if all(ηα .== 0) filename = "TE_noPh_" * postfix
+    else filename = "TE_" * postfix end
+        
     if isfile(saveDir * filename * ".txt")
         if overwrite_bool 
             println("The time evolution for \n   $filename\nhas already been calculated.\n" *
@@ -336,8 +336,6 @@ function timeEvolution(fiber, Δ, d, να, ηα, N, array, arrayDescription, ini
     end
     
     if all(ηα .== 0)
-        filename = filename[1:3] * "noPh_" * filename[4:end]
-        
         # We have args = dσdt, σ, tildeΩ, tildeG
         args = empty_σVector(N), empty_σVector(N), 
                get_parameterMatrices(fiber, Δ, d, να, ηα, array, approx_Re_Grm_trans)...
