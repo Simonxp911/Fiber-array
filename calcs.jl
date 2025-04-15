@@ -63,7 +63,6 @@ end
     Functions pertaining to calculating the driving and couplings of the system
 ================================================#
 function get_parameterMatrices(fiber, Δ, d, να, ηα, array, approx_Re_Grm_trans)
-    
     # TODO: implement saving and loading of these quantities?
     
     tildeΩ, tildeΩα            = get_tildeΩs(fiber, d, ηα, array)
@@ -310,8 +309,7 @@ function calc_transmission(σBα, fiber, d, ηα, array)
     # end
     
     # Prepare some parameters and calculate transmission
-    tildeΩ  = get_tildeΩ(fiber, d, ηα, array)
-    tildeΩα = get_tildeΩα(fiber, d, ηα, array)
+    tildeΩ, tildeΩα = get_tildeΩs(fiber, d, ηα, array)
     t = transmission(σBα..., tildeΩ, tildeΩα, fiber)
     
     # save_as_txt(t, saveDir, filename)

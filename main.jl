@@ -145,7 +145,7 @@ function define_SP()
     n_range  = range(n_specs...)
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs  = (-30, 30, 100)
+    Δ_specs  = (-300, 300, 1000)
     Δ_range  = ro.(range(Δ_specs...))
     
     # Time spand and maximum time step allowed in time evolution
@@ -153,7 +153,7 @@ function define_SP()
     dtmax = 0.1
     
     # Set array specs and generate array, as well as description for postfix
-    N  = 1
+    N  = 5
     ρa = ρa0_ul
     a  = a0_ul
     array = get_array(N, ρa, a)
@@ -211,12 +211,6 @@ end
 
 
 #================================================
-    Perform calculations
-================================================#
-
-
-
-#================================================
     Generate figures
 ================================================#
 function plot_propConst_inOutMom(SP)
@@ -263,7 +257,12 @@ println("\n -- Running main() -- \n")
 
 # TODO list:
 
-# Consider using StaticArrays in some places?
+# If calculating with zero etas, a reduced version of the calculations should be used (no need to include phonons or Taylor expansion-related parameters)
+
+# Consider whether it indeed makes sense to fix the chosen guided mode's frequency at ωa? Maybe it should instead be chosen
+# such that κ = ωa? Does it indeed not matter that ω is tuned by an amount proportional to (hundreds of) γ?
+
+# Consider making structs for x-vector and σBα, to make their structure easier to get an overview of
 
 # Split utility.jl according to theme or which file has need of the functions
     # simply code utility/no physics concatenated
@@ -284,3 +283,5 @@ println("\n -- Running main() -- \n")
     
 # Consider never using JLD2
     # Invent some packing/unpacking scheme to put any kind of data into real matrices
+
+# Consider using StaticArrays in some places?
