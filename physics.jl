@@ -269,11 +269,11 @@ function radiationModeComps(fiber, ω, κ, m, l, ρ, derivOrder=0)
     M = [  1/h*dbesselj(1, m, h*ρf)*conj(dbesselh(0, m, j, q*ρf)) - 1/q*dbesselj(0, m, h*ρf)*conj(dbesselh(1, m, j, q*ρf)) for j in 1:2]
     L = [n^2/h*dbesselj(1, m, h*ρf)*conj(dbesselh(0, m, j, q*ρf)) - 1/q*dbesselj(0, m, h*ρf)*conj(dbesselh(1, m, j, q*ρf)) for j in 1:2]
     
-    η = sqrt((abs2(V[1]) + abs2(L[1]))/(abs2(V[1]) + n^2*abs2(M[1])))
+    η = sqrt((abs2(V[1]) + abs2(L[1]))/(abs2(V[1]) + abs2(M[1])))
     B = 1im*l*η
     
     C = [(-1)^j      *1im*π*q^2*ρf/4*(    L[j] + B*1im*V[j]) for j in 1:2]
-    D = [(-1)^(j - 1)*1im*π*q^2*ρf/4*(1im*V[j] + B    *M[j]) for j in 1:2]
+    D = [(-1)^(j - 1)*1im*π*q^2*ρf/4*(1im*V[j] - B    *M[j]) for j in 1:2]
     
     N = 8π*ω/q^2*(abs2(C[1]) + abs2(D[1]))
     A = 1/sqrt(N)
