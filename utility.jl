@@ -183,7 +183,7 @@ end
 Take a vector in Cartesian coordinates (x, y, z) and return it in cylindrical coordinates (ρ, ϕ, z)
 """
 function cylCoordinates(r)
-    return sqrt(r[1]^2 + r[2]^2), atan(r[2]/r[1]), r[3]
+    return sqrt(r[1]^2 + r[2]^2), atan(r[2], r[1]), r[3]
 end
 
 
