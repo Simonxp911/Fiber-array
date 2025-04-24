@@ -134,7 +134,8 @@ function define_SP()
     να0_ul = ro.(να0/γ0) #unitless version of να0
     
     # Initialize the fiber (the frequency of the chosen driving mode should be ωa; if ωa is used the radius should be unitless)
-    fiber = Fiber(ρf0_ul, n0, ωa)
+    # fiber = Fiber(ρf0_ul, n0, ωa)
+    fiber = Fiber(250/852, 1.45, ωa)
     
     # Set specs and ranges for scanning the fiber propagation constant (expects dimensionfull quantities)
     ω_specs  = (0.1*ω0, 2*ω0, 100) 
@@ -145,7 +146,7 @@ function define_SP()
     n_range  = range(n_specs...)
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs  = (-1, 1, 100)
+    Δ_specs  = (-30, 30, 300)
     Δ_range  = ro.(range(Δ_specs...))
     
     # Time spand and maximum time step allowed in time evolution
@@ -153,9 +154,9 @@ function define_SP()
     dtmax = 0.01
     
     # Set array specs and generate array, as well as description for postfix
-    N  = 1
-    ρa = ρa0_ul
-    a  = a0_ul
+    N  = 5
+    ρa = (250 + 100)/852 # ρa0_ul
+    a  = 0.1 # a0_ul
     array = get_array(N, ρa, a)
     arrayDescription = standardArrayDescription(N, ρa, a)
     
@@ -171,7 +172,8 @@ function define_SP()
     initialStateDescription = "gs"
     
     # Atomic dipole moment
-    d = [1im, 0, -1]/sqrt(2)
+    # d = [1im, 0, -1]/sqrt(2)
+    d = [1, 0, 0]
     # d = chiralDipoleMoment(fiber, ρa)
     # d = "chiral"
     

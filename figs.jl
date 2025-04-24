@@ -126,7 +126,7 @@ function fig_transmission_vs_Δ(Δ_range, t)
     fig = plot(reuse=false, size=(800, 600), layout=(1, 2))
     
     # Plot the propagation constant, and the lines y = ω and y = nω
-    plot!(Δ_range, abs2.(t)  , label=L"$ |t|^2 $"   , c=:blue, subplot=1)
+    plot!(Δ_range, abs2.(t) , label=L"$ |t|^2 $" , c=:blue, subplot=1)
     plot!(Δ_range, angle.(t), label=L"arg$ (t) $", c=:red , subplot=2)
 
     # Finish figure

@@ -206,7 +206,8 @@ function get_tildeGs(fiber, Δ, d, array, approx_Re_Grm_trans)
 
     # Scale the real part of the radiation GF with the local radiation decay rates (if Re_Grm_trans is being approximated)
     if approx_Re_Grm_trans
-        gammas = 2*imag(3*π/ωa*(Ref(d').*diag(Grm_).*Ref(d)))
+        gammas = 2*3*π/ωa*(Ref(d').*diag(imag(Grm_)).*Ref(d))
+        # println(gammas)
         scaleFactors = sqrt.(gammas*gammas')
         Grm_ = real(Grm_).*scaleFactors + 1im*imag(Grm_)
     end
@@ -291,15 +292,16 @@ function calc_σBα_steadyState(fiber, Δ, d, να, ηα, incField_wlf, array, a
     postfix = get_postfix(Δ, d, να, ηα, incField_wlf, arrayDescription, fiber.postfix)
     if all(ηα .== 0) filename = "sigma_" * postfix
     else filename = "sigmaBalpha_" * postfix end
+    folder = "steadyStates/"
     
-    if isfile(saveDir * filename * ".jld2")
+    if isfile(saveDir * folder * filename * ".jld2")
         if overwrite_bool 
             println("The σ and Bα for \n   $filename\nhave already been calculated.\n" *
                     "Recalculating and overwriting in 5 seconds...")
             sleep(5)
         else
             # println("Loading σ and Bα")
-            return load_as_jld2(saveDir, filename)
+            return load_as_jld2(saveDir * folder, filename)
         end
     end
     
@@ -311,7 +313,7 @@ function calc_σBα_steadyState(fiber, Δ, d, να, ηα, incField_wlf, array, a
         result = σBα_steadyState(get_parameterMatrices(fiber, Δ, d, να, ηα, incField_wlf, array, approx_Re_Grm_trans)...)
     end
     
-    save_as_jld2(result, saveDir, filename)
+    save_as_jld2(result, saveDir * folder, filename)
     return result
 end
 

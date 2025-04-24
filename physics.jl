@@ -254,6 +254,8 @@ end
 
 """
 Calculates the individual components of the radiation modes or their derivatives.
+
+Uses the normalization convention of Kien, Rauschenbeutel 2017
 """
 function radiationModeComps(fiber, ω, κ, m, l, ρ, derivOrder=0)
     ρf, n = fiber.radius, fiber.refractive_index
@@ -275,7 +277,8 @@ function radiationModeComps(fiber, ω, κ, m, l, ρ, derivOrder=0)
     C = [(-1)^j      *1im*π*q^2*ρf/4*(    L[j] + B*1im*V[j]) for j in 1:2]
     D = [(-1)^(j - 1)*1im*π*q^2*ρf/4*(1im*V[j] - B    *M[j]) for j in 1:2]
     
-    N = 8π*ω/q^2*(abs2(C[1]) + abs2(D[1]))
+    N = 8*π*ω/q^2*(abs2(C[1]) + abs2(D[1])) #Rauschenbeutel normalization
+    # N = 16*π^2*ω^2/q^3*(abs2(C[1]) + abs2(D[1])) # Olmos normalization
     A = 1/sqrt(N)
     
     # Put together the components
@@ -422,6 +425,8 @@ end
 # presumably because of the simple array structure
 """
 Calculates the imaginary part of the transverse part of radiation mode Green's function or its derivatives 
+
+Uses the normalization convention of Kien, Rauschenbeutel 2017
 """
 function Im_Grm_trans_calc(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, overwrite_bool=false)
     # The Green's function only depends on the difference in the z-coordinates, 
@@ -443,9 +448,9 @@ function Im_Grm_trans_calc(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1
     end
     
     # Set up the integrand, the integral domain, and the cut-off for the m-sum
-    integrand(x, args) = Erm(fiber, ω, ω*cos(x), args..., r_field , derivOrder[1], α)*
-                         Erm(fiber, ω, ω*cos(x), args..., r_source, derivOrder[2], α)'
-    domain = (eps(1.0), π - eps(1.0))
+    integrand(x, args) = Erm(fiber, ω, x, args..., r_field , derivOrder[1], α)*
+                         Erm(fiber, ω, x, args..., r_source, derivOrder[2], α)'
+    domain = (-ω + eps(1.0), ω - eps(1.0))
     abstol = 1e-3
     
     # Perform the combined sum and integration
@@ -458,12 +463,12 @@ function Im_Grm_trans_calc(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1
             args = (m, l)
             prob = IntegralProblem(integrand, domain, args)
             integral = Integrals.solve(prob, HCubatureJL())
-            summand_m += π/2*integral
+            summand_m += integral/(4*ω)
             if m != 0
                 args = (-m, l)
                 prob = IntegralProblem(integrand, domain, args)
                 integral = Integrals.solve(prob, HCubatureJL())
-                summand_m += π/2*integral
+                summand_m += integral/(4*ω)
             end
         end
         # summand_m is always real (after adding all combinations of l and (m, -m)), even though integral is not
@@ -474,6 +479,59 @@ function Im_Grm_trans_calc(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1
     save_as_txt(Im_Grm_trans, saveDir * folder, filename)
     return Im_Grm_trans
 end
+
+# # Olmos calculation
+# function Im_Grm_trans_calc(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, overwrite_bool=false)
+#     # The Green's function only depends on the difference in the z-coordinates, 
+#     # so we save the calculation according to that value, rather than the individual z-coordinates
+#     coords = ro.([r_field[1], r_field[2], r_source[1], r_source[2], r_field[3] - r_source[3]])
+#     postfix = get_postfix(ω, coords, derivOrder, α, fiber.postfix)
+#     filename = "IGrmt_" * postfix
+#     folder = "Im_Grm_trans/"
+    
+#     if isfile(saveDir * folder * filename * ".txt")
+#         if overwrite_bool 
+#             println("The imaginary part of the radiation Green's function for \n   $filename\nhas already been calculated.\n" *
+#                     "Recalculating and overwriting in 5 seconds...")
+#             sleep(5)
+#         else
+#             # println("Loading the imaginary part of the radiation Green's function")
+#             return load_as_txt(saveDir * folder, filename)
+#         end
+#     end
+    
+#     # Set up the integrand, the integral domain, and the cut-off for the m-sum
+#     integrand(x, args) = Erm(fiber, ω, ω*cos(x), args..., r_field , derivOrder[1], α)*
+#                          Erm(fiber, ω, ω*cos(x), args..., r_source, derivOrder[2], α)'
+#     domain = (eps(1.0), π - eps(1.0))
+#     abstol = 1e-3
+    
+#     # Perform the combined sum and integration
+#     Im_Grm_trans = zeros(3, 3)
+#     summand_m = ones(ComplexF64, 3, 3)
+#     m = 0
+#     while maximum(abs.(summand_m)) > abstol
+#         summand_m = zeros(ComplexF64, 3, 3)
+#         for l in (-1, 1)
+#             args = (m, l)
+#             prob = IntegralProblem(integrand, domain, args)
+#             integral = Integrals.solve(prob, HCubatureJL())
+#             summand_m += π/2*integral
+#             if m != 0
+#                 args = (-m, l)
+#                 prob = IntegralProblem(integrand, domain, args)
+#                 integral = Integrals.solve(prob, HCubatureJL())
+#                 summand_m += π/2*integral
+#             end
+#         end
+#         # summand_m is always real (after adding all combinations of l and (m, -m)), even though integral is not
+#         Im_Grm_trans += real(summand_m)
+#         m += 1
+#     end
+    
+#     save_as_txt(Im_Grm_trans, saveDir * folder, filename)
+#     return Im_Grm_trans
+# end
 
 
 """
