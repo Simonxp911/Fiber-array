@@ -112,6 +112,8 @@ derivOrder: order of derivative
 α: index indicating which derivative to take (α = 1,2,3 corresponds to x,y,z)
 """
 function Egm(fiber, l, f, r, derivOrder=0, α=1)
+    if l ∉ (-1, 1) || f ∉ (-1, 1) throw(ArgumentError("The indices l and f must be either -1 or +1")) end
+    
     κ = fiber.propagation_constant
     ρ, ϕ, z = cylCoordinates(r)
     ρ_unit, ϕ_unit, z_unit = cylUnitVectors(r)

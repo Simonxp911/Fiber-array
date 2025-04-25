@@ -258,7 +258,7 @@ end
 arrayDescription for the usual 1D chain along the fiber, as given by get_array()
 """
 function standardArrayDescription(N, ρa, a)
-    return "stA_N_$(N)_rhoa_$(ρa)_a_$(a)"
+    return "stA_N_$(N)_rhoa_$(ro(ρa))_a_$(ro(a))"
 end
 
 
@@ -285,54 +285,4 @@ Returns a matrix whose rows are given by the entries of the given vector
 """
 function vectorOfRows2Matrix(x)
     return Matrix(reduce(hcat, x)')
-end
-
-
-"""
-Print out the details of the System Parameters
-"""
-function printSP(SP)
-    println("--- System Parameters ---")
-    
-    println("The bare parameters from the article 'Magic-wavelength nanofiber-based two-color dipole trap with sub-λ/2 spacing'")
-    for key in [:λ0, :ω0, :ρf0, :n0, :ρa0, :a0, :να0, :νR0, :ηα0]
-        println(key, ": ", SP[key])
-    end
-    println("")
-    
-    show(SP.fiber)
-    println("")
-    
-    println("Specs for scan of guided mode propagation constant")
-    for key in [:ω_specs, :ρf_specs, :n_specs]
-        println(key, ": ", SP[key])
-    end
-    println("")
-    
-    println("Specs for scan of time evolution and steady state")
-    println("Δ_specs: ", SP.Δ_specs)
-    println("")
-    
-    println("Time spand and maximum time step allowed in time evolution")
-    println("tspan: ", SP.tspan)
-    println("dtmax: ", SP.dtmax)
-    println("")
-    
-    println("Description of the atomic array")
-    println(SP.arrayDescription)
-    println("")
-    
-    println("Description of the initial state")
-    println(SP.initialStateDescription)
-    println("")
-    
-    
-    println("Trap frequencies, Lamb-Dicke parameters, and atomic dipole moment")
-    println("να: ", SP.να)
-    println("ηα: ", SP.ηα)
-    if typeof(SP.d) == String println("d: ", SP.d)
-    else println("d:  [", join(format_Complex_to_String.(SP.d), ", "), "]") end
-    println("")
-    
-    println("---  ---")
 end
