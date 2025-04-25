@@ -32,19 +32,19 @@ include("save_load.jl")
 #================================================
     Structures and constants
 ================================================#
-struct Fiber{T<:Real}
-    radius::T                           # radius of the fiber 
-    refractive_index::T                 # refractive index of the fiber material
-    frequency::T                        # frequency of the guided mode chosen as drive
-    propagation_constant::T             # propagation constant of that guided mode
-    propagation_constant_derivative::T  # derivative of propagation constant of that guided mode at its frequency
-    inside_momentum::T                  # momentum parameter pertaining to the inside of the fiber
-    outside_momentum::T                 # momentum parameter pertaining to the outside of the fiber
-    s_parameter::T                      # so-called s-parameter, calculated for later ease 
-    normalization_constant::T           # guided mode normalization constant
-    postfix::String                     # postfix for saving/loading pertaining to the fiber
+struct Fiber
+    radius::Real                           # radius of the fiber 
+    refractive_index::Real                 # refractive index of the fiber material
+    frequency::Real                        # frequency of the guided mode chosen as drive
+    propagation_constant::Real             # propagation constant of that guided mode
+    propagation_constant_derivative::Real  # derivative of propagation constant of that guided mode at its frequency
+    inside_momentum::Real                  # momentum parameter pertaining to the inside of the fiber
+    outside_momentum::Real                 # momentum parameter pertaining to the outside of the fiber
+    s_parameter::Real                      # so-called s-parameter, calculated for later ease 
+    normalization_constant::Real           # guided mode normalization constant
+    postfix::String                        # postfix for saving/loading pertaining to the fiber
     
-    function Fiber(radius::T, refractive_index::T, frequency::T) where {T<:Real}
+    function Fiber(radius::Real, refractive_index::Real, frequency::Real)
         if radius < 0 throw(ArgumentError("The fiber radius must be greater than zero.")) end
         if refractive_index < 0 throw(ArgumentError("The refractive index must be greater than zero.")) end
         if frequency < 0 throw(ArgumentError("The wavelength must be greater than zero.")) end
@@ -57,7 +57,7 @@ struct Fiber{T<:Real}
         C  = norm_constant(frequency, κ, h, q, s, radius)
         postfix = get_postfix(radius, refractive_index, frequency)
     
-        return new{T}(radius, refractive_index, frequency, κ, dκ, h, q, s, C, postfix)
+        return new(radius, refractive_index, frequency, κ, dκ, h, q, s, C, postfix)
     end
 end
 
@@ -73,30 +73,30 @@ end
 
 
 struct SysPar
-    ρf::Real                                                        # Fiber radius 
-    n::Real                                                         # Index of refraction
-    ω::Real                                                         # Chosen frequency of guided mode for driving
-    fiber::Fiber                                                    # Fiber with the above specifications
+    ρf::Real                                        # Fiber radius 
+    n::Real                                         # Index of refraction
+    ω::Real                                         # Chosen frequency of guided mode for driving
+    fiber::Fiber                                    # Fiber with the above specifications
     
-    Δ_specs::Tuple{Real, Real, Int}                                 # Specs for detuning for scanning time evolution, steady states, etc.
-    Δ_range::AbstractRange                                          # Range of detuning for scanning time evolution, steady states, etc.
+    Δ_specs::Tuple{Real, Real, Int}                 # Specs for detuning for scanning time evolution, steady states, etc.
+    Δ_range::AbstractRange                          # Range of detuning for scanning time evolution, steady states, etc.
     
-    tspan::Tuple{Real, Real}                                        # Time span (min and max value) for time evolution
-    dtmax::Real                                                     # Maximum allowed time step for time evolution
-    initialState::Vector{T1} where {T1<:Real}                       # Initial state for time evolution
-    initialStateDescription::String                                 # Description of initial state for postfix
+    tspan::Tuple{Real, Real}                        # Time span (min and max value) for time evolution
+    dtmax::Real                                     # Maximum allowed time step for time evolution
+    initialState::Vector{<:Real}                    # Initial state for time evolution
+    initialStateDescription::String                 # Description of initial state for postfix
     
-    N::Int                                                          # Number of atoms in array
-    ρa::Union{Real, Nothing}                                        # Radial coordinate of regular array of atoms (set to nothing if array is not regular)
-    a::Union{Real, Nothing}                                         # Lattice spacing of regular array of atoms (set to nothing if array is not regular)
-    array::Vector{Vector{T2}} where {T2<:Real}                      # Atomic array (by default initialized using the above specifications)
-    arrayDescription::String                                        # Description of the atomic array for postfix
+    N::Int                                          # Number of atoms in array
+    ρa::Union{Real, Nothing}                        # Radial coordinate of regular array of atoms (set to nothing if array is not regular)
+    a::Union{Real, Nothing}                         # Lattice spacing of regular array of atoms (set to nothing if array is not regular)
+    array::Vector{Vector{<:Real}}                   # Atomic array (by default initialized using the above specifications)
+    arrayDescription::String                        # Description of the atomic array for postfix
     
-    να::Vector{T3} where {T3<:Real}                                 # Trap frequencies, i.e. bare energies of phonons
-    ηα::Vector{T4} where {T4<:Real}                                 # Lamb-Dicke parameters
+    να::Vector{<:Real}                              # Trap frequencies, i.e. bare energies of phonons
+    ηα::Vector{<:Real}                              # Lamb-Dicke parameters
     
-    d::Union{Vector{T5}, String} where {T5<:Number}                 # Dipole moment of atoms
-    incField_wlf::Vector{Tuple{T6, Int, Int}} where {T6<:Number}    # Vector of (weight, l, f) tuples for defining the incoming driving field
+    d::Union{Vector{<:Number}, String}              # Dipole moment of atoms
+    incField_wlf::Vector{Tuple{<:Number, Int, Int}} # Vector of (weight, l, f) tuples for defining the incoming driving field
     
     # Whether to approximate the real, transverse part of the radiation Green's function 
     # using the corresponding part of the vacuum GF, as well as whether to scale the real part of the rad. GF
@@ -109,7 +109,7 @@ struct SysPar
                     tspan::Tuple{Real, Real}, dtmax::Real, initialState::Vector, initialStateDescription::String,
                     N::Int, ρa::Real, a::Real,
                     να::Vector, ηα::Vector,
-                    d::Union{Vector, String}, incField_wlf::Vector{Tuple}, approx_Re_Grm_trans::Bool)
+                    d::Union{Vector, String}, incField_wlf::Vector, approx_Re_Grm_trans::Bool)
         
         fiber = Fiber(ρf, n, ω)
         Δ_range = range(Δ_specs...)
@@ -129,7 +129,7 @@ struct SysPar
                     tspan::Tuple{Real, Real}, dtmax::Real, initialState::Vector, initialStateDescription::String,
                     array::Vector{Vector}, arrayDescription::String,
                     να::Vector, ηα::Vector,
-                    d::Union{Vector, String}, incField_wlf::Vector{Tuple}, approx_Re_Grm_trans::Bool)
+                    d::Union{Vector, String}, incField_wlf::Vector, approx_Re_Grm_trans::Bool)
         
         if d == "chiral" && any([site[1] != ρa || site[2] != 0 for site in array]) throw(ArgumentError("d = 'dipole' assumes an array (ρa, 0, z)")) end
         
