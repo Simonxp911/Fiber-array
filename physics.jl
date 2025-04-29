@@ -31,16 +31,27 @@ end
 """
 The fiber guided mode normalization constant
 """
-function norm_constant(ω, κ, h, q, s, ρf)
-    D_in_1 = (1 - s)*(1 + (1 - s)*(κ/h)^2)*(besselj(0, h*ρf)^2 + besselj(1, h*ρf)^2)
-    D_in_2 = (1 + s)*(1 + (1 + s)*(κ/h)^2)*(besselj(2, h*ρf)^2 - besselj(1, h*ρf)*besselj(3, h*ρf))
-    D_in = D_in_1 + D_in_2
+function norm_constant(n, κ, h, q, s, ρf)
+    J0 = besselj(0, h*ρf)
+    J1 = besselj(1, h*ρf)
+    J2 = besselj(2, h*ρf)
+    J3 = besselj(3, h*ρf)
+    K0 = besselk(0, q*ρf)
+    K1 = besselk(1, q*ρf)
+    K2 = besselk(2, q*ρf)
+    K3 = besselk(3, q*ρf)
     
-    D_out_1 = (1 - s)*(1 - (1 - s)*(κ/q)^2)*(besselk(0, q*ρf)^2 - besselk(1, q*ρf)^2)
-    D_out_2 = (1 + s)*(1 - (1 + s)*(κ/q)^2)*(besselk(2, q*ρf)^2 - besselk(1, q*ρf)*besselk(3, q*ρf))
-    D_out = (besselj(1, h*ρf)/besselk(1, q*ρf))^2*(D_out_1 + D_out_2)
-    
-    return sqrt(4*ω/(π*ρf^2*κ*(D_in + D_out)))
+    C_in_1 = (1 - s)^2*(J0^2 + J1^2) 
+    C_in_2 = (1 + s)^2*(J2^2 - J1*J3) 
+    C_in_3 = 2*(h/κ)^2*(J1^2 - J0*J2) 
+    C_in = (n*q*K1/(h*J1))^2*(C_in_1 + C_in_2 + C_in_3)
+
+    C_out_1 = (1 - s)^2*(K0^2 - K1^2)
+    C_out_2 = (1 + s)^2*(K2^2 - K1*K3)
+    C_out_3 = 2*(q/κ)^2*(K1^2 - K0*K2)
+    C_out = -(C_out_1 + C_out_2 + C_out_3)
+
+    return 1/sqrt(2π*ρf^2*(C_in + C_out))
 end
 
 
@@ -55,22 +66,22 @@ params = ω, ρf, n
 function fiber_equation(x, params)
     ω, ρf, n = params
     
-    h = in_momentum(x, ω, n)
-    q = out_momentum(x, ω)
+    h   = in_momentum(x, ω, n)
+    q   = out_momentum(x, ω)
     hρf = h*ρf
     qρf = q*ρf
     
-    J0 = besselj0(hρf)
-    J1 = besselj1(hρf)
-    K1 = besselk1(qρf)
-    K1p = -(besselk0(qρf) + besselk(2, qρf))/2
+    J0  = dbesselj(0, 0, hρf)
+    J1  = dbesselj(0, 1, hρf)
+    K1  = dbesselk(0, 1, qρf)
+    K1p = dbesselk(1, 1, qρf)
     
-    A = J0/(hρf*J1)
-    B = (n^2 + 1)/(2*n^2) * K1p/(qρf*K1)
-    C = -1/hρf^2
+    A  = J0/(hρf*J1)
+    B  = (n^2 + 1)/(2*n^2) * K1p/(qρf*K1)
+    C  = -1/hρf^2
     D1 = ((n^2 - 1)/(2*n^2) * K1p/(qρf*K1))^2
     D2 = x^2/(n^2*ω^2) * (1/qρf^2 + 1/hρf^2)^2
-    D = sqrt(D1 + D2)
+    D  = sqrt(D1 + D2)
     return A + B + C + D
     
     # TODO: Make this work?
@@ -171,15 +182,19 @@ Calculates the individual components of the guided mode or their derivatives.
 function guidedModeComps(fiber, ρ, derivOrder=0)
     # Set up some parameters
     κ, ρf = fiber.propagation_constant, fiber.radius
-    q, s, C = fiber.outside_momentum, fiber.s_parameter, fiber.normalization_constant
+    h, q  = fiber.inside_momentum, fiber.outside_momentum
+    s, C  = fiber.s_parameter, fiber.normalization_constant
     
-    if ρ < ρf throw(ArgumentError("guidedModeComps is only implemented for field points outside the fiber")) end
-    
-    # Put together the components
-    eρ = 1im*C*q^derivOrder*((1 - s)*dbesselk(derivOrder, 0, q*ρ) + (1 + s)*dbesselk(derivOrder, 2, q*ρ))
-    eϕ =    -C*q^derivOrder*((1 - s)*dbesselk(derivOrder, 0, q*ρ) - (1 + s)*dbesselk(derivOrder, 2, q*ρ))
-    ez = C*q^derivOrder*2*q/κ*dbesselk(derivOrder, 1, q*ρ)
-    
+    # Put together the components    
+    if ρ < ρf
+        eρ = 1im*C*q/h*dbesselk(0, 1, q*ρf)/dbesselj(0, 1, h*ρf)*h^derivOrder*((1 - s)*dbesselj(derivOrder, 0, h*ρ) - (1 + s)*dbesselj(derivOrder, 2, h*ρ))
+        eϕ =    -C*q/h*dbesselk(0, 1, q*ρf)/dbesselj(0, 1, h*ρf)*h^derivOrder*((1 - s)*dbesselj(derivOrder, 0, h*ρ) + (1 + s)*dbesselj(derivOrder, 2, h*ρ))
+        ez =   C*2*q/κ*dbesselk(0, 1, q*ρf)/dbesselj(0, 1, h*ρf)*h^derivOrder*dbesselj(derivOrder, 1, h*ρ)
+    else
+        eρ = 1im*C*q^derivOrder*((1 - s)*dbesselk(derivOrder, 0, q*ρ) + (1 + s)*dbesselk(derivOrder, 2, q*ρ))
+        eϕ =    -C*q^derivOrder*((1 - s)*dbesselk(derivOrder, 0, q*ρ) - (1 + s)*dbesselk(derivOrder, 2, q*ρ))
+        ez = C*q^derivOrder*2*q/κ*dbesselk(derivOrder, 1, q*ρ)
+    end
     return eρ, eϕ, ez
 end
 
@@ -465,12 +480,12 @@ function Im_Grm_trans_calc(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1
             args = (m, l)
             prob = IntegralProblem(integrand, domain, args)
             integral = Integrals.solve(prob, HCubatureJL())
-            summand_m += integral/(4*ω)
+            summand_m += integral.u/(4*ω)
             if m != 0
                 args = (-m, l)
                 prob = IntegralProblem(integrand, domain, args)
                 integral = Integrals.solve(prob, HCubatureJL())
-                summand_m += integral/(4*ω)
+                summand_m += integral.u/(4*ω)
             end
         end
         # summand_m is always real (after adding all combinations of l and (m, -m)), even though integral is not
@@ -518,12 +533,12 @@ end
 #             args = (m, l)
 #             prob = IntegralProblem(integrand, domain, args)
 #             integral = Integrals.solve(prob, HCubatureJL())
-#             summand_m += π/2*integral
+#             summand_m += π/2*integral.u
 #             if m != 0
 #                 args = (-m, l)
 #                 prob = IntegralProblem(integrand, domain, args)
 #                 integral = Integrals.solve(prob, HCubatureJL())
-#                 summand_m += π/2*integral
+#                 summand_m += π/2*integral.u
 #             end
 #         end
 #         # summand_m is always real (after adding all combinations of l and (m, -m)), even though integral is not
@@ -719,6 +734,9 @@ function groundstate(N, noPh=false)
 end
 
 
+#================================================
+    Functions pertaining to transport of light through the fiber
+================================================#
 """
 Calculates the transmission through the guided mode (in the case of no phonons)
 """

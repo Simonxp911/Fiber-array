@@ -37,8 +37,8 @@ function define_SP_BerlinCS()
     να0 = [ν0_radial, ν0_azimuthal, ν0_axial] #trap frequencies in a Cartesian basis (x, y, z) which matches with (radial, azimuthal, axial) if the position is taken to be on the x-axis
     
     # Recoil energy
-    ħ = 1.054e-34 #m^2*kg/s, Planck's reduced constant
-    cesium_mass = 132.9*1.66e-27 #kg, mass of cesium-133
+    ħ = 1.054e-34                                 #m^2*kg/s, Planck's reduced constant
+    cesium_mass = 132.9*1.66e-27                  #kg, mass of cesium-133
     νR0 = ħ*(2π/(λ0*1e-9))^2/(2*cesium_mass)*1e-3 #kHz, recoil energy of cesium atoms
     
     # Lamb-Dicke parameters in a Cartesian basis (x, y, z)
@@ -137,16 +137,69 @@ function define_SP_Olmos()
 end
 
 
+function define_SP_Rauschenbeutel()
+    # Fiber specs from "Modified dipole-dipole interactions in the presence of a nanophotonic waveguide"
+    λ0 = 852  #nm, guided mode wavelength, transition frequency of cs133
+    n  = 1.45 #unitless, index of refraction
+    ρf = 250  #nm, Fiber radius
+    
+    # Unitless fiber radius
+    ρf_ul = ρf/λ0
+    
+    # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
+    Δ_specs = (-10, 10, 100)
+    
+    # Time spand and maximum time step allowed in time evolution
+    tspan = (0, 5)
+    dtmax = 0.01
+    
+    # Set array specs and generate array, as well as description for postfix
+    N  = 2
+    ρa = ρf_ul + 100/λ0
+    a  = 0.1
+    
+    # Phonon bare energies, i.e. trap frequencies
+    να = [0, 0, 0]
+    
+    # Lamb-Dicke parameters
+    ηα = [0, 0, 0]
+    
+    # Prepare initial state for time evolution, as well as description for postfix
+    initialState = groundstate(N, all(ηα .== 0))
+    initialStateDescription = "gs"
+     
+    # Atomic dipole moment
+    d = conj([1im, 0, -1]/sqrt(2))
+    
+    # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
+    incField_wlf = [(1, 1, 1)]
+    
+    # Whether to approximate real, transverse part of radiation GF
+    approx_Re_Grm_trans = true
+    
+    return SysPar(ρf_ul, n, ωa,
+                  Δ_specs,
+                  tspan, dtmax, initialState, initialStateDescription,
+                  N, ρa, a,
+                  να, ηα,
+                  d, incField_wlf, approx_Re_Grm_trans)
+end
+
+
 function main()
     # Define system parameters
     # ωρfn_ranges = define_ω_ρf_n_ranges()
-    # SP = define_SP_BerlinCS()
-    SP = define_SP_Olmos()
-    show(SP)
+    SP = define_SP_BerlinCS()
+    # SP = define_SP_Olmos()
+    # SP = define_SP_Rauschenbeutel()
+    # show(SP)
+    
+    
     
     # plot_propConst_inOutMom(ωρfn_ranges)
+    # plot_coupling_strengths(SP)
     # plot_σBαTrajectories_σBαSS(SP)
-    # plot_transmission_vs_Δ(SP)
+    plot_transmission_vs_Δ(SP)
     
     return nothing
 end
@@ -167,6 +220,49 @@ function plot_propConst_inOutMom(ω_ρf_n_ranges)
     h = in_momentum.(κ[:, ρf_ind, n_ind], ω_ρf_n_ranges.ω_range, ω_ρf_n_ranges.n_range[n_ind])
     q = out_momentum.(κ[:, ρf_ind, n_ind], ω_ρf_n_ranges.ω_range)
     fig_inout_momenta_vs_ω(ω_ρf_n_ranges.ω_range, h, q, ω_ρf_n_ranges.n_range[n_ind])
+end
+
+
+function plot_coupling_strengths(SP)
+    
+    # PRESENTLY HARDCODED for define_SP_Rauschenbeutel
+    
+    # Guided mode local decay as a function of distance to fiber
+    ρ_range = range(SP.ρf, SP.ρf + 1000/852, 100)
+    r_range = [[ρ, 0, 0] for ρ in ρ_range]
+    Γgm = get_Γgm.(Ref(SP.fiber), Ref(SP.d), r_range, r_range)
+    x_label = L"$ \rho - \rho_f $"
+    y_label = L"$ \Gamma_{gm, nn} $"
+    x_range = ρ_range .- SP.ρf
+    fig_coupling_vs_x(x_range, Γgm, x_label, y_label)
+    
+    # Guided mode dissipative interaction as a function of radial distance
+    ρ_range = range(SP.ρf, SP.ρf + 1000/852, 100)
+    r_range = [[ρ, 0, 0] for ρ in ρ_range]
+    Γgm = get_Γgm.(Ref(SP.fiber), Ref(SP.d), Ref(r_range[1]), r_range)
+    x_label = L"$ \rho_2 - \rho_f $"
+    y_label = L"$ \Gamma_{gm, 12} $"
+    x_range = ρ_range .- SP.ρf
+    fig_coupling_vs_x(x_range, Γgm, x_label, y_label)
+    
+    # Radiation mode local decay as a function of distance to fiber
+    ρ_range = range(SP.ρf, SP.ρf + 1000/852, 100)
+    r_range = [[ρ, 0, 0] for ρ in ρ_range]
+    Γrm = get_Γrm.(Ref(SP.fiber), Ref(SP.d), r_range, r_range, SP.approx_Re_Grm_trans)
+    x_label = L"$ \rho - \rho_f $"
+    y_label = L"$ \Gamma_{rm, nn} $"
+    x_range = ρ_range .- SP.ρf
+    fig_coupling_vs_x(x_range, Γrm, x_label, y_label)
+    
+    # Radation mode dissipative interaction as a function of radial distance
+    ρ_range = range(SP.ρf, SP.ρf + 1000/852, 100)
+    r_range = [[ρ, 0, 0] for ρ in ρ_range]
+    Γrm = get_Γrm.(Ref(SP.fiber), Ref(SP.d), Ref(r_range[1]), r_range, SP.approx_Re_Grm_trans)
+    x_label = L"$ \rho_2 - \rho_f $"
+    y_label = L"$ \Gamma_{rm, 12} $"
+    x_range = ρ_range .- SP.ρf
+    fig_coupling_vs_x(x_range, Γrm, x_label, y_label)
+    
 end
 
 

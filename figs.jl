@@ -140,3 +140,24 @@ function fig_transmission_vs_Δ(Δ_range, t)
     title!("Transmission phase", subplot=2)
     display(fig)
 end
+
+
+"""
+Plot a coupling strength's magnitude and phase as a function of a relative spatial coordinate
+"""
+function fig_coupling_vs_x(x_range, coupling, x_label, y_label)
+    # Start figure 
+    fig = plot(reuse=false, size=(800, 600), layout=(1, 2))
+    
+    # Plot the propagation constant, and the lines y = ω and y = nω
+    plot!(x_range, abs.(coupling) , label=L"$ |C| $" , c=:blue, subplot=1)
+    plot!(x_range, angle.(coupling), label=L"arg$ (C) $", c=:red , subplot=2)
+
+    # Finish figure
+    plot!(ticks=:native)
+    xlims!(extrema(x_range))
+    xlabel!(x_label)
+    ylabel!(y_label * ", magnitude", subplot=1)
+    ylabel!(y_label * ", phase", subplot=1)
+    display(fig)
+end

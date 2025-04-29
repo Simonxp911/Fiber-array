@@ -41,11 +41,13 @@ function get_postfix(Δ, d, να, ηα, incField_wlf, arrayDescription, fiberPos
         dipole_moment_string,
         "trapFreqs_$(join(ro.(να), ","))",
         "LamDic_$(join(ro.(ηα), ","))",
-        "wlf_$(join([(format_Complex_to_String(wlf[1]), wlf[2], wlf[3]) for wlf in incField_wlf], ","))",
+        "wlf_$("[" * join(["(" * join([format_Complex_to_String(wlf[1]), wlf[2], wlf[3]], ",") * ")" for wlf in incField_wlf], ",") * "]")",
         arrayDescription,
         fiberPostfix
     ]
     return join(postfix_components, "_")
+    
+    
 end
 
 
@@ -64,7 +66,7 @@ function get_postfix(Δ, d, να, ηα, incField_wlf, arrayDescription, fiberPos
         dipole_moment_string,
         "trapFreqs_$(join(ro.(να), ","))",
         "LamDic_$(join(ro.(ηα), ","))",
-        "wlf_$(join([(format_Complex_to_String(wlf[1]), wlf[2], wlf[3]) for wlf in incField_wlf], ","))",
+        "wlf_$("[" * join(["(" * join([format_Complex_to_String(wlf[1]), wlf[2], wlf[3]], ",") * ")" for wlf in incField_wlf], ",") * "]")",
         arrayDescription,
         fiberPostfix,
         initialStateDescription,

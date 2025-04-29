@@ -54,7 +54,7 @@ struct Fiber
         h  = in_momentum(κ, frequency, refractive_index)
         q  = out_momentum(κ, frequency)
         s  = s_parameter(h, q, radius)
-        C  = norm_constant(frequency, κ, h, q, s, radius)
+        C  = norm_constant(refractive_index, κ, h, q, s, radius)
         postfix = get_postfix(radius, refractive_index, frequency)
     
         return new(radius, refractive_index, frequency, κ, dκ, h, q, s, C, postfix)
@@ -180,7 +180,7 @@ function Base.show(io::IO, SP::SysPar)
     println(io, "")
     
     println(io, "Incoming field described in terms of weights, polarization indices, and direction indices")
-    println(io, "incField_wlf: ", SP.incField_wlf)
+    println(io, "incField_wlf: ", "[" * join(["(" * join([format_Complex_to_String(wlf[1]), wlf[2], wlf[3]], ", ") * ")" for wlf in SP.incField_wlf], ", ") * "]")
     println(io, "")
     
     println(io, "Whether the real part, transverse part of the radiation GF has been approximated with corresponding part of the vacuum GF")

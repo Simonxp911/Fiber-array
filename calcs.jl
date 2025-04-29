@@ -207,7 +207,6 @@ function get_tildeGs(fiber, Δ, d, array, approx_Re_Grm_trans)
     # Scale the real part of the radiation GF with the local radiation decay rates (if Re_Grm_trans is being approximated)
     if approx_Re_Grm_trans
         gammas = 2*3*π/ωa*(Ref(d').*diag(imag(Grm_)).*Ref(d))
-        # println(gammas)
         scaleFactors = sqrt.(gammas*gammas')
         Grm_ = real(Grm_).*scaleFactors + 1im*imag(Grm_)
     end
@@ -279,6 +278,41 @@ end
 
 function get_tildeFα(tildeG, να)
     return [tildeG - να[α]*I for α in 1:3]
+end
+
+
+function get_Jgm(fiber, d, r1, r2)
+    if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa        
+    return 3*π/ωa*d'*real(Ggm(fiber, r1, r2))*d
+end
+
+
+function get_Γgm(fiber, d, r1, r2)
+    if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
+    return 2*3*π/ωa*d'*imag(Ggm(fiber, r1, r2))*d
+end
+
+
+function get_Jrm(fiber, d, r1, r2, approx_Re_Grm_trans)
+    if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
+    
+    # Calculate the radiation mode Green's function
+    Grm_ = Grm(fiber, ωa, r1, r2, (0, 0), 1, approx_Re_Grm_trans)
+
+    # Scale the real part of the radiation GF with the local radiation decay rates (if Re_Grm_trans is being approximated)
+    if approx_Re_Grm_trans
+        gamma1 = 2*3*π/ωa*d'*imag(Grm(fiber, ωa, r1, r1, (0, 0), 1, approx_Re_Grm_trans))*d
+        gamma2 = 2*3*π/ωa*d'*imag(Grm(fiber, ωa, r2, r2, (0, 0), 1, approx_Re_Grm_trans))*d
+        return 3*π/ωa*d'*real(Grm_)*d * sqrt(gamma1*gamma2)
+    else
+        return 3*π/ωa*d'*real(Grm_)*d
+    end
+end
+
+
+function get_Γrm(fiber, d, r1, r2, approx_Re_Grm_trans)
+    if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
+    return 2*3*π/ωa*d'*imag(Grm(fiber, ωa, r1, r2, (0, 0), 1, approx_Re_Grm_trans))*d
 end
 
 
