@@ -363,15 +363,15 @@ function G0(ω, r_field, r_source, derivOrder=(0, 0), α=1)
     
     # Calculate derivatives (including zeroth order)
     if sum(derivOrder) == 0
-        G0 = 1im*ω/4*π*((2/3*dbesselh(0, 0, 1, ω*r) - 1/3*dbesselh(0, 2, 1, ω*r))*I + dbesselh(0, 2, 1, ω*r)*rr)
+        G0 = 1im*ω/(4*π)*((2/3*dbesselsphh(0, 0, 1, ω*r) - 1/3*dbesselsphh(0, 2, 1, ω*r))*I + dbesselsphh(0, 2, 1, ω*r)*rr)
     elseif sum(derivOrder) == 1
-        G0 =  1im*ω/4*π*ω*αcoor/r*((2/3*dbesselh(1, 0, 1, ω*r) - 1/3*dbesselh(1, 2, 1, ω*r))*I + dbesselh(1, 2, 1, ω*r)*rr)
-            + 1im*ω/4*π*(dbesselh(1, 2, 1, ω*r)*drr)
+        G0 =  1im*ω/(4*π)*ω*αcoor/r*((2/3*dbesselsphh(1, 0, 1, ω*r) - 1/3*dbesselsphh(1, 2, 1, ω*r))*I + dbesselsphh(1, 2, 1, ω*r)*rr)
+            + 1im*ω/(4*π)*(dbesselsphh(1, 2, 1, ω*r)*drr)
     elseif sum(derivOrder) == 2
-        G0 =  1im*ω/4*π*ω*(1 - αcoor^2/r^2)/r*((2/3*dbesselh(1, 0, 1, ω*r) - 1/3*dbesselh(1, 2, 1, ω*r))*I + dbesselh(1, 2, 1, ω*r)*rr)
-            + 1im*ω/4*π*(ω*αcoor/r)^2*((2/3*dbesselh(2, 0, 1, ω*r) - 1/3*dbesselh(2, 2, 1, ω*r))*I + dbesselh(2, 2, 1, ω*r)*rr)
-            + 1im*ω/4*π*(dbesselh(2, 2, 1, ω*r)*drr)
-            + 1im*ω/4*π*(dbesselh(1, 2, 1, ω*r)*d2rr)
+        G0 =  1im*ω/(4*π)*ω*(1 - αcoor^2/r^2)/r*((2/3*dbesselsphh(1, 0, 1, ω*r) - 1/3*dbesselsphh(1, 2, 1, ω*r))*I + dbesselsphh(1, 2, 1, ω*r)*rr)
+            + 1im*ω/(4*π)*(ω*αcoor/r)^2*((2/3*dbesselsphh(2, 0, 1, ω*r) - 1/3*dbesselsphh(2, 2, 1, ω*r))*I + dbesselsphh(2, 2, 1, ω*r)*rr)
+            + 1im*ω/(4*π)*(dbesselsphh(2, 2, 1, ω*r)*drr)
+            + 1im*ω/(4*π)*(dbesselsphh(1, 2, 1, ω*r)*d2rr)
     end
     
     # Return result after appending a sign acoording to how many times the derivative was taken with respect to r_source
@@ -417,11 +417,14 @@ end
 
 
 """
-Calculates the real part of the transverse part of the vacuum Green's function or its derivatives,
+Calculates the transverse part of the vacuum Green's function or its derivatives,
 which can be be used to approximate the corresponding part of radiation Green's function
+
+If the function is evaluated at the origin, r_field = r_source, where its real part is not defined,
+it simply returns the imaginary part (corresponding to absorbing the divergent real part in the definition of ωa)
 """
-function Re_G0_trans(ω, r_field, r_source, derivOrder=(0, 0), α=1)
-    return real(G0(ω, r_field, r_source, derivOrder, α)) - G0_long(ω, r_field, r_source, derivOrder, α)
+function G0_trans(ω, r_field, r_source, derivOrder=(0, 0), α=1)
+    return G0(ω, r_field, r_source, derivOrder, α) - G0_long(ω, r_field, r_source, derivOrder, α)
 end
 
 
@@ -431,9 +434,9 @@ Green's function or its derivatives that explots the Onsager reciprocity to simp
 """
 function Im_Grm_trans(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1)
     if r_field[3] < r_source[3]
-        return transpose(Im_Grm_trans_calc(fiber, ω, r_source, r_field, derivOrder, α))
+        return transpose(Im_Grm_trans_(fiber, ω, r_source, r_field, derivOrder, α))
     else
-        return Im_Grm_trans_calc(fiber, ω, r_field, r_source, derivOrder, α)
+        return Im_Grm_trans_(fiber, ω, r_field, r_source, derivOrder, α)
     end
 end
 
@@ -445,7 +448,7 @@ Calculates the imaginary part of the transverse part of radiation mode Green's f
 
 Uses the normalization convention of Kien, Rauschenbeutel 2017
 """
-function Im_Grm_trans_calc(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, overwrite_bool=false)
+function Im_Grm_trans_(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, overwrite_bool=false, abstol = 1e-4)
     # The Green's function only depends on the difference in the z-coordinates, 
     # so we save the calculation according to that value, rather than the individual z-coordinates
     coords = ro.([r_field[1], r_field[2], r_source[1], r_source[2], r_field[3] - r_source[3]])
@@ -464,11 +467,10 @@ function Im_Grm_trans_calc(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1
         end
     end
     
-    # Set up the integrand, the integral domain, and the cut-off for the m-sum
+    # Set up the integrand and the integral domain
     integrand(x, args) = Erm(fiber, ω, x, args..., r_field , derivOrder[1], α)*
                          Erm(fiber, ω, x, args..., r_source, derivOrder[2], α)'
     domain = (-ω + eps(1.0), ω - eps(1.0))
-    abstol = 1e-3
     
     # Perform the combined sum and integration
     Im_Grm_trans = zeros(3, 3)
@@ -498,7 +500,7 @@ function Im_Grm_trans_calc(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1
 end
 
 # # Olmos calculation
-# function Im_Grm_trans_calc(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, overwrite_bool=false)
+# function Im_Grm_trans_(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, overwrite_bool=false)
 #     # The Green's function only depends on the difference in the z-coordinates, 
 #     # so we save the calculation according to that value, rather than the individual z-coordinates
 #     coords = ro.([r_field[1], r_field[2], r_source[1], r_source[2], r_field[3] - r_source[3]])
@@ -556,7 +558,7 @@ Calculates the real part of the transverse part of radiation mode Green's functi
 """
 function Re_Grm_trans(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, approx_Re_Grm_trans=false)
     if approx_Re_Grm_trans
-        return Re_G0_trans(ω, r_field, r_source, derivOrder, α)
+        return real(G0_trans(ω, r_field, r_source, derivOrder, α))
     else
         # Calculate from imaginary part using Kramers-Kronig relation
         throw(ArgumentError("The non-approximate calculation of real part of the transverse part of radiation mode Green's function or its derivatives in Re_Grm_trans has not been implemented"))
@@ -569,7 +571,7 @@ Calculates the dipole moment which yields a chiral fiber setup
 """
 function chiralDipoleMoment(fiber, ρa)
     eρ, _, ez = guidedModeComps(fiber, ρa) 
-    return 1im*[ez, 0, -eρ]/sqrt(abs2(eρ) + ez^2)    
+    return 1im*[ez, 0, -eρ]/sqrt(abs2(eρ) + abs2(ez))    
 end
 
 

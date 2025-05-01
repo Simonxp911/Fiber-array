@@ -31,15 +31,15 @@ function define_SP_BerlinCS()
     a0  = 300   #nm, atomic array lattice constant
     
     # Trap specs
-    ν0_radial    = 109 #kHz, radial atomic trap frequency
-    ν0_axial     = 139 #kHz, axial atomic trap frequency
-    ν0_azimuthal = 18  #kHz, azimuthal atomic trap frequency (estimated from graph)
+    ν0_radial    = 2π*109 #kHz, radial atomic trap angular frequency
+    ν0_axial     = 2π*139 #kHz, axial atomic trap angular frequency
+    ν0_azimuthal = 2π*62  #kHz, azimuthal atomic trap angular frequency (estimate from graph: 18 kHz, but usually half of the others)
     να0 = [ν0_radial, ν0_azimuthal, ν0_axial] #trap frequencies in a Cartesian basis (x, y, z) which matches with (radial, azimuthal, axial) if the position is taken to be on the x-axis
     
     # Recoil energy
     ħ = 1.054e-34                                 #m^2*kg/s, Planck's reduced constant
     cesium_mass = 132.9*1.66e-27                  #kg, mass of cesium-133
-    νR0 = ħ*(2π/(λ0*1e-9))^2/(2*cesium_mass)*1e-3 #kHz, recoil energy of cesium atoms
+    νR0 = ħ*(2π/(λ0*1e-9))^2/(2*cesium_mass)*1e-3 #kHz, recoil energy of cesium atoms (as an angular frequency)
     
     # Lamb-Dicke parameters in a Cartesian basis (x, y, z)
     ηα0 = @. sqrt(νR0/να0)
@@ -51,7 +51,7 @@ function define_SP_BerlinCS()
     να0_ul = να0/γ0 #unitless version of να0
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-30, 30, 300)
+    Δ_specs = (-10, 10, 100)
     
     # Time spand and maximum time step allowed in time evolution
     tspan = (0, 5)
@@ -69,12 +69,13 @@ function define_SP_BerlinCS()
     initialStateDescription = "gs"
     
     # Atomic dipole moment
-    # d = [1im, 0, -1]/sqrt(2)
+    # d = conj([1im, 0, -1]/sqrt(2))
     # d = chiralDipoleMoment(fiber, ρa)
     d = "chiral"
     
     # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
-    incField_wlf = [(1, 1, 1), (1, -1, 1)]
+    # incField_wlf = [(1, 1, 1), (1, -1, 1)]
+    incField_wlf = [(1, 1, 1)]
     
     # Whether to approximate real, transverse part of radiation GF
     approx_Re_Grm_trans = true
@@ -98,14 +99,14 @@ function define_SP_Olmos()
     ρf_ul = ρf/λ0 
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-30, 30, 300)
+    Δ_specs = (-10, 10, 1000)
     
     # Time spand and maximum time step allowed in time evolution
-    tspan = (0, 5)
+    tspan = (0, 100)
     dtmax = 0.01
     
     # Set array specs and generate array, as well as description for postfix
-    N  = 5
+    N  = 10
     ρa = ρf_ul + 100/λ0
     a  = 0.1
     
@@ -123,7 +124,8 @@ function define_SP_Olmos()
     d = [1, 0, 0]
     
     # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
-    incField_wlf = [(1, 1, 1)]
+    incField_wlf = [(1, 1, 1), (1, -1, 1)]
+    # incField_wlf = [(1, 1, 1)]
     
     # Whether to approximate real, transverse part of radiation GF
     approx_Re_Grm_trans = true
@@ -147,7 +149,7 @@ function define_SP_Rauschenbeutel()
     ρf_ul = ρf/λ0
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-10, 10, 100)
+    Δ_specs = (-30, 30, 100)
     
     # Time spand and maximum time step allowed in time evolution
     tspan = (0, 5)
@@ -186,14 +188,59 @@ function define_SP_Rauschenbeutel()
 end
 
 
+function define_SP_Chang()
+    # Fiber specs from "Modified dipole-dipole interactions in the presence of a nanophotonic waveguide"
+    n  = 2 #unitless, index of refraction
+    ρf = 1.2/(2π)  #unitless, fiber radius
+    
+    # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
+    Δ_specs = (-10, 10, 1000)
+    
+    # Time spand and maximum time step allowed in time evolution
+    tspan = (0, 5)
+    dtmax = 0.01
+    
+    # Set array specs and generate array, as well as description for postfix
+    N  = 20
+    ρa = 1.5*ρf
+    a  = 0.25
+    
+    # Phonon bare energies, i.e. trap frequencies
+    να = [0, 0, 0]
+    
+    # Lamb-Dicke parameters
+    ηα = [0, 0, 0]
+    
+    # Prepare initial state for time evolution, as well as description for postfix
+    initialState = groundstate(N, all(ηα .== 0))
+    initialStateDescription = "gs"
+     
+    # Atomic dipole moment
+    d = [1, 0, 0]
+        
+    # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
+    incField_wlf = [(1, 1, 1), (1, -1, 1)]
+    
+    # Whether to approximate real, transverse part of radiation GF
+    approx_Re_Grm_trans = true
+    
+    return SysPar(ρf, n, ωa,
+                  Δ_specs,
+                  tspan, dtmax, initialState, initialStateDescription,
+                  N, ρa, a,
+                  να, ηα,
+                  d, incField_wlf, approx_Re_Grm_trans)
+end
+
+
 function main()
     # Define system parameters
     # ωρfn_ranges = define_ω_ρf_n_ranges()
-    SP = define_SP_BerlinCS()
+    # SP = define_SP_BerlinCS()
     # SP = define_SP_Olmos()
     # SP = define_SP_Rauschenbeutel()
+    SP = define_SP_Chang()
     # show(SP)
-    
     
     
     # plot_propConst_inOutMom(ωρfn_ranges)
@@ -267,7 +314,7 @@ end
 
 
 function plot_σBαTrajectories_σBαSS(SP)
-    Δ = 0.0
+    Δ = 10.0
     σBα_SS = calc_σBα_steadyState(SP, Δ)
     xTrajectories = timeEvolution(SP, Δ)
     

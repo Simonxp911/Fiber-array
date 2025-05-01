@@ -52,7 +52,7 @@ end
 """
 Calculate the derivative of roots of the fiber eigenequation with respect to frequency
 """
-function calc_propConstDerivative(ω, ρf, n; dω = 1e-9)
+function calc_propConstDerivative(ω, ρf, n, dω = 1e-9)
     κ_p = calc_propConst(ω + dω/2, ρf, n)
     κ_m = calc_propConst(ω - dω/2, ρf, n)
     return (κ_p - κ_m)/dω
@@ -435,7 +435,9 @@ end
     Functions pertaining to transmission through the fiber
 ================================================#
 """
-Calculate the transmission of light through the fiber (in the case of no phonons)
+Calculate the transmission of light through the fiber (in the case of no phonons) 
+in the same mode as used for the driving (note that there may be further transmitted
+or reflected light in other modes)
 """
 function calc_transmission(σ, fiber, d, incField_wlf, array)
     # postfix = get_postfix()
@@ -463,6 +465,8 @@ end
 
 """
 Calculate the transmission of light through the fiber
+in the same mode as used for the driving (note that there may be further transmitted
+or reflected light in other modes)
 """
 function calc_transmission(σBα, fiber, d, ηα, incField_wlf, array)
     # postfix = get_postfix()
@@ -489,7 +493,7 @@ end
 
 
 """
-Calculate the transmission of light through the fiber for parameters given by SP
+Calculate the transmission of light through the fiber in the chosen driving mode for parameters given by SP
     
 The function assumes that σBα contains only σ if the Lamb-Dicke parameters are zero
 """
