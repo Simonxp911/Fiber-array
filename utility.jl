@@ -210,6 +210,14 @@ end
 
 
 """
+Derivative of the modified Bessel functions of the second kind, K, of order n evaluated at x
+"""
+function dbesselk(derivOrder, n, x)
+    return (-1)^derivOrder*sum([binomial(derivOrder, i)*besselk(n - (derivOrder - 2*i), x) for i in 0:derivOrder])/2^derivOrder
+end
+
+
+"""
 Derivative of the Hankel functions H of the j'th kind of order n evaluated at x
 """
 function dbesselh(derivOrder, n, j, x)
@@ -218,10 +226,24 @@ end
 
 
 """
-Derivative of the modified Bessel functions of the second kind, K, of order n evaluated at x
+Derivative of the spherical Hankel functions h of the j'th kind of order n evaluated at x
 """
-function dbesselk(derivOrder, n, x)
-    return (-1)^derivOrder*sum([binomial(derivOrder, i)*besselk(n - (derivOrder - 2*i), x) for i in 0:derivOrder])/2^derivOrder
+function dbesselsphh(derivOrder, n, j, x)
+    if !(derivOrder isa Integer && derivOrder >= 0)
+        throw(ArgumentError("The order of differentiation derivOrder (= $derivOrder) take a non-negative integer value in dbesselsphh"))
+    end
+    
+    if derivOrder == 0
+        if j == 1
+            return sphericalbesselj(n, x) + 1im*sphericalbessely(n, x)
+        elseif j == 2
+            return sphericalbesselj(n, x) - 1im*sphericalbessely(n, x)
+        else
+            throw(ArgumentError("The 'kind'-index j (= $j) must take values 1 or 2 in dbesselsphh"))
+        end
+    else
+        return dbesselsphh(derivOrder - 1, n - 1, j, x) - (n + 1)*sum([binomial(derivOrder - 1, i)*(-1)^i*factorial(i)/x^(i + 1)*dbesselsphh(derivOrder - 1 - i, n, j, x) for i in 0:derivOrder - 1])
+    end
 end
 
 
