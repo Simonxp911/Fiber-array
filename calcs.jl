@@ -198,12 +198,16 @@ function get_tildeGs(fiber, Δ, d, array, approx_Re_Grm_trans)
     
     if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
     
-    # Calculate the guided mode Green's function and the needed derivatives
-    Ggm_ = Ggm.(Ref(fiber), reshape(array, N, 1), reshape(array, 1, N))
+    Ggm_ = fill(zeros(ComplexF64, 3, 3), N, N)
+    Grm_ = deepcopy(Ggm_)
+    for j in 1:N, i in 1:j
+        # Calculate the guided and radiation mode Green's functions
+        Ggm_[i, j] = Ggm(fiber, array[i], array[j])
+        Grm_[i, j] = Grm(fiber, ωa, array[i], array[j], (0, 0), 1, approx_Re_Grm_trans)
+        Ggm_[j, i] = transpose(Ggm_[i, j]) #Onsager reciprocity
+        Grm_[j, i] = transpose(Grm_[i, j])
+    end
     
-    # Calculate the radiation mode Green's function and the needed derivatives
-    Grm_ = Grm.(Ref(fiber), ωa, reshape(array, N, 1), reshape(array, 1, N), Ref((0, 0)), 1, approx_Re_Grm_trans)
-
     # Scale the real part of the radiation GF with the local radiation decay rates (if Re_Grm_trans is being approximated)
     if approx_Re_Grm_trans
         gammas = 2*3*π/ωa*(Ref(d').*diag(imag(Grm_)).*Ref(d))
@@ -227,22 +231,47 @@ function get_tildeGs(fiber, Δ, d, ηα, array, approx_Re_Grm_trans)
     
     if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
     
-    # Calculate the guided mode Green's function and the needed derivatives (notice that Ggm_αα12 consists of vectors)
-    Ggm_     =  Ggm.(Ref(fiber), reshape(array, N, 1), reshape(array, 1, N))
-    Ggm_α1   = [Ggm.(Ref(fiber), reshape(array, N, 1), reshape(array, 1, N), Ref((1, 0)), α) for α in 1:3]
-    Ggm_α2   = [Ggm.(Ref(fiber), reshape(array, N, 1), reshape(array, 1, N), Ref((0, 1)), α) for α in 1:3]
-    Ggm_αα11 = [Ggm.(Ref(fiber), reshape(array, N, 1), reshape(array, 1, N), Ref((2, 0)), α) for α in 1:3]
-    Ggm_αα22 = [Ggm.(Ref(fiber), reshape(array, N, 1), reshape(array, 1, N), Ref((0, 2)), α) for α in 1:3]
-    Ggm_αα12 = [Ggm.(Ref(fiber), array, array, Ref((1, 1)), α) for α in 1:3]
+    Ggm_     = fill(zeros(ComplexF64, 3, 3), N, N)
+    Ggm_α1   = [deepcopy(Ggm_) for α in 1:3]
+    Ggm_α2   = deepcopy(Ggm_α1)
+    Ggm_αα11 = deepcopy(Ggm_α1)
+    Ggm_αα22 = deepcopy(Ggm_α1)
+    Ggm_αα12 = [fill(zeros(ComplexF64, 3, 3), N) for α in 1:3]
+    Grm_     = deepcopy(Ggm_)
+    Grm_α1   = deepcopy(Ggm_α1)
+    Grm_α2   = deepcopy(Ggm_α1)
+    Grm_αα11 = deepcopy(Ggm_α1)
+    Grm_αα22 = deepcopy(Ggm_α1)
+    Grm_αα12 = deepcopy(Ggm_αα12)
     
-    # Calculate the radiation mode Green's function and the needed derivatives (notice that Grm_αα12 consists of vectors)
-    Grm_     =  Grm.(Ref(fiber), ωa, reshape(array, N, 1), reshape(array, 1, N), Ref((0, 0)), 1, approx_Re_Grm_trans)
-    Grm_α1   = [Grm.(Ref(fiber), ωa, reshape(array, N, 1), reshape(array, 1, N), Ref((1, 0)), α, approx_Re_Grm_trans) for α in 1:3]
-    Grm_α2   = [Grm.(Ref(fiber), ωa, reshape(array, N, 1), reshape(array, 1, N), Ref((0, 1)), α, approx_Re_Grm_trans) for α in 1:3]
-    Grm_αα11 = [Grm.(Ref(fiber), ωa, reshape(array, N, 1), reshape(array, 1, N), Ref((2, 0)), α, approx_Re_Grm_trans) for α in 1:3]
-    Grm_αα22 = [Grm.(Ref(fiber), ωa, reshape(array, N, 1), reshape(array, 1, N), Ref((0, 2)), α, approx_Re_Grm_trans) for α in 1:3]
-    Grm_αα12 = [Grm.(Ref(fiber), ωa, array, array, Ref((1, 1)), α, approx_Re_Grm_trans) for α in 1:3]
-
+    # Calculate the guided and radiation mode Green's function and the needed derivatives (notice that Ggm_αα12 and Grm_αα12 consist of vectors)    
+    for j in 1:N, i in 1:j
+        Ggm_[i, j] = Ggm(fiber, array[i], array[j])
+        Grm_[i, j] = Grm(fiber, ωa, array[i], array[j], (0, 0), 1, approx_Re_Grm_trans)
+        Ggm_[j, i] = transpose(Ggm_[i, j]) #Onsager reciprocity
+        Grm_[j, i] = transpose(Grm_[i, j])
+    end
+    
+    for j in 1:N, i in 1:N, α in 1:3
+        Ggm_α1[α][i, j]   = Ggm(fiber, array[i], array[j], (1, 0), α)
+        Ggm_αα11[α][i, j] = Ggm(fiber, array[i], array[j], (2, 0), α)
+        
+        Grm_α1[α][i, j]   = Grm(fiber, ωa, array[i], array[j], (1, 0), α, approx_Re_Grm_trans)
+        Grm_αα11[α][i, j] = Grm(fiber, ωa, array[i], array[j], (2, 0), α, approx_Re_Grm_trans)            
+        if i == j
+            Ggm_αα12[α][i] = Ggm(fiber, array[i], array[i], (1, 1), α)
+            Grm_αα12[α][i] = Grm(fiber, ωa, array[i], array[i], (1, 1), α, approx_Re_Grm_trans)
+        end
+    end
+    
+    # Onsager reciprocity
+    for j in 1:N, i in 1:N, α in 1:3
+        Ggm_α2[α][i, j]   = transpose(Ggm_α1[α][j, i])
+        Ggm_αα22[α][i, j] = transpose(Ggm_αα11[α][j, i])
+        Grm_α2[α][i, j]   = transpose(Grm_α1[α][j, i])
+        Grm_αα22[α][i, j] = transpose(Grm_αα11[α][j, i])
+    end
+    
     # Scale the real part of the radiation GF with the local radiation decay rates (if Re_Grm_trans is being approximated)
     if approx_Re_Grm_trans
         gammas = 2*imag(3*π/ωa*(Ref(d').*diag(Grm_).*Ref(d)))
@@ -347,7 +376,7 @@ function calc_σBα_steadyState(fiber, Δ, d, να, ηα, incField_wlf, array, a
         result = σBα_steadyState(get_parameterMatrices(fiber, Δ, d, να, ηα, incField_wlf, array, approx_Re_Grm_trans)...)
     end
     
-    save_as_jld2(result, saveDir * folder, filename)
+    # save_as_jld2(result, saveDir * folder, filename)
     return result
 end
 
