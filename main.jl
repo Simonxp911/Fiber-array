@@ -51,10 +51,10 @@ function define_SP_BerlinCS()
     να0_ul = να0/γ0 #unitless version of να0
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-10, 10, 100)
+    Δ_specs = (-5, 5, 250)
     
     # Time spand and maximum time step allowed in time evolution
-    tspan = (0, 5)
+    tspan = (0, 100)
     dtmax = 0.01
     
     # Set array specs and generate array, as well as description for postfix
@@ -62,7 +62,7 @@ function define_SP_BerlinCS()
     
     # Lamb-Dicke parameters
     ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
-    ηα = [0., 0., 0.]
+    # ηα = [0., 0., 0.]
     
     # Prepare initial state for time evolution, as well as description for postfix
     initialState = groundstate(N, all(ηα .== 0))
@@ -70,12 +70,12 @@ function define_SP_BerlinCS()
     
     # Atomic dipole moment
     # d = conj([1im, 0, -1]/sqrt(2))
-    # d = chiralDipoleMoment(fiber, ρa)
-    d = "chiral"
+    d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul)
+    # d = "chiral"
     
     # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
-    # incField_wlf = [(1, 1, 1), (1, -1, 1)]
-    incField_wlf = [(1, 1, 1)]
+    incField_wlf = [(1, 1, 1), (1, -1, 1)]
+    # incField_wlf = []
     
     # Whether to approximate real, transverse part of radiation GF
     approx_Re_Grm_trans = true
@@ -93,6 +93,7 @@ function define_SP_Olmos()
     # Fiber specs from "Modified dipole-dipole interactions in the presence of a nanophotonic waveguide"
     λ0 = 852  #nm, guided mode wavelength, transition frequency of cs133
     n  = 1.45 #unitless, index of refraction
+    # n = 1.452467
     ρf = 250  #nm, Fiber radius
     
     # Unitless fiber radius
@@ -107,7 +108,7 @@ function define_SP_Olmos()
     
     # Set array specs and generate array, as well as description for postfix
     N  = 10
-    ρa = ρf_ul + 100/λ0
+    ρa = ρf_ul + 50/λ0
     a  = 0.1
     
     # Phonon bare energies, i.e. trap frequencies
@@ -125,7 +126,6 @@ function define_SP_Olmos()
     
     # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
     incField_wlf = [(1, 1, 1), (1, -1, 1)]
-    # incField_wlf = [(1, 1, 1)]
     
     # Whether to approximate real, transverse part of radiation GF
     approx_Re_Grm_trans = true
@@ -194,7 +194,7 @@ function define_SP_Chang()
     ρf = 1.2/(2π)  #unitless, fiber radius
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-10, 10, 1000)
+    Δ_specs = (-10, 10, 2)
     
     # Time spand and maximum time step allowed in time evolution
     tspan = (0, 5)
@@ -217,7 +217,7 @@ function define_SP_Chang()
      
     # Atomic dipole moment
     d = [1, 0, 0]
-        
+    
     # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
     incField_wlf = [(1, 1, 1), (1, -1, 1)]
     
@@ -236,11 +236,12 @@ end
 function main()
     # Define system parameters
     # ωρfn_ranges = define_ω_ρf_n_ranges()
-    # SP = define_SP_BerlinCS()
+    SP = define_SP_BerlinCS()
     # SP = define_SP_Olmos()
     # SP = define_SP_Rauschenbeutel()
-    SP = define_SP_Chang()
+    # SP = define_SP_Chang()
     # show(SP)
+    
     
     
     # plot_propConst_inOutMom(ωρfn_ranges)
@@ -314,7 +315,7 @@ end
 
 
 function plot_σBαTrajectories_σBαSS(SP)
-    Δ = 10.0
+    Δ = 0.0
     σBα_SS = calc_σBα_steadyState(SP, Δ)
     xTrajectories = timeEvolution(SP, Δ)
     
@@ -347,18 +348,6 @@ println("\n -- Running main() -- \n")
 
 # TODO list:
 
-# Figure out how to add (super-)titles to figures
-    # Possibly define function that takes a plot and adds the title to it, by moving existing plots around
-# Related to this, figure out how to define proper, nice-looking, robust layouts of plots
-
-# Calculate the free-space emitted E-field and plot it, to see where the atoms "leak"
-
-# Consider making structs for x-vector and σBα, to make their structure easier to get an overview of
-
-# Split utility.jl according to theme or which file has need of the functions
-    # simply code utility/no physics concatenated
-    # physics functions according to which file has need of them
-    
 # Reconsider factoring of code, particularly whether calculation of parameters etc. 
     # should take place outside of scanning loops
     # One step deeper, the calculation of mode components should perhaps also be done 
@@ -371,6 +360,23 @@ println("\n -- Running main() -- \n")
     # and calculate parameters on its own, or it takes the already prepared parameters?
     # or some wrapper which can direct to do either one thing or the other. Such that
     # different calculation functions can still be called without making a whole scan...
+
+# Implement the correct real part of the radiation GF
+    # But maybe not relevant since atoms are far-ish from the fiber, such that using vacuum-approximation should be good
+
+# Implement a good way of doing the classical sampling for positional uncertainty
+
+# Figure out how to add (super-)titles to figures
+    # Possibly define function that takes a plot and adds the title to it, by moving existing plots around
+# Related to this, figure out how to define proper, nice-looking, robust layouts of plots
+
+# Calculate the free-space emitted E-field and plot it, to see where the atoms "leak"
+
+# Consider making structs for x-vector and σBα, to make their structure easier to get an overview of
+
+# Split utility.jl according to theme or which file has need of the functions
+    # simply code utility/no physics concatenated
+    # physics functions according to which file has need of them
     
 # Consider never using JLD2
     # Invent some packing/unpacking scheme to put any kind of data into real matrices
