@@ -60,7 +60,7 @@ function define_SP_BerlinCS()
     
     # Lamb-Dicke parameters
     ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
-    # ηα = [0., 0., 0.]
+    ηα = [0., 0., 0.]
     
     # Prepare initial state for time evolution, as well as description for postfix
     initialState = groundstate(N, all(ηα .== 0))
@@ -80,26 +80,26 @@ function define_SP_BerlinCS()
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
-    pos_unc = 0.0#ηα0/ωa
-    N_inst = 1
+    pos_unc = any(ηα .!= 0) ? 0.0 : ηα0/ωa
+    n_inst = 10
     
-    # Whether to save the imaginary transverse part of the radiation GF (should not be done when considering imperfect arrays)
-    save_Im_Grm_trans = N == 1
+    # Whether to save individual results (Im_Grm_trans, steady states, time evolutions)
+    save_individual_res = n_inst == 1
     
-    if N_inst == 1
+    if n_inst == 1
         return SysPar(ρf0_ul, n0, ωa,
                       Δ_specs,
                       tspan, dtmax, initialState, initialStateDescription,
                       N, ρa0_ul, a0_ul, ff, pos_unc,
                       να0_ul, ηα,
-                      d, incField_wlf, save_Im_Grm_trans, approx_Re_Grm_trans)
+                      d, incField_wlf, save_individual_res, approx_Re_Grm_trans)
     else
         return [SysPar(ρf0_ul, n0, ωa,
                        Δ_specs,
                        tspan, dtmax, initialState, initialStateDescription,
                        N, ρa0_ul, a0_ul, ff, pos_unc,
                        να0_ul, ηα,
-                       d, incField_wlf, save_Im_Grm_trans, approx_Re_Grm_trans) for _ in 1:N_inst]
+                       d, incField_wlf, save_individual_res, approx_Re_Grm_trans) for _ in 1:n_inst]
     end
 end
 
@@ -262,8 +262,8 @@ function main()
     # plot_propConst_inOutMom(ωρfn_ranges)
     # plot_coupling_strengths(SP)
     # plot_σBαTrajectories_σBαSS(SP)
-    plot_transmission_vs_Δ(SP)
-    # plot_classDisorder_transmission_vs_Δ(SP)
+    # plot_transmission_vs_Δ(SP)
+    plot_classDisorder_transmission_vs_Δ(SP)
     
     return nothing
 end
@@ -355,16 +355,28 @@ end
 
 
 function plot_classDisorder_transmission_vs_Δ(SPs)
-    if typeof(SPs) == SysPar throw(ArgumentError("plot_classDisorder_transmission_vs_Δ requires N_inst > 1")) end
+    if typeof(SPs) == SysPar throw(ArgumentError("plot_classDisorder_transmission_vs_Δ requires n_inst > 1")) end
     
-    ts = []
-    for SP in SPs
-        σBα_scan = scan_σBα_steadyState(SP)
-        push!(ts, calc_transmission.(Ref(SP), σBα_scan))
+    n_inst = length(SPs)
+    postfix = get_postfix(SPs[1].Δ_specs, SPs[1].d, SPs[1].να, SPs[1].ηα, SPs[1].incField_wlf, n_inst, SPs[1].arrayDescription, SPs[1].fiber.postfix)
+    filename = "T_phase" * postfix
+    folder = "classDisorder_T_phase/"
+    
+    if isfile(saveDir * folder * filename * ".txt") 
+        T_means, T_stds, phase_means, phase_stds = eachrow(load_as_txt(saveDir * folder, filename))
+    else
+        ts = []
+        for SP in SPs
+            σBα_scan = scan_σBα_steadyState(SP)
+            push!(ts, calc_transmission.(Ref(SP), σBα_scan))
+        end
+            
+        # Prepare means and standard deviations of (squared) magnitudes and phases
+        T_means, T_stds, phase_means, phase_stds = prep_classDisorder_transmission(ts)
+        formattedResult = vectorOfRows2Matrix([T_means, T_stds, phase_means, phase_stds])
+        save_as_txt(formattedResult, saveDir * folder, filename)
     end
     
-    # Prepare means and standard deviations of (squared) magnitudes and phases
-    T_means, T_stds, phase_means, phase_stds = prep_classDisorder_transmission(ts)
     fig_classDisorder_transmission_vs_Δ(SPs[1].Δ_range, T_means, T_stds, phase_means, phase_stds)
 end
 
@@ -384,6 +396,8 @@ println("\n -- Running main() -- \n")
     # Use MPI?
     
 # Calculate reflection and loss
+
+# Implement n_inst in a better way? That is, dont have a list of SPs, but include the many instantiations in the same SP?
 
 # Implement figure of atomic array, including a representation of the fiber, for visualization
 

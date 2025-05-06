@@ -102,7 +102,7 @@ struct SysPar
     d::Union{Vector{<:Number}, String}              # Dipole moment of atoms
     incField_wlf::Vector{Tuple{<:Number, Int, Int}} # Vector of (weight, l, f) tuples for defining the incoming driving field
     
-    save_Im_Grm_trans::Bool                         # Whether to save the imaginary transverse part of the radiation Green's function
+    save_individual_res::Bool                       # Whether to save individual results (Im_Grm_trans, steady states, time evolutions)
         
     # Whether to approximate the real, transverse part of the radiation Green's function 
     # using the corresponding part of the vacuum GF, as well as whether to scale the real part of the rad. GF
@@ -115,7 +115,7 @@ struct SysPar
                     tspan::Tuple{Real, Real}, dtmax::Real, initialState::Vector, initialStateDescription::String,
                     N::Int, ρa::Real, a::Real, ff::Real, pos_unc::Union{Real, Vector},
                     να::Vector, ηα::Vector,
-                    d::Union{Vector, String}, incField_wlf::Vector, save_Im_Grm_trans::Bool, approx_Re_Grm_trans::Bool)
+                    d::Union{Vector, String}, incField_wlf::Vector, save_individual_res::Bool, approx_Re_Grm_trans::Bool)
         
         fiber = Fiber(ρf, n, ω)
         Δ_range = range(Δ_specs...)
@@ -127,7 +127,7 @@ struct SysPar
                    tspan, dtmax, initialState, initialStateDescription,
                    N, ρa, a, ff, pos_unc, array, arrayDescription,
                    να, ηα,
-                   d, incField_wlf, save_Im_Grm_trans, approx_Re_Grm_trans)
+                   d, incField_wlf, save_individual_res, approx_Re_Grm_trans)
     end
     
     function SysPar(ρf::Real, n::Real, ω::Real,
@@ -135,7 +135,7 @@ struct SysPar
                     tspan::Tuple{Real, Real}, dtmax::Real, initialState::Vector, initialStateDescription::String,
                     array::Vector{Vector}, arrayDescription::String,
                     να::Vector, ηα::Vector,
-                    d::Union{Vector, String}, incField_wlf::Vector, save_Im_Grm_trans::Bool, approx_Re_Grm_trans::Bool)
+                    d::Union{Vector, String}, incField_wlf::Vector, save_individual_res::Bool, approx_Re_Grm_trans::Bool)
         
         if d == "chiral" && any([site[1] != ρa || site[2] != 0 for site in array]) throw(ArgumentError("d = 'dipole' assumes an array (ρa, 0, z)")) end
         
@@ -152,7 +152,7 @@ struct SysPar
                    tspan, dtmax, initialState, initialStateDescription,
                    N, ρa, a, ff, pos_unc, array, arrayDescription,
                    να, ηα,
-                   d, incField_wlf, save_Im_Grm_trans, approx_Re_Grm_trans)
+                   d, incField_wlf, save_individual_res, approx_Re_Grm_trans)
     end
 end
 
@@ -192,7 +192,7 @@ function Base.show(io::IO, SP::SysPar)
     println(io, "")
     
     println(io, "Whether to save the imaginary transverse part of the radiation Green's function")
-    println(io, "save_Im_Grm_trans: ", SP.save_Im_Grm_trans)
+    println(io, "save_individual_res: ", SP.save_individual_res)
     println(io, "")
     
     println(io, "Whether the real part, transverse part of the radiation GF has been approximated with corresponding part of the vacuum GF")

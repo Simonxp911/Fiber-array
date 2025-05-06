@@ -46,8 +46,30 @@ function get_postfix(Δ, d, να, ηα, incField_wlf, arrayDescription, fiberPos
         fiberPostfix
     ]
     return join(postfix_components, "_")
+end
+
+
+"""
+For calculation of transmission over classically disordered arrays
+"""
+function get_postfix(Δ_specs, d, να, ηα, incField_wlf, n_inst, arrayDescription, fiberPostfix)
+    if typeof(d) == String
+        dipole_moment_string = "d_$d"
+    else
+        dipole_moment_string = "d_$(join(format_Complex_to_String.(d), ","))"
+    end
     
-    
+    postfix_components = [
+        "Delta_$(join((ro(Δ_specs[1]), ro(Δ_specs[2]), Δ_specs[3]), ","))",
+        dipole_moment_string,
+        "trapFreqs_$(join(ro.(να), ","))",
+        "LamDic_$(join(ro.(ηα), ","))",
+        "wlf_$("[" * join(["(" * join([format_Complex_to_String(wlf[1]), wlf[2], wlf[3]], ",") * ")" for wlf in incField_wlf], ",") * "]")",
+        "nInst_$(n_inst)",
+        arrayDescription,
+        fiberPostfix
+    ]
+    return join(postfix_components, "_")
 end
 
 
