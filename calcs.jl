@@ -62,16 +62,14 @@ end
 #================================================
     Functions pertaining to calculating the driving and couplings of the system
 ================================================#
-function get_parameterMatrices(fiber, d, να, ηα, incField_wlf, array, approx_Re_Grm_trans)
-    # TODO: implement saving and loading of these quantities?
-    
+function get_parameterMatrices(fiber, d, να, ηα, incField_wlf, array, save_Im_Grm_trans, approx_Re_Grm_trans)
     if all(ηα .== 0)
         tildeΩ = get_tildeΩs(fiber, d, incField_wlf, array)
-        tildeG = get_tildeGs(fiber, d, array, approx_Re_Grm_trans)
+        tildeG = get_tildeGs(fiber, d, array, save_Im_Grm_trans, approx_Re_Grm_trans)
         return tildeΩ, tildeG
     else
         tildeΩ, tildeΩα            = get_tildeΩs(fiber, d, ηα, incField_wlf, array)
-        tildeG, tildeGα1, tildeGα2 = get_tildeGs(fiber, d, ηα, array, approx_Re_Grm_trans)
+        tildeG, tildeGα1, tildeGα2 = get_tildeGs(fiber, d, ηα, array, save_Im_Grm_trans, approx_Re_Grm_trans)
         tildeFα                    = get_tildeFα(tildeG, να)
         return tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2
     end
@@ -167,33 +165,31 @@ function get_tildeΩs(fiber, d, ηα, incField_wlf, array)
 end
 
 
-function get_tildeGs(fiber, d::String, array, approx_Re_Grm_trans)
-    # TODO: Implement non-lazy version of this? Presumably significantly faster when exploiting knowledge of which components etc. are actually needed, but also very messy...
+function get_tildeGs(fiber, d::String, array, save_Im_Grm_trans, approx_Re_Grm_trans)
     if d == "chiral"
         ρa = array[1][1]
         if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
         d = chiralDipoleMoment(fiber, ρa)
-        return get_tildeGs(fiber, d, array, approx_Re_Grm_trans)
+        return get_tildeGs(fiber, d, array, save_Im_Grm_trans, approx_Re_Grm_trans)
     else
         throw(ArgumentError("get_tildeGs(d::String) is only implemented for d = 'chiral'"))
     end
 end
 
 
-function get_tildeGs(fiber, d::String, ηα, array, approx_Re_Grm_trans)
-    # TODO: Implement non-lazy version of this? Presumably significantly faster when exploiting knowledge of which components etc. are actually needed, but also very messy...
+function get_tildeGs(fiber, d::String, ηα, array, save_Im_Grm_trans, approx_Re_Grm_trans)
     if d == "chiral"
         ρa = array[1][1]
         if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
         d = chiralDipoleMoment(fiber, ρa)
-        return get_tildeGs(fiber, d, ηα, array, approx_Re_Grm_trans)
+        return get_tildeGs(fiber, d, ηα, array, save_Im_Grm_trans, approx_Re_Grm_trans)
     else
         throw(ArgumentError("get_tildeGs(d::String) is only implemented for d = 'chiral'"))
     end
 end
 
 
-function get_tildeGs(fiber, d, array, approx_Re_Grm_trans)
+function get_tildeGs(fiber, d, array, save_Im_Grm_trans, approx_Re_Grm_trans)
     N = length(array)
     
     if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
@@ -203,7 +199,7 @@ function get_tildeGs(fiber, d, array, approx_Re_Grm_trans)
     for j in 1:N, i in 1:j
         # Calculate the guided and radiation mode Green's functions
         Ggm_[i, j] = Ggm(fiber, array[i], array[j])
-        Grm_[i, j] = Grm(fiber, ωa, array[i], array[j], (0, 0), 1, approx_Re_Grm_trans)
+        Grm_[i, j] = Grm(fiber, ωa, array[i], array[j], (0, 0), 1, save_Im_Grm_trans, approx_Re_Grm_trans)
         Ggm_[j, i] = transpose(Ggm_[i, j]) #Onsager reciprocity
         Grm_[j, i] = transpose(Grm_[i, j])
     end
@@ -226,7 +222,7 @@ function get_tildeGs(fiber, d, array, approx_Re_Grm_trans)
 end
 
 
-function get_tildeGs(fiber, d, ηα, array, approx_Re_Grm_trans)
+function get_tildeGs(fiber, d, ηα, array, save_Im_Grm_trans, approx_Re_Grm_trans)
     N = length(array)
     
     if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
@@ -247,7 +243,7 @@ function get_tildeGs(fiber, d, ηα, array, approx_Re_Grm_trans)
     # Calculate the guided and radiation mode Green's function and the needed derivatives (notice that Ggm_αα12 and Grm_αα12 consist of vectors)    
     for j in 1:N, i in 1:j
         Ggm_[i, j] = Ggm(fiber, array[i], array[j])
-        Grm_[i, j] = Grm(fiber, ωa, array[i], array[j], (0, 0), 1, approx_Re_Grm_trans)
+        Grm_[i, j] = Grm(fiber, ωa, array[i], array[j], (0, 0), 1, save_Im_Grm_trans, approx_Re_Grm_trans)
         Ggm_[j, i] = transpose(Ggm_[i, j]) #Onsager reciprocity
         Grm_[j, i] = transpose(Grm_[i, j])
     end
@@ -256,11 +252,11 @@ function get_tildeGs(fiber, d, ηα, array, approx_Re_Grm_trans)
         Ggm_α1[α][i, j]   = Ggm(fiber, array[i], array[j], (1, 0), α)
         Ggm_αα11[α][i, j] = Ggm(fiber, array[i], array[j], (2, 0), α)
         
-        Grm_α1[α][i, j]   = Grm(fiber, ωa, array[i], array[j], (1, 0), α, approx_Re_Grm_trans)
-        Grm_αα11[α][i, j] = Grm(fiber, ωa, array[i], array[j], (2, 0), α, approx_Re_Grm_trans)            
+        Grm_α1[α][i, j]   = Grm(fiber, ωa, array[i], array[j], (1, 0), α, save_Im_Grm_trans, approx_Re_Grm_trans)
+        Grm_αα11[α][i, j] = Grm(fiber, ωa, array[i], array[j], (2, 0), α, save_Im_Grm_trans, approx_Re_Grm_trans)            
         if i == j
             Ggm_αα12[α][i] = Ggm(fiber, array[i], array[i], (1, 1), α)
-            Grm_αα12[α][i] = Grm(fiber, ωa, array[i], array[i], (1, 1), α, approx_Re_Grm_trans)
+            Grm_αα12[α][i] = Grm(fiber, ωa, array[i], array[i], (1, 1), α, save_Im_Grm_trans, approx_Re_Grm_trans)
         end
     end
     
@@ -322,16 +318,16 @@ function get_Γgm(fiber, d, r1, r2)
 end
 
 
-function get_Jrm(fiber, d, r1, r2, approx_Re_Grm_trans)
+function get_Jrm(fiber, d, r1, r2, save_Im_Grm_trans, approx_Re_Grm_trans)
     if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
     
     # Calculate the radiation mode Green's function
-    Grm_ = Grm(fiber, ωa, r1, r2, (0, 0), 1, approx_Re_Grm_trans)
+    Grm_ = Grm(fiber, ωa, r1, r2, (0, 0), 1, save_Im_Grm_trans, approx_Re_Grm_trans)
 
     # Scale the real part of the radiation GF with the local radiation decay rates (if Re_Grm_trans is being approximated)
     if approx_Re_Grm_trans
-        gamma1 = 2*3*π/ωa*d'*imag(Grm(fiber, ωa, r1, r1, (0, 0), 1, approx_Re_Grm_trans))*d
-        gamma2 = 2*3*π/ωa*d'*imag(Grm(fiber, ωa, r2, r2, (0, 0), 1, approx_Re_Grm_trans))*d
+        gamma1 = 2*3*π/ωa*d'*imag(Grm(fiber, ωa, r1, r1, (0, 0), 1, save_Im_Grm_trans, approx_Re_Grm_trans))*d
+        gamma2 = 2*3*π/ωa*d'*imag(Grm(fiber, ωa, r2, r2, (0, 0), 1, save_Im_Grm_trans, approx_Re_Grm_trans))*d
         return 3*π/ωa*d'*real(Grm_)*d * sqrt(gamma1*gamma2)
     else
         return 3*π/ωa*d'*real(Grm_)*d
@@ -339,9 +335,9 @@ function get_Jrm(fiber, d, r1, r2, approx_Re_Grm_trans)
 end
 
 
-function get_Γrm(fiber, d, r1, r2, approx_Re_Grm_trans)
+function get_Γrm(fiber, d, r1, r2, save_Im_Grm_trans, approx_Re_Grm_trans)
     if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
-    return 2*3*π/ωa*d'*imag(Grm(fiber, ωa, r1, r2, (0, 0), 1, approx_Re_Grm_trans))*d
+    return 2*3*π/ωa*d'*imag(Grm(fiber, ωa, r1, r2, (0, 0), 1, save_Im_Grm_trans, approx_Re_Grm_trans))*d
 end
 
 
@@ -389,7 +385,7 @@ for parameters given by SP and a given detuning
 """
 function calc_σBα_steadyState(SP, Δ)
     postfix = get_postfix(Δ, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.arrayDescription, SP.fiber.postfix)
-    params = get_parameterMatrices(SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.approx_Re_Grm_trans)
+    params = get_parameterMatrices(SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_Im_Grm_trans, SP.approx_Re_Grm_trans)
     if all(SP.ηα .== 0) return calc_σ_steadyState(Δ, params..., postfix)
     else                return calc_σBα_steadyState(Δ, params..., postfix)
     end
@@ -401,7 +397,7 @@ Scan the steady state values of atomic coherences σ and the atom-phonon correla
 """
 function scan_σBα_steadyState(SP)
     postfixes = get_postfix.(SP.Δ_range, Ref(SP.d), Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), SP.arrayDescription, SP.fiber.postfix)
-    params = get_parameterMatrices(SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.approx_Re_Grm_trans)
+    params = get_parameterMatrices(SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_Im_Grm_trans, SP.approx_Re_Grm_trans)
     if all(SP.ηα .== 0) return calc_σ_steadyState.(SP.Δ_range, Ref.(params)..., postfixes)
     else                return calc_σBα_steadyState.(SP.Δ_range, Ref.(params)..., postfixes)
     end
@@ -466,7 +462,7 @@ Perform time evolution for parameters given by SP
 """
 function timeEvolution(SP, Δ)
     postfix = get_postfix(Δ, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax)
-    params = get_parameterMatrices(SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.approx_Re_Grm_trans)
+    params = get_parameterMatrices(SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_Im_Grm_trans, SP.approx_Re_Grm_trans)
     return timeEvolution(Δ, params..., SP.N, SP.initialState, SP.tspan, SP.dtmax, postfix)
 end
     
@@ -476,7 +472,7 @@ Scan time evolutions over the detuning
 """
 function scan_timeEvolution(SP)
     postfixes = get_postfix.(SP.Δ_range, Ref(SP.d), Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, Ref(SP.tspan), SP.dtmax)
-    params = get_parameterMatrices(SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.approx_Re_Grm_trans)
+    params = get_parameterMatrices(SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_Im_Grm_trans, SP.approx_Re_Grm_trans)
     return timeEvolution(SP.Δ_range, Ref.(params)..., SP.N, Ref(SP.initialState), Ref(SP.tspan), SP.dtmax, postfixes)
 end
 
@@ -493,16 +489,7 @@ function calc_transmission(σ, fiber, d, incField_wlf, array)
     # postfix = get_postfix()
     # filename = "t_noPh_" * postfix
     
-    # if isfile(saveDir * filename * ".txt")
-    #     if overwrite_bool 
-    #         println("The transmission for \n   $filename\nhas already been calculated.\n" *
-    #                 "Recalculating and overwriting in 5 seconds...")
-    #         sleep(5)
-    #     else
-    #         println("Loading transmission")
-    #         return load_as_txt(saveDir, filename)
-    #     end
-    # end
+    # if isfile(saveDir * filename * ".txt") return load_as_txt(saveDir, filename) end
     
     # Prepare some parameters and calculate transmission
     tildeΩ = get_tildeΩs(fiber, d, incField_wlf, array)
@@ -522,16 +509,7 @@ function calc_transmission(σBα, fiber, d, ηα, incField_wlf, array)
     # postfix = get_postfix()
     # filename = "t_" * postfix
     
-    # if isfile(saveDir * filename * ".txt")
-    #     if overwrite_bool 
-    #         println("The transmission for \n   $filename\nhas already been calculated.\n" *
-    #                 "Recalculating and overwriting in 5 seconds...")
-    #         sleep(5)
-    #     else
-    #         println("Loading transmission")
-    #         return load_as_txt(saveDir, filename)
-    #     end
-    # end
+    # if isfile(saveDir * filename * ".txt") return load_as_txt(saveDir, filename) end
     
     # Prepare some parameters and calculate transmission
     tildeΩ, tildeΩα = get_tildeΩs(fiber, d, ηα, incField_wlf, array)

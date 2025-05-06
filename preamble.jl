@@ -16,6 +16,8 @@ using LaTeXStrings #LaTeX formatting in string in plots
 using Bessels #Bessel functions for fiber equation and modes
 # using StaticArrays #implements arrays with static size, which are faster for matrix manipulations of small matrices
 using Printf #for formatting strings
+using Random #for random permutations etc.
+using Statistics #for calculating mean, standard deviation, etc.
 
 
 #================================================
@@ -89,6 +91,8 @@ struct SysPar
     N::Int                                          # Number of atoms in array
     ρa::Union{Real, Nothing}                        # Radial coordinate of regular array of atoms (set to nothing if array is not regular)
     a::Union{Real, Nothing}                         # Lattice spacing of regular array of atoms (set to nothing if array is not regular)
+    ff::Union{Real, Nothing}                        # Filling fraction of the array
+    pos_unc::Union{Real, Vector, Nothing}           # Classical positional uncertainty
     array::Vector{Vector{<:Real}}                   # Atomic array (by default initialized using the above specifications)
     arrayDescription::String                        # Description of the atomic array for postfix
     
@@ -98,6 +102,8 @@ struct SysPar
     d::Union{Vector{<:Number}, String}              # Dipole moment of atoms
     incField_wlf::Vector{Tuple{<:Number, Int, Int}} # Vector of (weight, l, f) tuples for defining the incoming driving field
     
+    save_Im_Grm_trans::Bool                         # Whether to save the imaginary transverse part of the radiation Green's function
+        
     # Whether to approximate the real, transverse part of the radiation Green's function 
     # using the corresponding part of the vacuum GF, as well as whether to scale the real part of the rad. GF
     # with the local radiation decay rates
@@ -107,21 +113,21 @@ struct SysPar
     function SysPar(ρf::Real, n::Real, ω::Real,
                     Δ_specs::Tuple{Real, Real, Int},
                     tspan::Tuple{Real, Real}, dtmax::Real, initialState::Vector, initialStateDescription::String,
-                    N::Int, ρa::Real, a::Real,
+                    N::Int, ρa::Real, a::Real, ff::Real, pos_unc::Union{Real, Vector},
                     να::Vector, ηα::Vector,
-                    d::Union{Vector, String}, incField_wlf::Vector, approx_Re_Grm_trans::Bool)
+                    d::Union{Vector, String}, incField_wlf::Vector, save_Im_Grm_trans::Bool, approx_Re_Grm_trans::Bool)
         
         fiber = Fiber(ρf, n, ω)
         Δ_range = range(Δ_specs...)
-        array = get_array(N, ρa, a)
-        arrayDescription = standardArrayDescription(N, ρa, a)
+        array = get_array(N, ρa, a, ff, pos_unc)
+        arrayDescription = standardArrayDescription(N, ρa, a, ff, pos_unc)
 
         return new(ρf, n, ω, fiber,
                    Δ_specs, Δ_range,
                    tspan, dtmax, initialState, initialStateDescription,
-                   N, ρa, a, array, arrayDescription,
+                   N, ρa, a, ff, pos_unc, array, arrayDescription,
                    να, ηα,
-                   d, incField_wlf, approx_Re_Grm_trans)
+                   d, incField_wlf, save_Im_Grm_trans, approx_Re_Grm_trans)
     end
     
     function SysPar(ρf::Real, n::Real, ω::Real,
@@ -129,7 +135,7 @@ struct SysPar
                     tspan::Tuple{Real, Real}, dtmax::Real, initialState::Vector, initialStateDescription::String,
                     array::Vector{Vector}, arrayDescription::String,
                     να::Vector, ηα::Vector,
-                    d::Union{Vector, String}, incField_wlf::Vector, approx_Re_Grm_trans::Bool)
+                    d::Union{Vector, String}, incField_wlf::Vector, save_Im_Grm_trans::Bool, approx_Re_Grm_trans::Bool)
         
         if d == "chiral" && any([site[1] != ρa || site[2] != 0 for site in array]) throw(ArgumentError("d = 'dipole' assumes an array (ρa, 0, z)")) end
         
@@ -138,13 +144,15 @@ struct SysPar
         N  = length(array)
         ρa = nothing
         a  = nothing
+        ff = nothing
+        pos_unc = nothing
         
         return new(ρf, n, ω, fiber,
                    Δ_specs, Δ_range,
                    tspan, dtmax, initialState, initialStateDescription,
-                   N, ρa, a, array, arrayDescription,
+                   N, ρa, a, ff, pos_unc, array, arrayDescription,
                    να, ηα,
-                   d, incField_wlf, approx_Re_Grm_trans)
+                   d, incField_wlf, save_Im_Grm_trans, approx_Re_Grm_trans)
     end
 end
 
@@ -181,6 +189,10 @@ function Base.show(io::IO, SP::SysPar)
     
     println(io, "Incoming field described in terms of weights, polarization indices, and direction indices")
     println(io, "incField_wlf: ", "[" * join(["(" * join([format_Complex_to_String(wlf[1]), wlf[2], wlf[3]], ", ") * ")" for wlf in SP.incField_wlf], ", ") * "]")
+    println(io, "")
+    
+    println(io, "Whether to save the imaginary transverse part of the radiation Green's function")
+    println(io, "save_Im_Grm_trans: ", SP.save_Im_Grm_trans)
     println(io, "")
     
     println(io, "Whether the real part, transverse part of the radiation GF has been approximated with corresponding part of the vacuum GF")

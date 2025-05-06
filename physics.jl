@@ -84,7 +84,7 @@ function fiber_equation(x, params)
     D  = sqrt(D1 + D2)
     return A + B + C + D
     
-    # TODO: Make this work?
+    
     # # For small arguments the Bessel functions are replaced by their asymptotic expressions,
     # # and the resulting products are reduced to avoid division by ~zero
     # tol = 1e-4
@@ -113,7 +113,6 @@ function fiber_equation(x, params)
 end
 
 
-# TODO: move this variable explanation somewhere else? these parameters are used in many places, and most functions dont have parameters explanation
 """
 Calculates the guided mode or its derivatives with
 l: transverse polarization index
@@ -280,7 +279,6 @@ function radiationModeComps(fiber, ω, κ, m, l, ρ, derivOrder=0)
     if ρ < ρf throw(ArgumentError("radiationModeComps is only implemented for field points outside the fiber")) end
     
     # Set up some parameters
-    # TODO: these quantities do not depend on position, so perhaps they should be calculated further out/up, to avoid repetition (same comment goes for other quantities in the above mode-related functions)
     h = in_momentum(κ, ω, n)
     q = out_momentum(κ, ω)
     
@@ -294,8 +292,7 @@ function radiationModeComps(fiber, ω, κ, m, l, ρ, derivOrder=0)
     C = [(-1)^j      *1im*π*q^2*ρf/4*(    L[j] + B*1im*V[j]) for j in 1:2]
     D = [(-1)^(j - 1)*1im*π*q^2*ρf/4*(1im*V[j] - B    *M[j]) for j in 1:2]
     
-    N = 8*π*ω/q^2*(abs2(C[1]) + abs2(D[1])) #Rauschenbeutel normalization
-    # N = 16*π^2*ω^2/q^3*(abs2(C[1]) + abs2(D[1])) # Olmos normalization
+    N = 8*π*ω/q^2*(abs2(C[1]) + abs2(D[1]))
     A = 1/sqrt(N)
     
     # Put together the components
@@ -319,14 +316,14 @@ end
 """
 Calculates the radiation mode Green's function or its derivatives 
 """
-function Grm(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, approx_Re_Grm_trans=false)
+function Grm(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_Im_Grm_trans=true, approx_Re_Grm_trans=false)
     # The Green's function is calculated in terms of the contributions: the longitudinal part, the imaginary transverse part, and the real transverse part
     
     # First, we calculate the longitudinal part
     G0_lo = G0_long(ω, r_field, r_source, derivOrder, α)
     
     # Second, the imaginary transverse part
-    Im_Grm_tr = Im_Grm_trans(fiber, ω, r_field, r_source, derivOrder, α)
+    Im_Grm_tr = Im_Grm_trans(fiber, ω, r_field, r_source, derivOrder, α, save_Im_Grm_trans)
     
     # Finally, the real transverse part
     Re_Grm_tr = Re_Grm_trans(fiber, ω, r_field, r_source, derivOrder, α, approx_Re_Grm_trans)
@@ -432,23 +429,21 @@ end
 Small wrapper for the calculation of the imaginary part of the transverse part of radiation mode 
 Green's function or its derivatives that explots the Onsager reciprocity to simpilify calculations
 """
-function Im_Grm_trans(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1)
+function Im_Grm_trans(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_Im_Grm_trans=true)
     if r_field[3] < r_source[3]
-        return transpose(Im_Grm_trans_(fiber, ω, r_source, r_field, derivOrder, α))
+        return transpose(Im_Grm_trans_(fiber, ω, r_source, r_field, derivOrder, α, save_Im_Grm_trans))
     else
-        return Im_Grm_trans_(fiber, ω, r_field, r_source, derivOrder, α)
+        return Im_Grm_trans_(fiber, ω, r_field, r_source, derivOrder, α, save_Im_Grm_trans)
     end
 end
 
 
-# TODO: only calculate needed components, and exploit that some entries appear to be zero depending on derivOrder and α,
-# presumably because of the simple array structure
 """
 Calculates the imaginary part of the transverse part of radiation mode Green's function or its derivatives 
 
 Uses the normalization convention of Kien, Rauschenbeutel 2017
 """
-function Im_Grm_trans_(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, overwrite_bool=false, abstol = 1e-4)
+function Im_Grm_trans_(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_Im_Grm_trans=true, abstol = 1e-4)
     # The Green's function only depends on the difference in the z-coordinates, 
     # so we save the calculation according to that value, rather than the individual z-coordinates
     coords = ro.([r_field[1], r_field[2], r_source[1], r_source[2], r_field[3] - r_source[3]])
@@ -456,16 +451,7 @@ function Im_Grm_trans_(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, ov
     filename = "IGrmt_" * postfix
     folder = "Im_Grm_trans/"
     
-    if isfile(saveDir * folder * filename * ".txt")
-        if overwrite_bool 
-            println("The imaginary part of the radiation Green's function for \n   $filename\nhas already been calculated.\n" *
-                    "Recalculating and overwriting in 5 seconds...")
-            sleep(5)
-        else
-            # println("Loading the imaginary part of the radiation Green's function")
-            return load_as_txt(saveDir * folder, filename)
-        end
-    end
+    if isfile(saveDir * folder * filename * ".txt") return load_as_txt(saveDir * folder, filename) end
     
     # Set up the integrand and the integral domain
     integrand(x, args) = Erm(fiber, ω, x, args..., r_field , derivOrder[1], α)*
@@ -495,62 +481,9 @@ function Im_Grm_trans_(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, ov
         m += 1
     end
     
-    save_as_txt(Im_Grm_trans, saveDir * folder, filename)
+    if save_Im_Grm_trans save_as_txt(Im_Grm_trans, saveDir * folder, filename) end
     return Im_Grm_trans
 end
-
-# # Olmos calculation
-# function Im_Grm_trans_(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, overwrite_bool=false)
-#     # The Green's function only depends on the difference in the z-coordinates, 
-#     # so we save the calculation according to that value, rather than the individual z-coordinates
-#     coords = ro.([r_field[1], r_field[2], r_source[1], r_source[2], r_field[3] - r_source[3]])
-#     postfix = get_postfix(ω, coords, derivOrder, α, fiber.postfix)
-#     filename = "IGrmt_" * postfix
-#     folder = "Im_Grm_trans/"
-    
-#     if isfile(saveDir * folder * filename * ".txt")
-#         if overwrite_bool 
-#             println("The imaginary part of the radiation Green's function for \n   $filename\nhas already been calculated.\n" *
-#                     "Recalculating and overwriting in 5 seconds...")
-#             sleep(5)
-#         else
-#             # println("Loading the imaginary part of the radiation Green's function")
-#             return load_as_txt(saveDir * folder, filename)
-#         end
-#     end
-    
-#     # Set up the integrand, the integral domain, and the cut-off for the m-sum
-#     integrand(x, args) = Erm(fiber, ω, ω*cos(x), args..., r_field , derivOrder[1], α)*
-#                          Erm(fiber, ω, ω*cos(x), args..., r_source, derivOrder[2], α)'
-#     domain = (eps(1.0), π - eps(1.0))
-#     abstol = 1e-3
-    
-#     # Perform the combined sum and integration
-#     Im_Grm_trans = zeros(3, 3)
-#     summand_m = ones(ComplexF64, 3, 3)
-#     m = 0
-#     while maximum(abs.(summand_m)) > abstol
-#         summand_m = zeros(ComplexF64, 3, 3)
-#         for l in (-1, 1)
-#             args = (m, l)
-#             prob = IntegralProblem(integrand, domain, args)
-#             integral = Integrals.solve(prob, HCubatureJL())
-#             summand_m += π/2*integral.u
-#             if m != 0
-#                 args = (-m, l)
-#                 prob = IntegralProblem(integrand, domain, args)
-#                 integral = Integrals.solve(prob, HCubatureJL())
-#                 summand_m += π/2*integral.u
-#             end
-#         end
-#         # summand_m is always real (after adding all combinations of l and (m, -m)), even though integral is not
-#         Im_Grm_trans += real(summand_m)
-#         m += 1
-#     end
-    
-#     save_as_txt(Im_Grm_trans, saveDir * folder, filename)
-#     return Im_Grm_trans
-# end
 
 
 """
@@ -612,7 +545,8 @@ Create a (classically) disordered array according to a Gaussian distribution wit
 function introduce_position_uncertainty_to_array_sites(array, pos_unc)
     # Generate normally-distributed random numbers for each coordinate of each atom
     N = length(array)
-    random_shift = pos_unc*randn.(fill(3, N))
+    # random_shift = pos_unc*randn.(fill(3, N))
+    random_shift = broadcast(.*, [pos_unc], randn.(fill(3, N))) # works both for the cases of pos_unc=scalar and pos_unc=triplet
     
     # Return the randomly shifted array sites
     return array + random_shift
@@ -703,8 +637,6 @@ Implements the analytical solution for the steady state values of the atomic and
 degrees of freedom to first order in the driving and to second order in the Lamb-Dicke parameter.
 """
 function σBα_steadyState(Δ, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2)
-    # TODO: use only zeroth order tildeFα? Reduce to second order in eta in other ways (i.e. calculate for eta=0 and eta≠0 to extract exact dependencies)? Time evolution anyways also finds results that are effectively higher order
-    
     tildeFα_inv = inv.(tildeFα)
     
     # Calculate the coefficient matrices

@@ -37,9 +37,7 @@ function define_SP_BerlinCS()
     να0 = [ν0_radial, ν0_azimuthal, ν0_axial] #trap frequencies in a Cartesian basis (x, y, z) which matches with (radial, azimuthal, axial) if the position is taken to be on the x-axis
     
     # Recoil energy
-    ħ = 1.054e-34                                 #m^2*kg/s, Planck's reduced constant
-    cesium_mass = 132.9*1.66e-27                  #kg, mass of cesium-133
-    νR0 = ħ*(2π/(λ0*1e-9))^2/(2*cesium_mass)*1e-3 #kHz, recoil energy of cesium atoms (as an angular frequency)
+    νR0 = 2π*2.0663 #kHz, recoil energy of cesium atoms (as an angular frequency)
     
     # Lamb-Dicke parameters in a Cartesian basis (x, y, z)
     ηα0 = @. sqrt(νR0/να0)
@@ -51,14 +49,14 @@ function define_SP_BerlinCS()
     να0_ul = να0/γ0 #unitless version of να0
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-5, 5, 250)
+    Δ_specs = (-5, 5, 50)
     
     # Time spand and maximum time step allowed in time evolution
     tspan = (0, 100)
     dtmax = 0.01
     
     # Set array specs and generate array, as well as description for postfix
-    N  = 5
+    N = 2
     
     # Lamb-Dicke parameters
     ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
@@ -70,22 +68,39 @@ function define_SP_BerlinCS()
     
     # Atomic dipole moment
     # d = conj([1im, 0, -1]/sqrt(2))
-    d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul)
-    # d = "chiral"
+    # d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul)
+    d = "chiral"
     
     # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
-    incField_wlf = [(1, 1, 1), (1, -1, 1)]
-    # incField_wlf = []
+    # incField_wlf = [(1, 1, 1), (1, -1, 1)]
+    incField_wlf = []
     
     # Whether to approximate real, transverse part of radiation GF
     approx_Re_Grm_trans = true
     
-    return SysPar(ρf0_ul, n0, ωa,
-                  Δ_specs,
-                  tspan, dtmax, initialState, initialStateDescription,
-                  N, ρa0_ul, a0_ul,
-                  να0_ul, ηα,
-                  d, incField_wlf, approx_Re_Grm_trans)
+    # Set filling fraction, positional uncertainty, and number of instantiations 
+    ff = 1.0
+    pos_unc = 0.0#ηα0/ωa
+    N_inst = 1
+    
+    # Whether to save the imaginary transverse part of the radiation GF (should not be done when considering imperfect arrays)
+    save_Im_Grm_trans = N == 1
+    
+    if N_inst == 1
+        return SysPar(ρf0_ul, n0, ωa,
+                      Δ_specs,
+                      tspan, dtmax, initialState, initialStateDescription,
+                      N, ρa0_ul, a0_ul, ff, pos_unc,
+                      να0_ul, ηα,
+                      d, incField_wlf, save_Im_Grm_trans, approx_Re_Grm_trans)
+    else
+        return [SysPar(ρf0_ul, n0, ωa,
+                       Δ_specs,
+                       tspan, dtmax, initialState, initialStateDescription,
+                       N, ρa0_ul, a0_ul, ff, pos_unc,
+                       να0_ul, ηα,
+                       d, incField_wlf, save_Im_Grm_trans, approx_Re_Grm_trans) for _ in 1:N_inst]
+    end
 end
 
 
@@ -248,6 +263,7 @@ function main()
     # plot_coupling_strengths(SP)
     # plot_σBαTrajectories_σBαSS(SP)
     plot_transmission_vs_Δ(SP)
+    # plot_classDisorder_transmission_vs_Δ(SP)
     
     return nothing
 end
@@ -333,7 +349,23 @@ function plot_transmission_vs_Δ(SP)
     σBα_scan = scan_σBα_steadyState(SP)
     t = calc_transmission.(Ref(SP), σBα_scan)
     
-    fig_transmission_vs_Δ(SP.Δ_range, t)
+    T, phase = prep_transmission(t)
+    fig_transmission_vs_Δ(SP.Δ_range, T, phase)
+end
+
+
+function plot_classDisorder_transmission_vs_Δ(SPs)
+    if typeof(SPs) == SysPar throw(ArgumentError("plot_classDisorder_transmission_vs_Δ requires N_inst > 1")) end
+    
+    ts = []
+    for SP in SPs
+        σBα_scan = scan_σBα_steadyState(SP)
+        push!(ts, calc_transmission.(Ref(SP), σBα_scan))
+    end
+    
+    # Prepare means and standard deviations of (squared) magnitudes and phases
+    T_means, T_stds, phase_means, phase_stds = prep_classDisorder_transmission(ts)
+    fig_classDisorder_transmission_vs_Δ(SPs[1].Δ_range, T_means, T_stds, phase_means, phase_stds)
 end
 
 
@@ -348,6 +380,25 @@ println("\n -- Running main() -- \n")
 
 # TODO list:
 
+# Get it to work on the cluster
+    # Use MPI?
+    
+# Calculate reflection and loss
+
+# Implement figure of atomic array, including a representation of the fiber, for visualization
+
+# Implement saving and loading of the parameter matrices?
+
+# Clean up and split up files? physics.jl and utility.jl in particular
+
+# Implement non-lazy version of get_tildeGs(fiber, d::String... ? Presumably significantly faster when exploiting knowledge of which components etc. are actually needed, but also very messy...
+
+# Implement the correct real part of the radiation GF
+    # But maybe not relevant since atoms are far-ish from the fiber, such that using vacuum-approximation should be good
+    
+# When calculating Im_Grm_trans, only calculate needed components? And exploit that some entries appear to be zero depending on derivOrder and α,
+    # presumably because of the simple array structure
+
 # Reconsider factoring of code, particularly whether calculation of parameters etc. 
     # should take place outside of scanning loops
     # One step deeper, the calculation of mode components should perhaps also be done 
@@ -360,11 +411,14 @@ println("\n -- Running main() -- \n")
     # and calculate parameters on its own, or it takes the already prepared parameters?
     # or some wrapper which can direct to do either one thing or the other. Such that
     # different calculation functions can still be called without making a whole scan...
+# When calculating GFs (and maybe other quantities), go through which calculations actually depend on the input that is varied (positions, frequencies, ...) 
+    # and refactor to optimize this (no need to repeat the same position-independent calculation for each point in the array, etc.)
 
-# Implement the correct real part of the radiation GF
-    # But maybe not relevant since atoms are far-ish from the fiber, such that using vacuum-approximation should be good
+# Use only zeroth order tildeFα in σBα_steadyState? Reduce to second order in eta in other ways (i.e. calculate for eta=0 and eta≠0 to extract exact dependencies)? Time evolution anyways also finds results that are effectively higher order
+    
+# Update interface comments and make a description of notation/conventions somewhere
 
-# Implement a good way of doing the classical sampling for positional uncertainty
+# Make small ω version of fiber_equation work? Implement HomotopyContinuation solution?
 
 # Figure out how to add (super-)titles to figures
     # Possibly define function that takes a plot and adds the title to it, by moving existing plots around

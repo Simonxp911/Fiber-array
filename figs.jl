@@ -51,6 +51,27 @@ end
 
 
 """
+Plot a coupling strength's magnitude and phase as a function of a relative spatial coordinate
+"""
+function fig_coupling_vs_x(x_range, coupling, x_label, y_label)
+    # Start figure 
+    fig = plot(reuse=false, size=(800, 600), layout=(1, 2))
+    
+    # Plot the propagation constant, and the lines y = ω and y = nω
+    plot!(x_range, abs.(coupling) , label=L"$ |C| $" , c=:blue, subplot=1)
+    plot!(x_range, angle.(coupling), label=L"arg$ (C) $", c=:red , subplot=2)
+
+    # Finish figure
+    plot!(ticks=:native)
+    xlims!(extrema(x_range))
+    xlabel!(x_label)
+    ylabel!(y_label * ", magnitude", subplot=1)
+    ylabel!(y_label * ", phase", subplot=1)
+    display(fig)
+end
+
+
+"""
 Plot time evolved atomic coherences σ
 and the corresponding analytically calculated steady state values
 (for the case of no phonons)
@@ -121,19 +142,20 @@ end
 """
 Plot magnitude and phase of transmission amplitude as a function of detuning
 """
-function fig_transmission_vs_Δ(Δ_range, t)
+function fig_transmission_vs_Δ(Δ_range, T, phase)
     # Start figure 
     fig = plot(reuse=false, size=(800, 600), layout=(1, 2))
     
-    # Plot the propagation constant, and the lines y = ω and y = nω
-    plot!(Δ_range, abs2.(t) , label=L"$ |t|^2 $" , c=:blue, subplot=1)
-    plot!(Δ_range, angle.(t), label=L"arg$ (t) $", c=:red , subplot=2)
+    # Plot magnitude squared and the phase of the transmission 
+    plot!(Δ_range, T    , label=L"$ |t|^2 $" , c=:blue, subplot=1)
+    plot!(Δ_range, phase, label=L"arg$ (t) $", c=:red , subplot=2)
 
     # Finish figure
     plot!(ticks=:native)
     xlims!(extrema(Δ_range))
-    ylims!(ylims(fig[1])[1], 1, subplot=1)
-    # ylims!(-3.1415, 3.1415, subplot=2) #for some reason using π gives an error from Python
+    # ylims!(ylims(fig[1])[1], 1, subplot=1)
+    ylims!(0, 1, subplot=1)
+    ylims!(-3.1415, 3.1415, subplot=2) #for some reason using π gives an error from Python
     xlabel!(L"$ \Delta/\gamma $")
     # ylabel!(L"")
     title!("Transmission coefficient", subplot=1)
@@ -143,21 +165,27 @@ end
 
 
 """
-Plot a coupling strength's magnitude and phase as a function of a relative spatial coordinate
+Plot mean magnitude and phase of transmission amplitude as a function of detuning
+
+with bands given by the standard deviation
 """
-function fig_coupling_vs_x(x_range, coupling, x_label, y_label)
+function fig_classDisorder_transmission_vs_Δ(Δ_range, T_means, T_stds, phase_means, phase_stds)
     # Start figure 
     fig = plot(reuse=false, size=(800, 600), layout=(1, 2))
     
-    # Plot the propagation constant, and the lines y = ω and y = nω
-    plot!(x_range, abs.(coupling) , label=L"$ |C| $" , c=:blue, subplot=1)
-    plot!(x_range, angle.(coupling), label=L"arg$ (C) $", c=:red , subplot=2)
-
+    # Plot mean plus/minus the standard deviation of the magnitude squared and the phase of the transmission 
+    plot!(Δ_range, T_means, ribbon=T_stds, fillalpha=0.35, label=L"$ |t|^2 $" , c=:blue, subplot=1)
+    plot!(Δ_range, phase_means, ribbon=phase_stds, fillalpha=0.35, label=L"arg$ (t) $", c=:red , subplot=2)
+    
     # Finish figure
     plot!(ticks=:native)
-    xlims!(extrema(x_range))
-    xlabel!(x_label)
-    ylabel!(y_label * ", magnitude", subplot=1)
-    ylabel!(y_label * ", phase", subplot=1)
+    xlims!(extrema(Δ_range))
+    # ylims!(ylims(fig[1])[1], 1, subplot=1)
+    ylims!(0, 1, subplot=1)
+    ylims!(-3.1415, 3.1415, subplot=2) #for some reason using π gives an error from Python
+    xlabel!(L"$ \Delta/\gamma $")
+    # ylabel!(L"")
+    title!("Transmission coefficient", subplot=1)
+    title!("Transmission phase", subplot=2)
     display(fig)
 end

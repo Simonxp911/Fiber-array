@@ -180,6 +180,15 @@ end
 
 
 """
+Remove singleton dimensions from an array
+"""
+function squeeze(A::AbstractArray)
+    singleton_dims = tuple((d for d in 1:ndims(A) if size(A, d) == 1)...)
+    return dropdims(A, dims=singleton_dims)
+end
+
+
+"""
 Take a vector in Cartesian coordinates (x, y, z) and return it in cylindrical coordinates (ρ, ϕ, z)
 """
 function cylCoordinates(r)
@@ -279,8 +288,12 @@ end
 """
 arrayDescription for the usual 1D chain along the fiber, as given by get_array()
 """
-function standardArrayDescription(N, ρa, a)
-    return "stA_N_$(N)_rhoa_$(ro(ρa))_a_$(ro(a))"
+function standardArrayDescription(N, ρa, a, ff, pos_unc)
+    if pos_unc isa Number
+        return "stA_N_$(N)_rhoa_$(ro(ρa))_a_$(ro(a))_ff_$(ro(ff))_pu_$(ro(pos_unc))"
+    else
+        return "stA_N_$(N)_rhoa_$(ro(ρa))_a_$(ro(a))_ff_$(ro(ff))_pu_$(join(ro.(pos_unc), ","))"
+    end
 end
 
 
@@ -306,5 +319,5 @@ end
 Returns a matrix whose rows are given by the entries of the given vector
 """
 function vectorOfRows2Matrix(x)
-    return Matrix(reduce(hcat, x)')
+    return Matrix(transpose(reduce(hcat, x)))
 end
