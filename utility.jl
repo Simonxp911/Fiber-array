@@ -266,14 +266,14 @@ function drhatrhat(rvec, derivOrder, α)
     αcoor = rvec[α]
     αhat  = zeros(3); αhat[α] = 1
     
-    # Calculate derivatives of rvec (starting with the zeroth order derivative)
-    drvec = [rvec]
-    if derivOrder >= 1 push!(drvec, (αhat - αcoor/r*rhat)/r) end
-    if derivOrder >= 2 push!(drvec, ((3*αcoor^2/r^2 - 1)*rhat - 2*αcoor/r*αhat)/r^2) end
+    # Calculate derivatives of rhat (starting with the zeroth order derivative)
+    drhat = [rhat]
+    if derivOrder >= 1 push!(drhat, (αhat - αcoor/r*rhat)/r) end
+    if derivOrder >= 2 push!(drhat, ((3*αcoor^2/r^2 - 1)*rhat - 2*αcoor/r*αhat)/r^2) end
     if derivOrder >= 3 throw(ArgumentError("drr is not implemented for derivOrder > 2")) end
     
-    # Put together the derivative of rvec*rvec'
-    return sum([binomial(derivOrder, i)*drvec[i+1]*drvec[derivOrder - i + 1]' for i in 0:derivOrder])
+    # Put together the derivative of rhat*rhat'
+    return sum([binomial(derivOrder, i)*drhat[i+1]*drhat[derivOrder - i + 1]' for i in 0:derivOrder])
 end
 
 

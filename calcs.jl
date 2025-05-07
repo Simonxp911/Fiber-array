@@ -532,3 +532,37 @@ function calc_transmission(SP, σBα)
         return calc_transmission(σBα, SP.fiber, SP.d, SP.ηα, SP.incField_wlf, SP.array)
     end
 end
+
+
+"""
+Calculate the intensity of the radiated light (in the case of no phonons) 
+"""
+function calc_E_radiation(σ, fiber, d, r_field, array, save_individual_res::Bool=true, approx_Re_Grm_trans::Bool=false)
+    # Grm_rrn = Grm.(Ref(fiber), ωa, Ref(r_field), array, Ref((0, 0)), 1, save_individual_res, approx_Re_Grm_trans)
+    Grm_rrn = G0.(ωa, Ref(r_field), array)
+    E_radiation(σ, Grm_rrn, d)
+end
+
+
+"""
+Calculate the intensity of the radiated light
+"""
+function calc_E_radiation(σBα, fiber, d, ηα, r_field, array, save_individual_res::Bool=true, approx_Re_Grm_trans::Bool=false)
+    throw(ArgumentError("calc_E_radiation has not been implemented for the case including phonons"))
+end
+
+
+"""
+Calculate the intensity of the radiated light for parameters given by SP
+
+The function assumes that σBα contains only σ if the Lamb-Dicke parameters are zero
+"""
+function calc_E_radiation(SP, σBα, r_field)
+    if SP.d == "chiral" d = chiralDipoleMoment(SP.fiber, SP.ρa) else d = SP.d end
+    
+    if all(SP.ηα .== 0)
+        return calc_E_radiation(σBα, SP.fiber, d, r_field, SP.array, SP.save_individual_res, SP.approx_Re_Grm_trans)
+    else
+        return calc_E_radiation(σBα, SP.fiber, d, SP.ηα, r_field, SP.array, SP.save_individual_res, SP.approx_Re_Grm_trans)
+    end
+end

@@ -276,8 +276,6 @@ Uses the normalization convention of Kien, Rauschenbeutel 2017
 function radiationModeComps(fiber, ω, κ, m, l, ρ, derivOrder=0)
     ρf, n = fiber.radius, fiber.refractive_index
     
-    if ρ < ρf throw(ArgumentError("radiationModeComps is only implemented for field points outside the fiber")) end
-    
     # Set up some parameters
     h = in_momentum(κ, ω, n)
     q = out_momentum(κ, ω)
@@ -296,19 +294,33 @@ function radiationModeComps(fiber, ω, κ, m, l, ρ, derivOrder=0)
     A = 1/sqrt(N)
     
     # Put together the components
-    eρ = A*1im*q^(derivOrder - 2)*sum([C[j]*κ*      q*dbesselh(1 + derivOrder, m, j, q*ρ) + D[j]*ω*1im*m/ρ*dbesselh(derivOrder, m, j, q*ρ) for j in 1:2])
-    eϕ = A*1im*q^(derivOrder - 2)*sum([C[j]*κ*1im*m/ρ*dbesselh(derivOrder, m, j, q*ρ)     - D[j]*ω      *q*dbesselh(1 + derivOrder, m, j, q*ρ) for j in 1:2])
-    ez = A*q^derivOrder          *sum([C[j]*dbesselh(derivOrder, m, j, q*ρ) for j in 1:2])
-    
-    if derivOrder == 1
-        eρ += -A*1im/q^2*sum([D[j]*ω*1im*m/ρ^2*dbesselh(0, m, j, q*ρ) for j in 1:2])
-        eϕ += -A*1im/q^2*sum([C[j]*κ*1im*m/ρ^2*dbesselh(0, m, j, q*ρ) for j in 1:2])
-    elseif derivOrder == 2
-        eρ += -A*1im/q^2*sum([2*q*D[j]*ω*1im*m/ρ^2*dbesselh(1, m, j, q*ρ) - 2*D[j]*ω*1im*m/ρ^3*dbesselh(0, m, j, q*ρ) for j in 1:2])
-        eϕ += -A*1im/q^2*sum([2*q*C[j]*κ*1im*m/ρ^2*dbesselh(1, m, j, q*ρ) - 2*C[j]*κ*1im*m/ρ^3*dbesselh(0, m, j, q*ρ) for j in 1:2])
-    elseif derivOrder != 0 throw(ArgumentError("radiationModeComps is not implemented for derivOrder > 2"))
+    if ρ < ρf 
+        eρ = A*1im*h^(derivOrder - 2)*(κ*      h*dbesselj(1 + derivOrder, m, h*ρ) + B*ω*1im*m/ρ*dbesselj(derivOrder, m, h*ρ))
+        eϕ = A*1im*h^(derivOrder - 2)*(κ*1im*m/ρ*dbesselj(derivOrder, m, h*ρ)     - B*ω*      h*dbesselj(1 + derivOrder, m, h*ρ))
+        ez = A*h^derivOrder*dbesselj(derivOrder, m, h*ρ)
+        
+        if derivOrder == 1
+            eρ += -A*1im/h^2*B*ω*1im*m/ρ^2*dbesselj(0, m, h*ρ)
+            eϕ += -A*1im/h^2*  κ*1im*m/ρ^2*dbesselj(0, m, h*ρ)
+        elseif derivOrder == 2
+            eρ += -A*1im/h^2*(2*h*B*ω*1im*m/ρ^2*dbesselj(1, m, h*ρ) - 2*B*ω*1im*m/ρ^3*dbesselj(0, m, h*ρ))
+            eϕ += -A*1im/h^2*(2*h*  κ*1im*m/ρ^2*dbesselj(1, m, h*ρ) - 2*  κ*1im*m/ρ^3*dbesselj(0, m, h*ρ))
+        elseif derivOrder != 0 throw(ArgumentError("radiationModeComps is not implemented for derivOrder > 2"))
+        end
+    else
+        eρ = A*1im*q^(derivOrder - 2)*sum([C[j]*κ*      q*dbesselh(1 + derivOrder, m, j, q*ρ) + D[j]*ω*1im*m/ρ*dbesselh(derivOrder, m, j, q*ρ) for j in 1:2])
+        eϕ = A*1im*q^(derivOrder - 2)*sum([C[j]*κ*1im*m/ρ*dbesselh(derivOrder, m, j, q*ρ)     - D[j]*ω*      q*dbesselh(1 + derivOrder, m, j, q*ρ) for j in 1:2])
+        ez = A*q^derivOrder          *sum([C[j]*dbesselh(derivOrder, m, j, q*ρ) for j in 1:2])
+        
+        if derivOrder == 1
+            eρ += -A*1im/q^2*sum([D[j]*ω*1im*m/ρ^2*dbesselh(0, m, j, q*ρ) for j in 1:2])
+            eϕ += -A*1im/q^2*sum([C[j]*κ*1im*m/ρ^2*dbesselh(0, m, j, q*ρ) for j in 1:2])
+        elseif derivOrder == 2
+            eρ += -A*1im/q^2*sum([2*q*D[j]*ω*1im*m/ρ^2*dbesselh(1, m, j, q*ρ) - 2*D[j]*ω*1im*m/ρ^3*dbesselh(0, m, j, q*ρ) for j in 1:2])
+            eϕ += -A*1im/q^2*sum([2*q*C[j]*κ*1im*m/ρ^2*dbesselh(1, m, j, q*ρ) - 2*C[j]*κ*1im*m/ρ^3*dbesselh(0, m, j, q*ρ) for j in 1:2])
+        elseif derivOrder != 0 throw(ArgumentError("radiationModeComps is not implemented for derivOrder > 2"))
+        end
     end
-    
     return eρ, eϕ, ez
 end
 
@@ -427,7 +439,7 @@ end
 
 """
 Small wrapper for the calculation of the imaginary part of the transverse part of radiation mode 
-Green's function or its derivatives that explots the Onsager reciprocity to simpilify calculations
+Green's function or its derivatives that exploits the Onsager reciprocity to simpilify calculations
 """
 function Im_Grm_trans(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_individual_res=true)
     if r_field[3] < r_source[3]
@@ -684,4 +696,14 @@ Calculates the transmission through the guided mode
 """
 function transmission(σ, Bα, tildeΩ, tildeΩα, fiber)
     return 1 + 3im*π*fiber.propagation_constant_derivative/(2*ωa^2)*sum( conj(tildeΩ).*σ + sum([conj(tildeΩα[α]).*di(Bα[α]) for α in 1:3]) )
+end
+
+
+"""
+Calculate the radiated E-field, assuming no incoming radiation field
+(in the case of no phonons)
+"""
+function E_radiation(σ, Grm_rrn, d)
+    d_mag = sqrt(3π/ωa^3)
+    return ωa^2*sum( Grm_rrn.*Ref(d_mag*d).*σ )
 end

@@ -1,7 +1,7 @@
 
 include("preamble.jl")
 
-    
+
 #================================================
     Main functions
 ================================================#
@@ -49,14 +49,14 @@ function define_SP_BerlinCS()
     να0_ul = να0/γ0 #unitless version of να0
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-5, 5, 50)
+    Δ_specs = (-5, 5, 300)
     
     # Time spand and maximum time step allowed in time evolution
     tspan = (0, 100)
     dtmax = 0.01
     
     # Set array specs and generate array, as well as description for postfix
-    N = 2
+    N = 100
     
     # Lamb-Dicke parameters
     ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
@@ -80,11 +80,17 @@ function define_SP_BerlinCS()
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
-    pos_unc = any(ηα .!= 0) ? 0.0 : ηα0/ωa
-    n_inst = 10
+    pos_unc = any(ηα .!= 0) ? 0.0 : 0.0#ηα0/ωa
+    n_inst  = any(ηα .!= 0) ?   1 : 1
     
     # Whether to save individual results (Im_Grm_trans, steady states, time evolutions)
     save_individual_res = n_inst == 1
+    
+    # Ranges of z and x values to define r_field for calculating the radiated E-field
+    arrayL = N*a0_ul
+    z_range = range(-arrayL, 2*arrayL, 60)
+    x_range = range(ρa0_ul - arrayL, ρa0_ul + arrayL, 60)
+    
     
     if n_inst == 1
         return SysPar(ρf0_ul, n0, ωa,
@@ -92,14 +98,16 @@ function define_SP_BerlinCS()
                       tspan, dtmax, initialState, initialStateDescription,
                       N, ρa0_ul, a0_ul, ff, pos_unc,
                       να0_ul, ηα,
-                      d, incField_wlf, save_individual_res, approx_Re_Grm_trans)
+                      d, incField_wlf, save_individual_res, approx_Re_Grm_trans,
+                      z_range, x_range)
     else
         return [SysPar(ρf0_ul, n0, ωa,
                        Δ_specs,
                        tspan, dtmax, initialState, initialStateDescription,
                        N, ρa0_ul, a0_ul, ff, pos_unc,
                        να0_ul, ηα,
-                       d, incField_wlf, save_individual_res, approx_Re_Grm_trans) for _ in 1:n_inst]
+                       d, incField_wlf, save_individual_res, approx_Re_Grm_trans,
+                       z_range, x_range) for _ in 1:n_inst]
     end
 end
 
@@ -209,7 +217,7 @@ function define_SP_Chang()
     ρf = 1.2/(2π)  #unitless, fiber radius
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-10, 10, 2)
+    Δ_specs = (-10, 10, 300)
     
     # Time spand and maximum time step allowed in time evolution
     tspan = (0, 5)
@@ -263,7 +271,8 @@ function main()
     # plot_coupling_strengths(SP)
     # plot_σBαTrajectories_σBαSS(SP)
     # plot_transmission_vs_Δ(SP)
-    plot_classDisorder_transmission_vs_Δ(SP)
+    # plot_classDisorder_transmission_vs_Δ(SP)
+    plot_E_radiation(SP)
     
     return nothing
 end
@@ -381,6 +390,18 @@ function plot_classDisorder_transmission_vs_Δ(SPs)
 end
 
 
+function plot_E_radiation(SP)
+    if any(SP.ηα .!= 0) throw(ArgumentError("plot_E_radiation is not implemented for the case of including phonons")) end
+        
+    Δ = -2.76
+    σ = calc_σBα_steadyState(SP, Δ)
+    E = calc_E_radiation.(Ref(SP), Ref(σ), SP.r_field)
+    intensity = norm.(E).^2
+    
+    fig_E_radiation(SP.z_range, SP.x_range, intensity, SP.ρf, SP.array)
+end
+
+
 
 
 
@@ -399,7 +420,7 @@ println("\n -- Running main() -- \n")
 
 # Implement n_inst in a better way? That is, dont have a list of SPs, but include the many instantiations in the same SP?
 
-# Implement figure of atomic array, including a representation of the fiber, for visualization
+# Check that the derivatives of the modes are correctly implemented by comparing with numerically calculated derivatives
 
 # Implement saving and loading of the parameter matrices?
 
@@ -437,8 +458,6 @@ println("\n -- Running main() -- \n")
 # Figure out how to add (super-)titles to figures
     # Possibly define function that takes a plot and adds the title to it, by moving existing plots around
 # Related to this, figure out how to define proper, nice-looking, robust layouts of plots
-
-# Calculate the free-space emitted E-field and plot it, to see where the atoms "leak"
 
 # Consider making structs for x-vector and σBα, to make their structure easier to get an overview of
 

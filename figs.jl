@@ -189,3 +189,34 @@ function fig_classDisorder_transmission_vs_Δ(Δ_range, T_means, T_stds, phase_m
     title!("Transmission phase", subplot=2)
     display(fig)
 end
+
+
+"""
+Plot the intensity (norm-squared) of the radiated E-field around the fiber
+"""
+function fig_E_radiation(z_range, x_range, intensity, ρf, array)
+    # Start figure 
+    fig = plot(reuse=false, size=(800, 600))
+    
+    # Plot the E-field intensity
+    sat = 1e-2
+    intensity[intensity .> sat] .= sat
+    # contourf!(z_range, x_range, intensity', c=:viridis)
+    heatmap!(z_range, x_range, intensity', c=:viridis)
+    
+    # Plot a representation of the fiber
+    rectangle(w, h, x, y) = Shape(x .+ [0, w, w, 0], y .+ [0, 0, h, h])
+    plot!(rectangle(z_range[end] - z_range[1], 2*ρf, z_range[1], -ρf), lw=2, c=:gray, opacity=0.3, label=false)
+    
+    # Plot a representation of the atomic array
+    scatter!([site[3] for site in array], [site[1] for site in array], mc=:black, markershape=:circle, ms=10, label=false)
+    
+    # Finish figure
+    plot!(ticks=:native, aspect_ratio=:equal)
+    xlims!(extrema(z_range))
+    ylims!(extrema(x_range))
+    xlabel!(L"$ z/λ $")
+    ylabel!(L"$ x/λ $")
+    title!(L"$ I/(\gamma/\lambda^3) $")
+    display(fig)
+end

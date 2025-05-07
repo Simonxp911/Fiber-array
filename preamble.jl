@@ -109,25 +109,57 @@ struct SysPar
     # with the local radiation decay rates
     approx_Re_Grm_trans::Bool
     
+    z_range::Union{AbstractRange, Nothing}          # Range of z values for calculating the radiation E-field
+    x_range::Union{AbstractRange, Nothing}          # Range of x values for calculating the radiation E-field
+    r_field::Union{Matrix{Vector{<:Real}}, Nothing} # Range of positions for calculating the radiation E-field
+    
     
     function SysPar(ρf::Real, n::Real, ω::Real,
                     Δ_specs::Tuple{Real, Real, Int},
                     tspan::Tuple{Real, Real}, dtmax::Real, initialState::Vector, initialStateDescription::String,
                     N::Int, ρa::Real, a::Real, ff::Real, pos_unc::Union{Real, Vector},
                     να::Vector, ηα::Vector,
-                    d::Union{Vector, String}, incField_wlf::Vector, save_individual_res::Bool, approx_Re_Grm_trans::Bool)
-        
+                    d::Union{Vector, String}, incField_wlf::Vector, save_individual_res::Bool, approx_Re_Grm_trans::Bool,
+                    z_range::AbstractRange, x_range::AbstractRange)
+
         fiber = Fiber(ρf, n, ω)
         Δ_range = range(Δ_specs...)
         array = get_array(N, ρa, a, ff, pos_unc)
         arrayDescription = standardArrayDescription(N, ρa, a, ff, pos_unc)
+        r_field = [[x, 0, z] for z in z_range, x in x_range]
+        
+        return new(ρf, n, ω, fiber,
+            Δ_specs, Δ_range,
+            tspan, dtmax, initialState, initialStateDescription,
+            N, ρa, a, ff, pos_unc, array, arrayDescription,
+            να, ηα,
+            d, incField_wlf, save_individual_res, approx_Re_Grm_trans,
+            z_range, x_range, r_field)
+    end
+    
+    function SysPar(ρf::Real, n::Real, ω::Real,
+                    Δ_specs::Tuple{Real, Real, Int},
+                    tspan::Tuple{Real, Real}, dtmax::Real, initialState::Vector, initialStateDescription::String,
+                    N::Int, ρa::Real, a::Real,
+                    να::Vector, ηα::Vector,
+                    d::Union{Vector, String}, incField_wlf::Vector, approx_Re_Grm_trans::Bool)
+        
+        fiber = Fiber(ρf, n, ω)
+        Δ_range = range(Δ_specs...)
+        array = get_array(N, ρa, a)
+        arrayDescription = standardArrayDescription(N, ρa, a, ff, pos_unc)
+        save_individual_res = true
+        z_range = nothing
+        x_range = nothing
+        r_field = nothing
 
         return new(ρf, n, ω, fiber,
-                   Δ_specs, Δ_range,
-                   tspan, dtmax, initialState, initialStateDescription,
-                   N, ρa, a, ff, pos_unc, array, arrayDescription,
-                   να, ηα,
-                   d, incField_wlf, save_individual_res, approx_Re_Grm_trans)
+                Δ_specs, Δ_range,
+                tspan, dtmax, initialState, initialStateDescription,
+                N, ρa, a, ff, pos_unc, array, arrayDescription,
+                να, ηα,
+                d, incField_wlf, save_individual_res, approx_Re_Grm_trans,
+                z_range, x_range, r_field)
     end
     
     function SysPar(ρf::Real, n::Real, ω::Real,
@@ -146,13 +178,17 @@ struct SysPar
         a  = nothing
         ff = nothing
         pos_unc = nothing
+        z_range = nothing
+        x_range = nothing
+        r_field = nothing
         
         return new(ρf, n, ω, fiber,
                    Δ_specs, Δ_range,
                    tspan, dtmax, initialState, initialStateDescription,
                    N, ρa, a, ff, pos_unc, array, arrayDescription,
                    να, ηα,
-                   d, incField_wlf, save_individual_res, approx_Re_Grm_trans)
+                   d, incField_wlf, save_individual_res, approx_Re_Grm_trans,
+                   z_range, x_range, r_field)
     end
 end
 
