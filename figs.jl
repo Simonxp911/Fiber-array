@@ -199,8 +199,8 @@ function fig_E_radiation(z_range, x_range, intensity, ρf, array)
     fig = plot(reuse=false, size=(800, 600))
     
     # Plot the E-field intensity
-    sat = 1e-2
-    intensity[intensity .> sat] .= sat
+    # sat = 1e1
+    # intensity[intensity .> sat] .= sat
     # contourf!(z_range, x_range, intensity', c=:viridis)
     heatmap!(z_range, x_range, intensity', c=:viridis)
     
@@ -218,5 +218,123 @@ function fig_E_radiation(z_range, x_range, intensity, ρf, array)
     xlabel!(L"$ z/λ $")
     ylabel!(L"$ x/λ $")
     title!(L"$ I/(\gamma/\lambda^3) $")
+    display(fig)
+end
+
+
+"""
+Plot a (complex) function (represented by an N-vector v) on a 1D chain,
+as well as its discrete Fourier transform.
+"""
+function fig_fOnChain(rs, v, ks, vFT)
+    # Start figure 
+    fig = plot(reuse=false, size=(800, 600), layout=(2, 2), link=:x)
+    
+    # Plot the real space function
+    plot!(rs, abs.(v)  , c=:blue, label=false, subplot=1)
+    plot!(rs, angle.(v), c=:blue, label=false, subplot=3)
+    
+    # Plot the k-space function
+    plot!(ks, abs.(vFT)  , c=:red, label=false, subplot=2)
+    plot!(ks, angle.(vFT), c=:red, label=false, subplot=4)
+    
+    # Finish figure
+    plot!(ticks=:native)
+    # xlims!(extrema(z_range))
+    # ylims!(extrema(x_range))
+    xlabel!(L"$ z/λ $", subplot=3)
+    xlabel!(L"$ λk_z $", subplot=4)
+    # title!(L"$ I/(\gamma/\lambda^3) $")
+    display(fig)
+end
+
+
+"""
+Plot the real and imaginary parts of the eigenvalues of a coupling matrix as a function of the dominant k
+in their discrete Fourier transform (i.e. plot the band structure of the coupling matrix)
+"""
+function fig_eigvals_vs_k(dominant_ks, eigvals_real, eigvals_imag)
+    # Start figure 
+    fig = plot(reuse=false, size=(800, 600), layout=(1, 2))
+    
+    # Plot the real space function
+    scatter!(dominant_ks, eigvals_real, c=:blue, label=false, subplot=1)
+    scatter!(dominant_ks, eigvals_imag, c=:red , label=false, subplot=2)
+    
+    # Mark the light cone
+    ylims1 = collect(ylims(fig[1]))
+    ylims2 = collect(ylims(fig[2]))
+    plot!(-ωa*ones(2), ylims1, c=:black, ls=:dash, lw=1, label=false, subplot=1)
+    plot!( ωa*ones(2), ylims1, c=:black, ls=:dash, lw=1, label=false, subplot=1)
+    plot!(-ωa*ones(2), ylims2, c=:black, ls=:dash, lw=1, label=false, subplot=2)
+    plot!( ωa*ones(2), ylims2, c=:black, ls=:dash, lw=1, label="Light cone", subplot=2)
+    
+    # Finish figure
+    plot!(ticks=:native)
+    # xlims!(extrema(z_range))
+    ylims!(ylims1..., subplot=1)
+    ylims!(ylims2..., subplot=2)
+    xlabel!(L"$ λk_z $")
+    title!("Real part of eigval", subplot=1)
+    title!("Imag part of eigval", subplot=2)
+    display(fig)
+end
+
+
+"""
+Plot the magnitude of the Fourier transform of the eigenvectors of a coupling matrix 
+as a function of its dominant k in their discrete Fourier transform
+"""
+function fig_eigvecsFTκ_vs_k(dominant_ks, dFT_κ_abs, κ)
+    # Start figure 
+    fig = plot(reuse=false, size=(800, 600))
+    
+    # Plot the real space function
+    scatter!(dominant_ks, dFT_κ_abs, c=:blue, label=false)
+    
+    # Mark the light cone
+    ylim = collect(ylims(fig))
+    plot!(-ωa*ones(2), ylim, c=:black, ls=:dash, lw=1, label=false)
+    plot!( ωa*ones(2), ylim, c=:black, ls=:dash, lw=1, label="Light cone")
+    plot!(-κ*ones(2), ylim, c=:red, ls=:dash, lw=1, label=false)
+    plot!( κ*ones(2), ylim, c=:red, ls=:dash, lw=1, label=L"$ \pm\kappa $")
+    
+    # Finish figure
+    plot!(ticks=:native, legend_position=:top)
+    ylims!(ylim...)
+    xlabel!(L"$ λk_z $")
+    title!("Eigvecs overlap with κ plane wave")
+    display(fig)
+end
+
+
+"""
+Plot magnitude and phase of transmission amplitude as a function of detuning
+and mark the position of the eigvals of Gnm
+"""
+function fig_transmission_withGnmEigvals(Δ_range, T, phase, eigvals_real)
+    # Start figure 
+    fig = plot(reuse=false, size=(800, 600), layout=(1, 2))
+    
+    # Plot magnitude squared and the phase of the transmission 
+    plot!(Δ_range, T    , label=L"$ |t|^2 $" , c=:blue, subplot=1)
+    plot!(Δ_range, phase, label=L"arg$ (t) $", c=:red , subplot=2)
+    
+    # Mark the position of the Gnm eigvals
+    for ev in eigvals_real
+        plot!(ev*ones(2), [0, 1] , lw=0.3, c=:purple, label=false, subplot=1)
+        plot!(ev*ones(2), [-π, π], lw=0.3, c=:purple, label=false, subplot=2)
+    end
+    
+    # Finish figure
+    plot!(ticks=:native)
+    xlims!(extrema(Δ_range))
+    # ylims!(ylims(fig[1])[1], 1, subplot=1)
+    ylims!(0, 1, subplot=1)
+    ylims!(-3.1415, 3.1415, subplot=2) #for some reason using π gives an error from Python
+    xlabel!(L"$ \Delta/\gamma $")
+    # ylabel!(L"")
+    title!("Transmission coefficient", subplot=1)
+    title!("Transmission phase", subplot=2)
     display(fig)
 end

@@ -104,10 +104,11 @@ struct SysPar
     
     save_individual_res::Bool                       # Whether to save individual results (Im_Grm_trans, steady states, time evolutions)
         
-    # Whether to approximate the real, transverse part of the radiation Green's function 
+    # Whether to approximate the transverse part of the radiation Green's function 
     # using the corresponding part of the vacuum GF, as well as whether to scale the real part of the rad. GF
     # with the local radiation decay rates
-    approx_Re_Grm_trans::Bool
+    # The the two booleans determine whether to approximate the real and imaginary part respectively.
+    approx_Grm_trans::Tuple{Bool, Bool}
     
     z_range::Union{AbstractRange, Nothing}          # Range of z values for calculating the radiation E-field
     x_range::Union{AbstractRange, Nothing}          # Range of x values for calculating the radiation E-field
@@ -119,21 +120,22 @@ struct SysPar
                     tspan::Tuple{Real, Real}, dtmax::Real, initialState::Vector, initialStateDescription::String,
                     N::Int, ρa::Real, a::Real, ff::Real, pos_unc::Union{Real, Vector},
                     να::Vector, ηα::Vector,
-                    d::Union{Vector, String}, incField_wlf::Vector, save_individual_res::Bool, approx_Re_Grm_trans::Bool,
+                    d::Union{Vector, String}, incField_wlf::Vector, save_individual_res::Bool, approx_Grm_trans::Tuple,
                     z_range::AbstractRange, x_range::AbstractRange)
 
         fiber = Fiber(ρf, n, ω)
         Δ_range = range(Δ_specs...)
         array = get_array(N, ρa, a, ff, pos_unc)
         arrayDescription = standardArrayDescription(N, ρa, a, ff, pos_unc)
-        r_field = [[x, 0, z] for z in z_range, x in x_range]
+        if ff != 1 N = length(array) end
+        r_field = [[x, ρa, z] for z in z_range, x in x_range]
         
         return new(ρf, n, ω, fiber,
             Δ_specs, Δ_range,
             tspan, dtmax, initialState, initialStateDescription,
             N, ρa, a, ff, pos_unc, array, arrayDescription,
             να, ηα,
-            d, incField_wlf, save_individual_res, approx_Re_Grm_trans,
+            d, incField_wlf, save_individual_res, approx_Grm_trans,
             z_range, x_range, r_field)
     end
     
@@ -142,11 +144,13 @@ struct SysPar
                     tspan::Tuple{Real, Real}, dtmax::Real, initialState::Vector, initialStateDescription::String,
                     N::Int, ρa::Real, a::Real,
                     να::Vector, ηα::Vector,
-                    d::Union{Vector, String}, incField_wlf::Vector, approx_Re_Grm_trans::Bool)
+                    d::Union{Vector, String}, incField_wlf::Vector, approx_Grm_trans::Tuple)
         
         fiber = Fiber(ρf, n, ω)
         Δ_range = range(Δ_specs...)
         array = get_array(N, ρa, a)
+        ff = 1.0
+        pos_unc = 0.0
         arrayDescription = standardArrayDescription(N, ρa, a, ff, pos_unc)
         save_individual_res = true
         z_range = nothing
@@ -158,7 +162,7 @@ struct SysPar
                 tspan, dtmax, initialState, initialStateDescription,
                 N, ρa, a, ff, pos_unc, array, arrayDescription,
                 να, ηα,
-                d, incField_wlf, save_individual_res, approx_Re_Grm_trans,
+                d, incField_wlf, save_individual_res, approx_Grm_trans,
                 z_range, x_range, r_field)
     end
     
@@ -167,7 +171,7 @@ struct SysPar
                     tspan::Tuple{Real, Real}, dtmax::Real, initialState::Vector, initialStateDescription::String,
                     array::Vector{Vector}, arrayDescription::String,
                     να::Vector, ηα::Vector,
-                    d::Union{Vector, String}, incField_wlf::Vector, save_individual_res::Bool, approx_Re_Grm_trans::Bool)
+                    d::Union{Vector, String}, incField_wlf::Vector, save_individual_res::Bool, approx_Grm_trans::Tuple)
         
         if d == "chiral" && any([site[1] != ρa || site[2] != 0 for site in array]) throw(ArgumentError("d = 'dipole' assumes an array (ρa, 0, z)")) end
         
@@ -187,7 +191,7 @@ struct SysPar
                    tspan, dtmax, initialState, initialStateDescription,
                    N, ρa, a, ff, pos_unc, array, arrayDescription,
                    να, ηα,
-                   d, incField_wlf, save_individual_res, approx_Re_Grm_trans,
+                   d, incField_wlf, save_individual_res, approx_Grm_trans,
                    z_range, x_range, r_field)
     end
 end
@@ -232,7 +236,7 @@ function Base.show(io::IO, SP::SysPar)
     println(io, "")
     
     println(io, "Whether the real part, transverse part of the radiation GF has been approximated with corresponding part of the vacuum GF")
-    println(io, "approx_Re_Grm_trans: ", SP.approx_Re_Grm_trans)
+    println(io, "approx_Grm_trans: ", SP.approx_Grm_trans)
     println(io, "")
     
     println(io, "---  ---")

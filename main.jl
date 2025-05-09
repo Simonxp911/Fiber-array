@@ -49,25 +49,31 @@ function define_SP_BerlinCS()
     να0_ul = να0/γ0 #unitless version of να0
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-5, 5, 300)
-    
-    # Time spand and maximum time step allowed in time evolution
-    tspan = (0, 100)
-    dtmax = 0.01
+    Δ_specs = (-0.5, 0.5, 1000)
     
     # Set array specs and generate array, as well as description for postfix
-    N = 100
+    N = 20
     
     # Lamb-Dicke parameters
     ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
     ηα = [0., 0., 0.]
     
+    # Set filling fraction, positional uncertainty, and number of instantiations 
+    ff = 0.8
+    pos_unc = any(ηα .!= 0) ? 0.0 : 0.0#ηα0/ωa
+    n_inst  = any(ηα .!= 0) ?   1 : 1
+    
+    # Time spand and maximum time step allowed in time evolution
+    tspan = (0, 100)
+    dtmax = 0.01
+    
     # Prepare initial state for time evolution, as well as description for postfix
-    initialState = groundstate(N, all(ηα .== 0))
+    N_eff = Int(floor(N*ff))
+    initialState = groundstate(N_eff, all(ηα .== 0))
     initialStateDescription = "gs"
     
     # Atomic dipole moment
-    # d = conj([1im, 0, -1]/sqrt(2))
+    # d = [1, 0, 0]
     # d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul)
     d = "chiral"
     
@@ -75,21 +81,16 @@ function define_SP_BerlinCS()
     # incField_wlf = [(1, 1, 1), (1, -1, 1)]
     incField_wlf = []
     
-    # Whether to approximate real, transverse part of radiation GF
-    approx_Re_Grm_trans = true
-    
-    # Set filling fraction, positional uncertainty, and number of instantiations 
-    ff = 1.0
-    pos_unc = any(ηα .!= 0) ? 0.0 : 0.0#ηα0/ωa
-    n_inst  = any(ηα .!= 0) ?   1 : 1
+    # Whether to approximate transverse part of radiation GF (real part and imaginary part respectively, usually (true, false))
+    approx_Grm_trans = (true, false)
     
     # Whether to save individual results (Im_Grm_trans, steady states, time evolutions)
-    save_individual_res = n_inst == 1
+    save_individual_res = n_inst == 1 && ff == 1 && pos_unc == 0
     
     # Ranges of z and x values to define r_field for calculating the radiated E-field
     arrayL = N*a0_ul
-    z_range = range(-arrayL, 2*arrayL, 60)
-    x_range = range(ρa0_ul - arrayL, ρa0_ul + arrayL, 60)
+    z_range = range(-0.5*arrayL, 1.5*arrayL, 60)
+    x_range = range(ρa0_ul - 0.3*arrayL, ρa0_ul + 0.3*arrayL, 60)
     
     
     if n_inst == 1
@@ -98,7 +99,7 @@ function define_SP_BerlinCS()
                       tspan, dtmax, initialState, initialStateDescription,
                       N, ρa0_ul, a0_ul, ff, pos_unc,
                       να0_ul, ηα,
-                      d, incField_wlf, save_individual_res, approx_Re_Grm_trans,
+                      d, incField_wlf, save_individual_res, approx_Grm_trans,
                       z_range, x_range)
     else
         return [SysPar(ρf0_ul, n0, ωa,
@@ -106,7 +107,7 @@ function define_SP_BerlinCS()
                        tspan, dtmax, initialState, initialStateDescription,
                        N, ρa0_ul, a0_ul, ff, pos_unc,
                        να0_ul, ηα,
-                       d, incField_wlf, save_individual_res, approx_Re_Grm_trans,
+                       d, incField_wlf, save_individual_res, approx_Grm_trans,
                        z_range, x_range) for _ in 1:n_inst]
     end
 end
@@ -150,15 +151,15 @@ function define_SP_Olmos()
     # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
     incField_wlf = [(1, 1, 1), (1, -1, 1)]
     
-    # Whether to approximate real, transverse part of radiation GF
-    approx_Re_Grm_trans = true
+    # Whether to approximate transverse part of radiation GF (real part and imaginary part respectively)
+    approx_Grm_trans = (true, false)
     
     return SysPar(ρf_ul, n, ωa,
                   Δ_specs,
                   tspan, dtmax, initialState, initialStateDescription,
                   N, ρa, a,
                   να, ηα,
-                  d, incField_wlf, approx_Re_Grm_trans)
+                  d, incField_wlf, approx_Grm_trans)
 end
 
 
@@ -199,15 +200,15 @@ function define_SP_Rauschenbeutel()
     # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
     incField_wlf = [(1, 1, 1)]
     
-    # Whether to approximate real, transverse part of radiation GF
-    approx_Re_Grm_trans = true
+    # Whether to approximate transverse part of radiation GF (real part and imaginary part respectively)
+    approx_Grm_trans = (true, false)
     
     return SysPar(ρf_ul, n, ωa,
                   Δ_specs,
                   tspan, dtmax, initialState, initialStateDescription,
                   N, ρa, a,
                   να, ηα,
-                  d, incField_wlf, approx_Re_Grm_trans)
+                  d, incField_wlf, approx_Grm_trans)
 end
 
 
@@ -244,15 +245,15 @@ function define_SP_Chang()
     # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
     incField_wlf = [(1, 1, 1), (1, -1, 1)]
     
-    # Whether to approximate real, transverse part of radiation GF
-    approx_Re_Grm_trans = true
+    # Whether to approximate transverse part of radiation GF (real part and imaginary part respectively)
+    approx_Grm_trans = (true, false)
     
     return SysPar(ρf, n, ωa,
                   Δ_specs,
                   tspan, dtmax, initialState, initialStateDescription,
                   N, ρa, a,
                   να, ηα,
-                  d, incField_wlf, approx_Re_Grm_trans)
+                  d, incField_wlf, approx_Grm_trans)
 end
 
 
@@ -269,10 +270,15 @@ function main()
     
     # plot_propConst_inOutMom(ωρfn_ranges)
     # plot_coupling_strengths(SP)
-    # plot_σBαTrajectories_σBαSS(SP)
-    # plot_transmission_vs_Δ(SP)
+    plot_σBαTrajectories_σBαSS(SP)
+    plot_transmission_vs_Δ(SP)
     # plot_classDisorder_transmission_vs_Δ(SP)
-    plot_E_radiation(SP)
+    # plot_E_radiation(SP)
+    # plot_GnmEigVecs(SP)
+    # plot_GnmEigVals(SP)
+    # plot_GnmEigvecsOverlapWithκ_vs_dominantk(SP)
+    # plot_transmissionReconstructionFromGnm(SP)
+    # plot_transmissionwithGnmEigvals(SP)
     
     return nothing
 end
@@ -321,7 +327,7 @@ function plot_coupling_strengths(SP)
     # Radiation mode local decay as a function of distance to fiber
     ρ_range = range(SP.ρf, SP.ρf + 1000/852, 100)
     r_range = [[ρ, 0, 0] for ρ in ρ_range]
-    Γrm = get_Γrm.(Ref(SP.fiber), Ref(SP.d), r_range, r_range, SP.approx_Re_Grm_trans)
+    Γrm = get_Γrm.(Ref(SP.fiber), Ref(SP.d), r_range, r_range, SP.approx_Grm_trans)
     x_label = L"$ \rho - \rho_f $"
     y_label = L"$ \Gamma_{rm, nn} $"
     x_range = ρ_range .- SP.ρf
@@ -330,7 +336,7 @@ function plot_coupling_strengths(SP)
     # Radation mode dissipative interaction as a function of radial distance
     ρ_range = range(SP.ρf, SP.ρf + 1000/852, 100)
     r_range = [[ρ, 0, 0] for ρ in ρ_range]
-    Γrm = get_Γrm.(Ref(SP.fiber), Ref(SP.d), Ref(r_range[1]), r_range, SP.approx_Re_Grm_trans)
+    Γrm = get_Γrm.(Ref(SP.fiber), Ref(SP.d), Ref(r_range[1]), r_range, SP.approx_Grm_trans)
     x_label = L"$ \rho_2 - \rho_f $"
     y_label = L"$ \Gamma_{rm, 12} $"
     x_range = ρ_range .- SP.ρf
@@ -393,7 +399,7 @@ end
 function plot_E_radiation(SP)
     if any(SP.ηα .!= 0) throw(ArgumentError("plot_E_radiation is not implemented for the case of including phonons")) end
         
-    Δ = -2.76
+    Δ = 0.2458
     σ = calc_σBα_steadyState(SP, Δ)
     E = calc_E_radiation.(Ref(SP), Ref(σ), SP.r_field)
     intensity = norm.(E).^2
@@ -401,6 +407,61 @@ function plot_E_radiation(SP)
     fig_E_radiation(SP.z_range, SP.x_range, intensity, SP.ρf, SP.array)
 end
 
+
+function plot_GnmEigVecs(SP)
+    Gnm = get_tildeGs(SP.fiber, SP.d, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+    
+    eigvals, eigvecs, dominant_ks = spectrum(Gnm, SP.a)
+    eigvecs_dFT = discFourierTransform.(eigvecs, SP.a, true, 1000)
+    
+    rs = [site[3] for site in SP.array]
+    for (v, (ks, vFT)) in zip(eigvecs, eigvecs_dFT)
+        fig_fOnChain(rs, v, ks, vFT)
+    end
+end
+
+
+function plot_GnmEigVals(SP)
+    Gnm = get_tildeGs(SP.fiber, SP.d, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+    
+    eigvals, eigvecs, dominant_ks = spectrum(Gnm, SP.a)
+    
+    fig_eigvals_vs_k(dominant_ks, -real(eigvals), imag(eigvals))
+end
+
+
+function plot_GnmEigvecsOverlapWithκ_vs_dominantk(SP)
+    Gnm = get_tildeGs(SP.fiber, SP.d, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+    
+    eigvals, eigvecs, dominant_ks = spectrum(Gnm, SP.a)
+    dFT_κ = discFourierTransform.(eigvecs, SP.a, SP.fiber.propagation_constant)
+    
+    fig_eigvecsFTκ_vs_k(dominant_ks, abs.(dFT_κ), SP.fiber.propagation_constant)
+end
+
+
+function plot_transmissionReconstructionFromGnm(SP)
+    Gnm = get_tildeGs(SP.fiber, SP.d, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+    
+    eigvals, eigvecs, dominant_ks = spectrum(Gnm, SP.a)
+    dFT_κ = discFourierTransform.(eigvecs, SP.a, SP.fiber.propagation_constant)
+    t = reconstructTransmission(SP.Δ_range, eigvals, dFT_κ)
+    
+    T, phase = prep_transmission(t)
+    fig_transmission_vs_Δ(SP.Δ_range, T, phase)
+end
+
+
+function plot_transmissionwithGnmEigvals(SP)
+    σBα_scan = scan_σBα_steadyState(SP)
+    t = calc_transmission.(Ref(SP), σBα_scan)
+    T, phase = prep_transmission(t)
+    
+    Gnm = get_tildeGs(SP.fiber, SP.d, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+    eigvals, eigvecs, dominant_ks = spectrum(Gnm, SP.a)
+    
+    fig_transmission_withGnmEigvals(SP.Δ_range, T, phase, -real(eigvals))
+end
 
 
 
@@ -413,8 +474,13 @@ println("\n -- Running main() -- \n")
 
 # TODO list:
 
+# Consider the effect of having a gradually changing Δ
+    # Far detuned at the edges and a gradual shift towards whatever value is chosen for the bulk
+    # Might halp "ease" the light into the array, to minimize scattering at the edges?
+
 # Get it to work on the cluster
     # Use MPI?
+    # clean up before moving to the cluster: comments, naming, minor issues below, checks of derivatives
     
 # Calculate reflection and loss
 
@@ -425,6 +491,8 @@ println("\n -- Running main() -- \n")
 # Implement saving and loading of the parameter matrices?
 
 # Clean up and split up files? physics.jl and utility.jl in particular
+
+# Implement a approx_Im_Grm_trans?
 
 # Implement non-lazy version of get_tildeGs(fiber, d::String... ? Presumably significantly faster when exploiting knowledge of which components etc. are actually needed, but also very messy...
 

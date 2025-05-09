@@ -328,19 +328,19 @@ end
 """
 Calculates the radiation mode Green's function or its derivatives 
 """
-function Grm(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_individual_res=true, approx_Re_Grm_trans=false)
+function Grm(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_individual_res=true, approx_Grm_trans=(false, false))
     # The Green's function is calculated in terms of the contributions: the longitudinal part, the imaginary transverse part, and the real transverse part
     
     # First, we calculate the longitudinal part
     G0_lo = G0_long(ω, r_field, r_source, derivOrder, α)
     
-    # Second, the imaginary transverse part
-    Im_Grm_tr = Im_Grm_trans(fiber, ω, r_field, r_source, derivOrder, α, save_individual_res)
+    # Second, the real transverse part
+    Re_Grm_tr = Re_Grm_trans(fiber, ω, r_field, r_source, derivOrder, α, approx_Grm_trans[1])
     
-    # Finally, the real transverse part
-    Re_Grm_tr = Re_Grm_trans(fiber, ω, r_field, r_source, derivOrder, α, approx_Re_Grm_trans)
+    # Finally, the imaginary transverse part
+    Im_Grm_tr = Im_Grm_trans(fiber, ω, r_field, r_source, derivOrder, α, save_individual_res, approx_Grm_trans[2])
     
-    return G0_lo + 1im*Im_Grm_tr + Re_Grm_tr
+    return G0_lo + Re_Grm_tr + 1im*Im_Grm_tr
 end
 
 
@@ -441,7 +441,9 @@ end
 Small wrapper for the calculation of the imaginary part of the transverse part of radiation mode 
 Green's function or its derivatives that exploits the Onsager reciprocity to simpilify calculations
 """
-function Im_Grm_trans(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_individual_res=true)
+function Im_Grm_trans(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_individual_res=true, approx_Im_Grm_trans=false)
+    if approx_Im_Grm_trans return imag(G0(ω, r_field, r_source, derivOrder, α)) end
+    
     if r_field[3] < r_source[3]
         return transpose(Im_Grm_trans_(fiber, ω, r_source, r_field, derivOrder, α, save_individual_res))
     else
@@ -455,7 +457,7 @@ Calculates the imaginary part of the transverse part of radiation mode Green's f
 
 Uses the normalization convention of Kien, Rauschenbeutel 2017
 """
-function Im_Grm_trans_(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_individual_res=true, abstol = 1e-4)
+function Im_Grm_trans_(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_individual_res=true, abstol=1e-4)
     # The Green's function only depends on the difference in the z-coordinates, 
     # so we save the calculation according to that value, rather than the individual z-coordinates
     coords = ro.([r_field[1], r_field[2], r_source[1], r_source[2], r_field[3] - r_source[3]])

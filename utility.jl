@@ -321,3 +321,42 @@ Returns a matrix whose rows are given by the entries of the given vector
 function vectorOfRows2Matrix(x)
     return Matrix(transpose(reduce(hcat, x)))
 end
+
+
+"""
+Find the eigenvalues and eigenvectors of a matrix. Return these as two sorted vectors.
+"""
+function eigbasis(A)
+    F = eigen(A)
+    return F.values, eachcol(F.vectors)
+end
+
+
+"""
+Calculate the discrete Fourier transform of a function (represented by an N-vector v) 
+on a 1D chain with lattice spacing a and length N = length(v), assumed to be on the form (0:N-1)*a. 
+    
+Returns an N-vector of the relevant k-values and the transformed function as an N-vector.
+"""
+function discFourierTransform(v, a, cont_k=false, k_n=300)
+    N = length(v)
+    if cont_k
+        ks = range(0, 2π/a, k_n) .- π/a
+    else
+        ks = 2π/(a*N)*(0:N-1) .- π/a
+    end
+    vFT = discFourierTransform.(Ref(v), a, ks)
+    return ks, vFT
+end
+
+
+"""
+Calculate the discrete Fourier transform of a function (represented by an N-vector v) 
+on a 1D chain with lattice spacing a and length N = length(v), assumed to be on the form (0:N-1)*a. 
+    
+Returns the transformed function as an N-vector.
+"""
+function discFourierTransform(v, a, k)
+    N = length(v)
+    return sum( v.*exp.(1im*k*(0:N-1)*a) )/sqrt(N)
+end
