@@ -8,7 +8,9 @@ using Integrals #for computing integrals
 using LinearAlgebra #norm of vectors and other standard linear algebra
 using JLD2 #saving and loading
 using DelimitedFiles #read/write simple text data files
-using Plots; pythonplot() #plot using Python-Matplotlib as backend
+# using Plots; pythonplot() #plot using Python-Matplotlib as backend
+# using CairoMakie #plotting, specialized for making png/pdf output
+using GLMakie #plotting, specialized interactive plots
 using Colors #for generating distinguishable colors
 using LaTeXStrings #LaTeX formatting in string in plots
 # using Polylogarithms #for calculating the linear array FT GF [POSSIBLY FATALLY BUGGED/DEPRECATED]
@@ -112,6 +114,7 @@ struct SysPar
     
     z_range::Union{AbstractRange, Nothing}          # Range of z values for calculating the radiation E-field
     x_range::Union{AbstractRange, Nothing}          # Range of x values for calculating the radiation E-field
+    y_fix::Union{Real, Nothing}                                     # Fixed value of y for calculating the radiation E-field
     r_field::Union{Matrix{Vector{<:Real}}, Nothing} # Range of positions for calculating the radiation E-field
     
     
@@ -121,14 +124,14 @@ struct SysPar
                     N::Int, ρa::Real, a::Real, ff::Real, pos_unc::Union{Real, Vector},
                     να::Vector, ηα::Vector,
                     d::Union{Vector, String}, incField_wlf::Vector, save_individual_res::Bool, approx_Grm_trans::Tuple,
-                    z_range::AbstractRange, x_range::AbstractRange)
+                    z_range::AbstractRange, x_range::AbstractRange, y_fix::Real)
 
         fiber = Fiber(ρf, n, ω)
         Δ_range = range(Δ_specs...)
         array = get_array(N, ρa, a, ff, pos_unc)
         arrayDescription = standardArrayDescription(N, ρa, a, ff, pos_unc)
         if ff != 1 N = length(array) end
-        r_field = [[x, ρa, z] for z in z_range, x in x_range]
+        r_field = [[x, y_fix, z] for z in z_range, x in x_range]
         
         return new(ρf, n, ω, fiber,
             Δ_specs, Δ_range,
@@ -136,7 +139,7 @@ struct SysPar
             N, ρa, a, ff, pos_unc, array, arrayDescription,
             να, ηα,
             d, incField_wlf, save_individual_res, approx_Grm_trans,
-            z_range, x_range, r_field)
+            z_range, x_range, y_fix, r_field)
     end
     
     function SysPar(ρf::Real, n::Real, ω::Real,
@@ -155,6 +158,7 @@ struct SysPar
         save_individual_res = true
         z_range = nothing
         x_range = nothing
+        y_fix   = nothing
         r_field = nothing
 
         return new(ρf, n, ω, fiber,
@@ -163,7 +167,7 @@ struct SysPar
                 N, ρa, a, ff, pos_unc, array, arrayDescription,
                 να, ηα,
                 d, incField_wlf, save_individual_res, approx_Grm_trans,
-                z_range, x_range, r_field)
+                z_range, x_range, y_fix, r_field)
     end
     
     function SysPar(ρf::Real, n::Real, ω::Real,
@@ -184,6 +188,7 @@ struct SysPar
         pos_unc = nothing
         z_range = nothing
         x_range = nothing
+        y_fix   = nothing
         r_field = nothing
         
         return new(ρf, n, ω, fiber,
@@ -192,7 +197,7 @@ struct SysPar
                    N, ρa, a, ff, pos_unc, array, arrayDescription,
                    να, ηα,
                    d, incField_wlf, save_individual_res, approx_Grm_trans,
-                   z_range, x_range, r_field)
+                   z_range, x_range, y_fix, r_field)
     end
 end
 

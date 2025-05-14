@@ -7,21 +7,23 @@ It is assumed that the units of ρf and ω are nm and nm^-1 resp.
 """
 function fig_propConst_vs_ω(ω_range, κ, ρf, n)
     # Start figure 
-    fig = plot(reuse=false, size=(800, 600))
-
+    fig = Figure(size=(800, 600))
+    
+    # Make title and axis
+    Label(fig[1, 1], "Propagation constant\n" *
+                    L"$ \rho_{f} = %$(round(ρf, sigdigits=3)) $nm, $ n = %$(round(n, sigdigits=3)) $")
+    ax1 = Axis(fig[2, 1], limits=(extrema(ω_range), nothing), 
+               xlabel=L"$ \omega $, [nm$^{-1}$]", 
+               ylabel=L"[nm$^{-1}$]")
+    
     # Plot the propagation constant, and the lines y = ω and y = nω
-    plot!(ω_range, κ, label=L"$ y = \kappa(\omega) $", c=:black)
-    plot!(ω_range, n * ω_range, label=L"$ y = n\omega $", c=:red)
-    plot!(ω_range, ω_range, label=L"$ y = \omega $", c=:blue)
-
+    lines!(ax1, ω_range, κ          , label=L"$ y = \kappa(\omega) $", color=:black)
+    lines!(ax1, ω_range, n * ω_range, label=L"$ y = n\omega $"       , color=:red)
+    lines!(ax1, ω_range, ω_range    , label=L"$ y = \omega $"        , color=:blue)
+    
     # Finish figure
-    plot!(ticks=:native)
-    xlims!(extrema(ω_range))
-    xlabel!(L"$ \omega $, [nm$^{-1}$]")
-    ylabel!(L"[nm$^{-1}$]")
-    title!("Propagation constant\n" *
-           L"$ \rho_{f} = %$(round(ρf, sigdigits=3)) $nm, $ n = %$(round(n, sigdigits=3)) $")
-    display(fig)
+    axislegend()
+    display(GLMakie.Screen(), fig)
 end
 
 
@@ -33,20 +35,22 @@ It is assumed that the units of ω nm^-1 resp.
 """
 function fig_inout_momenta_vs_ω(ω_range, h, q, n)
     # Start figure 
-    fig = plot(reuse=false, size=(800, 600))
-
-    # Plot the propagation constant, and the lines y = ω and y = nω
-    plot!(ω_range, h, label=L"$ h = \sqrt{n^2\omega^2 - \kappa^2} $", c=:blue)
-    plot!(ω_range, q, label=L"$ q = \sqrt{\kappa^2 - \omega^2} $", c=:red)
-
+    fig = Figure(size=(800, 600))
+    
+    # Make title and axis
+    Label(fig[1, 1], "Inside/outside momenta of the fiber (h and q) \n" *
+                    L"$ n = %$(round(n, sigdigits=3)) $")
+    Axis(fig[2, 1], limits=(extrema(ω_range), nothing), 
+                    xlabel=L"[nm$^{-1}$]", 
+                    ylabel=L"$ \omega $, [nm$^{-1}$]")
+    
+    # Plot the momenta
+    lines!(ω_range, h, label=L"$ h = \sqrt{n^2\omega^2 - \kappa^2} $", color=:blue)
+    lines!(ω_range, q, label=L"$ q = \sqrt{\kappa^2 - \omega^2} $", color=:red)
+    
     # Finish figure
-    plot!(ticks=:native)
-    xlims!(extrema(ω_range))
-    xlabel!(L"$ \omega $, [nm$^{-1}$]")
-    ylabel!(L"[nm$^{-1}$]")
-    title!("Inside/outside momenta of the fiber (h and q) \n" *
-           L"$ n = %$(round(n, sigdigits=3)) $")
-    display(fig)
+    axislegend()
+    display(GLMakie.Screen(), fig)
 end
 
 
@@ -55,19 +59,23 @@ Plot a coupling strength's magnitude and phase as a function of a relative spati
 """
 function fig_coupling_vs_x(x_range, coupling, x_label, y_label)
     # Start figure 
-    fig = plot(reuse=false, size=(800, 600), layout=(1, 2))
+    fig = Figure(size=(800, 600))
     
-    # Plot the propagation constant, and the lines y = ω and y = nω
-    plot!(x_range, abs.(coupling) , label=L"$ |C| $" , c=:blue, subplot=1)
-    plot!(x_range, angle.(coupling), label=L"arg$ (C) $", c=:red , subplot=2)
-
+    # Make title and axis
+    ax1 = Axis(fig[1, 1], limits=(extrema(x_range), nothing), 
+               xlabel=x_label, 
+               ylabel=latexstring(y_label * ", magnitude"))
+    ax2 = Axis(fig[1, 2], limits=(extrema(x_range), nothing), 
+               xlabel=x_label, 
+               ylabel=latexstring(y_label * ", phase"))
+    
+    # Plot the coupling's magnitude and phase
+    lines!(ax1, x_range, abs.(coupling) , label=L"$ |C| $" , color=:blue)
+    lines!(ax2, x_range, angle.(coupling), label=L"arg$ (C) $", color=:red)
+    
     # Finish figure
-    plot!(ticks=:native)
-    xlims!(extrema(x_range))
-    xlabel!(x_label)
-    ylabel!(y_label * ", magnitude", subplot=1)
-    ylabel!(y_label * ", phase", subplot=1)
-    display(fig)
+    axislegend.([ax1, ax2])
+    display(GLMakie.Screen(), fig)
 end
 
 
@@ -80,23 +88,23 @@ function fig_σTrajectories_σSS(times, σTrajectories, σ_SS)
     colors = distinguishable_colors(length(σTrajectories), [RGB(1, 1, 1), RGB(0, 0, 0)], dropseed=true)
     
     # Start figure 
-    fig = plot(reuse=false, size=(800, 600))
-
+    fig = Figure(size=(800, 600))
+    
+    # Make title and axis
+    Label(fig[1, 1], L"$ σ $ trajectories", tellwidth=false)
+    Axis(fig[2, 1], limits=(extrema(times), nothing), 
+                    xlabel=L"$ γt $")
+    
     # Plot the trajectories
     for (i, traj) in enumerate(σTrajectories)
-        plot!(times, real.(traj), label=false, c=colors[i], ls=:solid)
-        plot!(times, imag.(traj), label=false, c=colors[i], ls=:dash )
-        plot!([times[end] - (times[end] - times[1])/10, times[end]], real.(σ_SS[i])*ones(2),  label=false, c=colors[i], ls=:dashdot)
-        plot!([times[end] - (times[end] - times[1])/10, times[end]], imag.(σ_SS[i])*ones(2),  label=false, c=colors[i], ls=:dashdot)
+        lines!(times, real.(traj), color=colors[i], linestyle=:solid)
+        lines!(times, imag.(traj), color=colors[i], linestyle=:dash )
+        lines!([times[end] - (times[end] - times[1])/10, times[end]], real.(σ_SS[i])*ones(2), color=colors[i], linestyle=:dashdot)
+        lines!([times[end] - (times[end] - times[1])/10, times[end]], imag.(σ_SS[i])*ones(2), color=colors[i], linestyle=:dashdot)
     end
     
     # Finish figure
-    plot!(ticks=:native)
-    xlims!(extrema(times))
-    xlabel!(L"$ γt $")
-    # ylabel!(L"")
-    title!(L"$ σ $ trajectories")
-    display(fig)
+    display(GLMakie.Screen(), fig)
 end
 
 
@@ -108,34 +116,35 @@ function fig_σBαTrajectories_σBαSS(times, σTrajectories, BαTrajectories, �
     colors = distinguishable_colors(length(σTrajectories) + 3*length(BαTrajectories[1]), [RGB(1, 1, 1), RGB(0, 0, 0)], dropseed=true)
     
     # Start figure 
-    fig = plot(reuse=false, size=(800, 600), layout=(1, 2))
-
+    fig = Figure(size=(800, 600))
+    
+    # Make title and axis
+    Label(fig[1, 1], L"$ σ $ trajectories", tellwidth=false)
+    ax1 = Axis(fig[2, 1], limits=(extrema(times), nothing), 
+               xlabel=L"$ γt $")
+    Label(fig[1, 2], L"$ B_α $ trajectories", tellwidth=false)
+    ax2 = Axis(fig[2, 2], limits=(extrema(times), nothing), 
+               xlabel=L"$ γt $")
+    
     # Plot the trajectories
     for (i, traj) in enumerate(σTrajectories)
-        plot!(times, real.(traj), label=false, c=colors[i], ls=:solid, subplot=1)
-        plot!(times, imag.(traj), label=false, c=colors[i], ls=:dash , subplot=1)
-        plot!([times[end] - (times[end] - times[1])/10, times[end]], real.(σ_SS[i])*ones(2),  label=false, c=colors[i], ls=:dashdot, subplot=1)
-        plot!([times[end] - (times[end] - times[1])/10, times[end]], imag.(σ_SS[i])*ones(2),  label=false, c=colors[i], ls=:dashdot, subplot=1)
+        lines!(ax1, times, real.(traj), color=colors[i], linestyle=:solid)
+        lines!(ax1, times, imag.(traj), color=colors[i], linestyle=:dash)
+        lines!(ax1, [times[end] - (times[end] - times[1])/10, times[end]], real.(σ_SS[i])*ones(2),  color=colors[i], linestyle=:dashdot)
+        lines!(ax1, [times[end] - (times[end] - times[1])/10, times[end]], imag.(σ_SS[i])*ones(2),  color=colors[i], linestyle=:dashdot)
     end
     for α in 1:3
         clr_ind_offset = length(σTrajectories) + (α - 1)*length(BαTrajectories[1])
         for (i, traj) in enumerate(BαTrajectories[α])
-            plot!(times, real.(traj), label=false, c=colors[clr_ind_offset + i], ls=:solid, subplot=2)
-            plot!(times, imag.(traj), label=false, c=colors[clr_ind_offset + i], ls=:dash , subplot=2)
-            plot!([times[end] - (times[end] - times[1])/10, times[end]], real.(Bα_SS[α][i])*ones(2), label=false, c=colors[clr_ind_offset + i], ls=:dashdot, subplot=2)
-            plot!([times[end] - (times[end] - times[1])/10, times[end]], imag.(Bα_SS[α][i])*ones(2), label=false, c=colors[clr_ind_offset + i], ls=:dashdot, subplot=2)
+            lines!(ax2, times, real.(traj), color=colors[clr_ind_offset + i], linestyle=:solid)
+            lines!(ax2, times, imag.(traj), color=colors[clr_ind_offset + i], linestyle=:dash)
+            lines!(ax2, [times[end] - (times[end] - times[1])/10, times[end]], real.(Bα_SS[α][i])*ones(2), color=colors[clr_ind_offset + i], linestyle=:dashdot)
+            lines!(ax2, [times[end] - (times[end] - times[1])/10, times[end]], imag.(Bα_SS[α][i])*ones(2), color=colors[clr_ind_offset + i], linestyle=:dashdot)
         end
     end
     
-    
     # Finish figure
-    plot!(ticks=:native)
-    xlims!(extrema(times))
-    xlabel!(L"$ γt $")
-    # ylabel!(L"")
-    title!(L"$ σ $ trajectories", subplot=1)
-    title!(L"$ B_α $ trajectories", subplot=2)
-    display(fig)
+    display(GLMakie.Screen(), fig)
 end
 
 
@@ -144,23 +153,23 @@ Plot magnitude and phase of transmission amplitude as a function of detuning
 """
 function fig_transmission_vs_Δ(Δ_range, T, phase)
     # Start figure 
-    fig = plot(reuse=false, size=(800, 600), layout=(1, 2))
+    fig = Figure(size=(800, 600))
     
+    # Make title and axis
+    Label(fig[1, 1], "Transmission coefficient", tellwidth=false)
+    ax1 = Axis(fig[2, 1], limits=(extrema(Δ_range)..., 0, 1), 
+               xlabel=L"$ \Delta/\gamma $")
+    Label(fig[1, 2], "Transmission phase", tellwidth=false)
+    ax2 = Axis(fig[2, 2], limits=(extrema(Δ_range)..., -π, π), 
+               xlabel=L"$ \Delta/\gamma $")
+               
     # Plot magnitude squared and the phase of the transmission 
-    plot!(Δ_range, T    , label=L"$ |t|^2 $" , c=:blue, subplot=1)
-    plot!(Δ_range, phase, label=L"arg$ (t) $", c=:red , subplot=2)
-
+    lines!(ax1, Δ_range, T    , label=L"$ |t|^2 $" , color=:blue)
+    lines!(ax2, Δ_range, phase, label=L"arg$ (t) $", color=:red)
+    
     # Finish figure
-    plot!(ticks=:native)
-    xlims!(extrema(Δ_range))
-    # ylims!(ylims(fig[1])[1], 1, subplot=1)
-    ylims!(0, 1, subplot=1)
-    ylims!(-3.1415, 3.1415, subplot=2) #for some reason using π gives an error from Python
-    xlabel!(L"$ \Delta/\gamma $")
-    # ylabel!(L"")
-    title!("Transmission coefficient", subplot=1)
-    title!("Transmission phase", subplot=2)
-    display(fig)
+    axislegend.([ax1, ax2])
+    display(GLMakie.Screen(), fig)
 end
 
 
@@ -171,54 +180,56 @@ with bands given by the standard deviation
 """
 function fig_classDisorder_transmission_vs_Δ(Δ_range, T_means, T_stds, phase_means, phase_stds)
     # Start figure 
-    fig = plot(reuse=false, size=(800, 600), layout=(1, 2))
+    fig = Figure(size=(800, 600))
     
-    # Plot mean plus/minus the standard deviation of the magnitude squared and the phase of the transmission 
-    plot!(Δ_range, T_means, ribbon=T_stds, fillalpha=0.35, label=L"$ |t|^2 $" , c=:blue, subplot=1)
-    plot!(Δ_range, phase_means, ribbon=phase_stds, fillalpha=0.35, label=L"arg$ (t) $", c=:red , subplot=2)
+    # Make title and axis
+    Label(fig[1, 1], "Transmission coefficient", tellwidth=false)
+    ax1 = Axis(fig[2, 1], limits=(extrema(Δ_range)..., 0, 1), 
+               xlabel=L"$ \Delta/\gamma $")
+    Label(fig[1, 2], "Transmission phase", tellwidth=false)
+    ax2 = Axis(fig[2, 2], limits=(extrema(Δ_range)..., -π, π), 
+               xlabel=L"$ \Delta/\gamma $")
+               
+    # Plot magnitude squared and the phase of the transmission with bands for standard deviations
+    lines!(ax1, Δ_range, T_means, label=L"$ |t|^2 $" , color=:blue)
+    band!( ax1, Δ_range, T_means + T_stds, T_means - T_stds , color=(:blue, 0.35))
+    lines!(ax2, Δ_range, phase_means, label=L"arg$ (t) $", color=:red)
+    band!( ax2, Δ_range, phase_means + phase_stds, phase_means - phase_stds , color=(:red, 0.35))
     
     # Finish figure
-    plot!(ticks=:native)
-    xlims!(extrema(Δ_range))
-    # ylims!(ylims(fig[1])[1], 1, subplot=1)
-    ylims!(0, 1, subplot=1)
-    ylims!(-3.1415, 3.1415, subplot=2) #for some reason using π gives an error from Python
-    xlabel!(L"$ \Delta/\gamma $")
-    # ylabel!(L"")
-    title!("Transmission coefficient", subplot=1)
-    title!("Transmission phase", subplot=2)
-    display(fig)
+    axislegend.([ax1, ax2])
+    display(GLMakie.Screen(), fig)
 end
 
 
 """
 Plot the intensity (norm-squared) of the radiated E-field around the fiber
 """
-function fig_E_radiation(z_range, x_range, intensity, ρf, array)
+function fig_radiation_Efield(z_range, x_range, intensity, ρf, array)
     # Start figure 
-    fig = plot(reuse=false, size=(800, 600))
+    fig = Figure(size=(800, 600))
+    
+    # Make title and axis
+    Label(fig[1, 1], L"$ I/(\gamma/\lambda^3) $", tellwidth=false)
+    Axis(fig[2, 1], limits=(extrema(z_range), extrema(x_range)), 
+                    xlabel=L"$ \Delta/\gamma $", 
+                    aspect=DataAspect())
     
     # Plot the E-field intensity
     # sat = 1e1
     # intensity[intensity .> sat] .= sat
-    # contourf!(z_range, x_range, intensity', c=:viridis)
-    heatmap!(z_range, x_range, intensity', c=:viridis)
+    # contourf!(z_range, x_range, intensity, colormap =:viridis)
+    hm = heatmap!(z_range, x_range, intensity, colormap =:viridis)
+    Colorbar(fig[2, 2], hm)
     
     # Plot a representation of the fiber
-    rectangle(w, h, x, y) = Shape(x .+ [0, w, w, 0], y .+ [0, 0, h, h])
-    plot!(rectangle(z_range[end] - z_range[1], 2*ρf, z_range[1], -ρf), lw=2, c=:gray, opacity=0.3, label=false)
+    poly!([(z_range[1], -ρf), (z_range[end], -ρf), (z_range[end], ρf), (z_range[1], ρf)], color=(:gray, 0.3))
     
     # Plot a representation of the atomic array
-    scatter!([site[3] for site in array], [site[1] for site in array], mc=:black, markershape=:circle, ms=10, label=false)
+    scatter!([site[3] for site in array], [site[1] for site in array], color=:black, marker=:circle, markersize=10)
     
     # Finish figure
-    plot!(ticks=:native, aspect_ratio=:equal)
-    xlims!(extrema(z_range))
-    ylims!(extrema(x_range))
-    xlabel!(L"$ z/λ $")
-    ylabel!(L"$ x/λ $")
-    title!(L"$ I/(\gamma/\lambda^3) $")
-    display(fig)
+    display(GLMakie.Screen(), fig)
 end
 
 
@@ -228,56 +239,98 @@ as well as its discrete Fourier transform.
 """
 function fig_fOnChain(rs, v, ks, vFT)
     # Start figure 
-    fig = plot(reuse=false, size=(800, 600), layout=(2, 2), link=:x)
+    fig = Figure(size=(800, 600))
+    
+    # Make title and axis
+    Label(fig[1, 2], "Real space")
+    Label(fig[1, 3], "Momentum space")
+    Label(fig[2, 1], "Magnitude", rotation = pi/2)
+    Label(fig[3, 1], "Phase", rotation = pi/2)
+    ax1 = Axis(fig[2, 2])
+    ax2 = Axis(fig[2, 3])
+    ax3 = Axis(fig[3, 2], xlabel=L"$ z/λ $")
+    ax4 = Axis(fig[3, 3], xlabel=L"$ λk_z $")
     
     # Plot the real space function
-    plot!(rs, abs.(v)  , c=:blue, label=false, subplot=1)
-    plot!(rs, angle.(v), c=:blue, label=false, subplot=3)
+    lines!(ax1, rs, abs.(v)  , color=:blue)
+    lines!(ax3, rs, angle.(v), color=:blue)
     
     # Plot the k-space function
-    plot!(ks, abs.(vFT)  , c=:red, label=false, subplot=2)
-    plot!(ks, angle.(vFT), c=:red, label=false, subplot=4)
+    lines!(ax2, ks, abs.(vFT)  , color=:red)
+    lines!(ax4, ks, angle.(vFT), color=:red)
     
     # Finish figure
-    plot!(ticks=:native)
-    # xlims!(extrema(z_range))
-    # ylims!(extrema(x_range))
-    xlabel!(L"$ z/λ $", subplot=3)
-    xlabel!(L"$ λk_z $", subplot=4)
-    # title!(L"$ I/(\gamma/\lambda^3) $")
-    display(fig)
+    display(GLMakie.Screen(), fig)
 end
 
 
 """
-Plot the real and imaginary parts of the eigenvalues of a coupling matrix as a function of the dominant k
-in their discrete Fourier transform (i.e. plot the band structure of the coupling matrix)
+Plot the eigenvectors of a coupling matrix in real space, as well as its Fourier transform.
+Furthermore, plot the emission pattern of that mode.
 """
-function fig_eigvals_vs_k(dominant_ks, eigvals_real, eigvals_imag)
+function fig_GnmEigenModes(rs, v, ks, vFT, z_range, x_range, intensity, ρf, array, eigval)
     # Start figure 
-    fig = plot(reuse=false, size=(800, 600), layout=(1, 2))
+    fig = Figure(size=(800, 700))
+    
+    # Make title and axis
+    Label(fig[1, 2:3], latexstring(L"Eigval. $ = " * format_Complex_to_String(eigval) * L"$"), tellwidth=false)
+    Label(fig[2, 2], L"Real space$$", tellwidth=false)
+    Label(fig[2, 3], L"Momentum space$$", tellwidth=false)
+    Label(fig[3, 1], L"Magnitude$$", rotation = pi/2, tellheight=false)
+    Label(fig[4, 1], L"Phase$$", rotation = pi/2, tellheight=false)
+    ax1 = Axis(fig[3, 2])
+    ax2 = Axis(fig[3, 3])
+    ax3 = Axis(fig[4, 2], xlabel=L"$ z/λ $")
+    ax4 = Axis(fig[4, 3], xlabel=L"$ λk_z $")
+    ax5 = Axis(fig[5, 2:3], aspect=DataAspect(), xlabel=L"$ z/λ $", ylabel=L"$ x/λ $")
     
     # Plot the real space function
-    scatter!(dominant_ks, eigvals_real, c=:blue, label=false, subplot=1)
-    scatter!(dominant_ks, eigvals_imag, c=:red , label=false, subplot=2)
+    lines!(ax1, rs, abs.(v)  , color=:blue)
+    lines!(ax3, rs, angle.(v), color=:blue)
     
-    # Mark the light cone
-    ylims1 = collect(ylims(fig[1]))
-    ylims2 = collect(ylims(fig[2]))
-    plot!(-ωa*ones(2), ylims1, c=:black, ls=:dash, lw=1, label=false, subplot=1)
-    plot!( ωa*ones(2), ylims1, c=:black, ls=:dash, lw=1, label=false, subplot=1)
-    plot!(-ωa*ones(2), ylims2, c=:black, ls=:dash, lw=1, label=false, subplot=2)
-    plot!( ωa*ones(2), ylims2, c=:black, ls=:dash, lw=1, label="Light cone", subplot=2)
+    # Plot the k-space function
+    lines!(ax2, ks, abs.(vFT)  , color=:red)
+    lines!(ax4, ks, angle.(vFT), color=:red)
+    
+    # Plot the E-field intensity
+    hm = heatmap!(ax5, z_range, x_range, intensity, colormap=:viridis)
+    Colorbar(fig[5, 4], hm)
+    
+    # Plot a representation of the fiber
+    poly!(ax5, [(z_range[1], -ρf), (z_range[end], -ρf), (z_range[end], ρf), (z_range[1], ρf)], color=(:gray, 0.3))
+    
+    # Plot a representation of the atomic array
+    scatter!(ax5, [site[3] for site in array], [site[1] for site in array], color=:black, marker=:circle, markersize=10)
     
     # Finish figure
-    plot!(ticks=:native)
-    # xlims!(extrema(z_range))
-    ylims!(ylims1..., subplot=1)
-    ylims!(ylims2..., subplot=2)
-    xlabel!(L"$ λk_z $")
-    title!("Real part of eigval", subplot=1)
-    title!("Imag part of eigval", subplot=2)
-    display(fig)
+    display(GLMakie.Screen(), fig)
+end
+
+
+"""
+Plot the collective energies of a coupling matrix as a function of the dominant k
+in their discrete Fourier transform (i.e. plot the band structure of the coupling matrix)
+"""
+function fig_eigenEnergies_vs_k(dominant_ks, collΔ, collΓ)
+    # Start figure 
+    fig = Figure(size=(800, 600))
+    
+    # Make title and axis
+    Label(fig[1, 1], "Real part of eigval", tellwidth=false)
+    Label(fig[1, 2], "Imag part of eigval", tellwidth=false)
+    ax1 = Axis(fig[2, 1], xlabel=L"$ λk_z $")
+    ax2 = Axis(fig[2, 2], xlabel=L"$ λk_z $")
+    
+    # Plot the real space function
+    scatter!(ax1, dominant_ks, collΔ, color=:blue)
+    scatter!(ax2, dominant_ks, collΓ, color=:red)
+    
+    # Mark the light cone
+    vlines!(ax1, [-ωa, ωa], color=:black, linestyle=:dash, linewidth=1)
+    vlines!(ax2, [-ωa, ωa], color=:black, linestyle=:dash, linewidth=1)
+    
+    # Finish figure
+    display(GLMakie.Screen(), fig)
 end
 
 
@@ -285,56 +338,67 @@ end
 Plot the magnitude of the Fourier transform of the eigenvectors of a coupling matrix 
 as a function of its dominant k in their discrete Fourier transform
 """
-function fig_eigvecsFTκ_vs_k(dominant_ks, dFT_κ_abs, κ)
+function fig_eigenModesOverlapWithκ_vs_k(dominant_ks, overlapWithκAbs, κ)
     # Start figure 
-    fig = plot(reuse=false, size=(800, 600))
+    fig = Figure(size=(800, 600))
+    
+    # Make title and axis
+    Label(fig[1, 1], "Eigvecs overlap with κ plane wave", tellwidth=false)
+    Axis(fig[2, 1], xlabel=L"$ λk_z $")
     
     # Plot the real space function
-    scatter!(dominant_ks, dFT_κ_abs, c=:blue, label=false)
+    scatter!(dominant_ks, overlapWithκAbs, color=:blue)
     
     # Mark the light cone
-    ylim = collect(ylims(fig))
-    plot!(-ωa*ones(2), ylim, c=:black, ls=:dash, lw=1, label=false)
-    plot!( ωa*ones(2), ylim, c=:black, ls=:dash, lw=1, label="Light cone")
-    plot!(-κ*ones(2), ylim, c=:red, ls=:dash, lw=1, label=false)
-    plot!( κ*ones(2), ylim, c=:red, ls=:dash, lw=1, label=L"$ \pm\kappa $")
+    vlines!([-ωa, ωa], color=:black, linestyle=:dash, linewidth=1, label="Light cone")
+    vlines!([-κ, κ], color=:red, linestyle=:dash, linewidth=1, label=L"$ \pm\kappa $")
     
     # Finish figure
-    plot!(ticks=:native, legend_position=:top)
-    ylims!(ylim...)
-    xlabel!(L"$ λk_z $")
-    title!("Eigvecs overlap with κ plane wave")
-    display(fig)
+    axislegend()
+    display(GLMakie.Screen(), fig)
 end
 
 
 """
 Plot magnitude and phase of transmission amplitude as a function of detuning
 and mark the position of the eigvals of Gnm
-"""
-function fig_transmission_withGnmEigvals(Δ_range, T, phase, eigvals_real)
+# """
+function fig_transmission_withGnmeigenEnergies(Δ_range, T, phase, collΔ, collΓ, overlapWithκAbs)
     # Start figure 
-    fig = plot(reuse=false, size=(800, 600), layout=(1, 2))
+    fig = Figure(size=(800, 900))
     
-    # Plot magnitude squared and the phase of the transmission 
-    plot!(Δ_range, T    , label=L"$ |t|^2 $" , c=:blue, subplot=1)
-    plot!(Δ_range, phase, label=L"arg$ (t) $", c=:red , subplot=2)
+    # Plot magnitude squared of the transmission 
+    Label(fig[1, 1], "Transmission coefficient", tellwidth=false)
+    ax1 = Axis(fig[2, 1], limits=(extrema(Δ_range)..., 0, 1), 
+               ylabel=L"$ |t|^2 $")
+    lines!(ax1, Δ_range, T, color=:blue)
+    
+    # Plot the phase of the transmission 
+    Label(fig[3, 1], "Transmission phase", tellwidth=false)
+    ax2 = Axis(fig[4, 1], limits=(extrema(Δ_range)..., -π, π), 
+               xlabel=L"$ \Delta/\gamma $", 
+               ylabel=L"arg$ (t) $")
+    lines!(ax2, Δ_range, phase, color=:red)
     
     # Mark the position of the Gnm eigvals
-    for ev in eigvals_real
-        plot!(ev*ones(2), [0, 1] , lw=0.3, c=:purple, label=false, subplot=1)
-        plot!(ev*ones(2), [-π, π], lw=0.3, c=:purple, label=false, subplot=2)
+    for ev_r in collΔ
+        vlines!(ax1, ev_r*ones(2), linewidth=0.3, color=:purple, label=false)
+        vlines!(ax2, ev_r*ones(2), linewidth=0.3, color=:purple, label=false)
     end
     
+    # Plot the Gnm eigenmode decay rates as a function of their energy
+    Label(fig[5, 1], "Collective decay", tellwidth=false)
+    ax3 = Axis(fig[6, 1], limits=(extrema(Δ_range), nothing), 
+               ylabel=L"$ \Gamma_\text{coll}(\Delta_\text{coll}) $")
+    scatter!(ax3, collΔ, collΓ, color=:purple)
+    
+    # Plot the Gnm eigenmode overlap with κ plane wave as a function of their energy
+    Label(fig[7, 1], "Overlap with κ plane wave", tellwidth=false)
+    ax4 = Axis(fig[8, 1], limits=(extrema(Δ_range), nothing))
+    scatter!(ax4, collΔ, overlapWithκAbs, color=:black)
+    
     # Finish figure
-    plot!(ticks=:native)
-    xlims!(extrema(Δ_range))
-    # ylims!(ylims(fig[1])[1], 1, subplot=1)
-    ylims!(0, 1, subplot=1)
-    ylims!(-3.1415, 3.1415, subplot=2) #for some reason using π gives an error from Python
-    xlabel!(L"$ \Delta/\gamma $")
-    # ylabel!(L"")
-    title!("Transmission coefficient", subplot=1)
-    title!("Transmission phase", subplot=2)
-    display(fig)
+    display(GLMakie.Screen(), fig)
 end
+
+
