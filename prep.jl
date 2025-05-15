@@ -6,9 +6,9 @@ Prepare the atomic coherences for plotting (in the case of no phonons)
 function prep_times_σTrajectories(xTrajectories, N)
     times = xTrajectories[:, 1]
     
-    σTrajectories = unpack_σFromx.(eachrow(xTrajectories[:, 2:end]))
+    σTrajectories_t = unpack_σFromx.(eachrow(xTrajectories[:, 2:end]))
     
-    σTrajectories = [[σTrajectories[t][i] for t in eachindex(times)] for i in 1:N]
+    σTrajectories = [[σTrajectories_t[t][i] for t in eachindex(times)] for i in 1:N]
     return times, σTrajectories
 end
 
@@ -50,4 +50,15 @@ function prep_classDisorder_transmission(ts)
            squeeze(std(T_mat, dims=1)), 
            squeeze(mean(phase_mat, dims=1)), 
            squeeze(std(phase_mat, dims=1))
+end
+
+
+"""
+Prepare the loss, absolute value of weights, and absolute value of resonances
+"""
+function prep_loss_weights_resonances(t, weights, resonances)
+    loss = 1 .- abs2.(t)
+    weights_abs = abs.(weights)
+    resonances_abs = broadcast(x -> abs.(x), resonances)
+    return loss, weights_abs, resonances_abs
 end

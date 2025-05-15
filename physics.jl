@@ -669,6 +669,24 @@ end
 
 
 """
+Analytically calculate the time evolution of the atomic coherences (in the case of no phonons)
+"""
+function timeEvolution_analytical(t, Δ, tildeΩ, tildeG, initialState)
+    # Get the eigenenergies and -modes of tildeG, as well as the basis-transformation matrix Q
+    eigenEnergies, eigenModes = eigbasis(tildeG)
+    Q = vectorOfCols2Matrix(eigenModes)
+    
+    # Prepare the initial state (in the real space basis and the eigenmode basis)
+    σ0 = unpack_σFromx(initialState)
+    tildeσ0 = inv(Q)*σ0
+    
+    # Prepare the steady state in the eigenmode basis and put together the final result
+    tildeσSS = -(inv(Q)*tildeΩ)./(Δ .+ eigenEnergies)
+    return Q*( tildeσSS .+ (tildeσ0 - tildeσSS).*exp.(1im*(Δ .+ eigenEnergies)*t) )
+end
+
+
+"""
 Prepare the groundstate in terms of the x-vector for time-evolution
 
 Shallow function, but allows for a good abstraction
@@ -702,10 +720,36 @@ end
 
 
 """
+Calculate the transmission of light through the guided mode, using the analytical approach 
+(in the case of no phonons)
+"""
+function transmission_analytical(Δ, tildeΩ, tildeG, κ_prime)
+    eigenEnergies, eigenModes = eigbasis(tildeG)
+    Q = vectorOfCols2Matrix(eigenModes)
+    return 1 - 3im*π*κ_prime/(2*ωa^2)*sum( [(tildeΩ'*Q)[i]*(inv(Q)*tildeΩ)[i]/(Δ + eigenEnergy) for (i, eigenEnergy) in enumerate(eigenEnergies)] )
+end
+
+
+"""
+Calculate the transmission of light through the guided mode, using the analytical approach 
+(in the case of no phonons)
+"""
+function transmission_analytical_weights_resonances(Δ_range, tildeΩ, tildeG, κ_prime)
+    eigenEnergies, eigenModes = eigbasis(tildeG)
+    Q = vectorOfCols2Matrix(eigenModes)
+    
+    weights    = [3im*π*κ_prime/(2*ωa^2)*(tildeΩ'*Q)[i]*(inv(Q)*tildeΩ)[i] for i in eachindex(eigenEnergies)]
+    resonances = [weights[i]./(Δ_range .+ eigenEnergy) for (i, eigenEnergy) in enumerate(eigenEnergies)]
+    
+    return weights, resonances 
+end
+
+
+"""
 Calculate the radiated E-field, assuming no incoming radiation field
 (in the case of no phonons)
 """
-function E_radiation(σ, Grm_rrn, d)
+function radiation_Efield(σ, Grm_rrn, d)
     d_mag = sqrt(3π/ωa^3)
     return ωa^2*sum( Grm_rrn.*Ref(d_mag*d).*σ )
 end

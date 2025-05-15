@@ -402,7 +402,7 @@ end
 
 
 """
-Perform time evolution of the atomic and phononic degrees of freedom
+Perform time evolution of the atomic
 """
 function timeEvolution(Δ, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2, N, initialState, tspan, dtmax, postfix, save_individual_res=true)
     filename = "TE_" * postfix
@@ -470,7 +470,53 @@ Scan time evolutions over the detuning
 function scan_timeEvolution(SP)
     postfixes = get_postfix.(SP.Δ_range, Ref(SP.d), Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, Ref(SP.tspan), SP.dtmax)
     params = get_parameterMatrices(SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
-    return timeEvolution(SP.Δ_range, Ref.(params)..., SP.N, Ref(SP.initialState), Ref(SP.tspan), SP.dtmax, postfixes, SP.save_individual_res)
+    return timeEvolution.(SP.Δ_range, Ref.(params)..., SP.N, Ref(SP.initialState), Ref(SP.tspan), SP.dtmax, postfixes, SP.save_individual_res)
+end
+
+
+"""
+Perform time evolution of the atomic, using the analytical approach
+(for the case of no phonons)
+"""
+function timeEvolution_analytical(Δ, tildeΩ, tildeG, initialState, tspan, dtmax, postfix, save_individual_res=true)
+    filename = "TE_noPh_ana_" * postfix
+    folder = "timeEvol/"
+    
+    if isfile(saveDir * folder * filename * ".txt") return load_as_txt(saveDir * folder, filename) end
+    
+    times = range(tspan..., Int(floor((tspan[2] - tspan[1])/dtmax)))
+    σTrajectories = timeEvolution_analytical.(times, Δ, Ref(tildeΩ), Ref(tildeG), Ref(initialState))
+    xTrajectories = pack_σIntox.(σTrajectories)
+    
+    # Pack and save data
+    formattedResult = vectorOfRows2Matrix([vcat(times[i], xTrajectories[i]) for i in eachindex(times)])
+    if save_individual_res save_as_txt(formattedResult, saveDir * folder, filename) end
+    
+    return formattedResult
+end
+
+
+"""
+Perform time evolution for parameters given by SP, using the analytical approach
+"""
+function timeEvolution_analytical(SP, Δ)
+    if any(SP.ηα .!= 0) throw(ArgumentError("timeEvolution_analytical has only been implemented for the case of no phonons")) end
+    
+    postfix = get_postfix(Δ, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax)
+    params = get_parameterMatrices(SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+    return timeEvolution_analytical(Δ, params..., SP.initialState, SP.tspan, SP.dtmax, postfix, SP.save_individual_res)
+end
+    
+
+"""
+Scan time evolutions over the detuning, using the analytical approach
+"""
+function scan_timeEvolution_analytical(SP)
+    if any(SP.ηα .!= 0) throw(ArgumentError("scan_timeEvolution_analytical has only been implemented for the case of no phonons")) end
+    
+    postfixes = get_postfix.(SP.Δ_range, Ref(SP.d), Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, Ref(SP.tspan), SP.dtmax)
+    params = get_parameterMatrices(SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+    return timeEvolution_analytical.(SP.Δ_range, Ref.(params)..., Ref(SP.initialState), Ref(SP.tspan), SP.dtmax, postfixes, SP.save_individual_res)
 end
 
 
@@ -532,19 +578,43 @@ end
 
 
 """
+Calculate the transmission of light through the fiber in the chosen driving mode for parameters given by SP, 
+using the analytical approach
+"""
+function calc_transmission_analytical(SP, Δ)
+    params = get_parameterMatrices(SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+    if all(SP.ηα .== 0) return transmission_analytical(Δ, params..., SP.fiber.propagation_constant_derivative)
+    else throw(ArgumentError("calc_transmission_analytical has only been implemented for the case of no phonons"))
+    end
+end
+
+
+"""
+Scan the transmission of light through the fiber in the chosen driving mode over the detuning for parameters given by SP, 
+using the analytical approach
+"""
+function scan_transmission_analytical(SP)
+    params = get_parameterMatrices(SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+    if all(SP.ηα .== 0) return transmission_analytical.(SP.Δ_range, Ref.(params)..., SP.fiber.propagation_constant_derivative)
+    else throw(ArgumentError("scan_transmission_analytical has only been implemented for the case of no phonons"))
+    end
+end
+
+
+"""
 Calculate the intensity of the radiated light (in the case of no phonons) 
 """
-function calc_E_radiation(σ, fiber, d, r_field, array, save_individual_res::Bool=true, approx_Grm_trans::Tuple=(true, true))
+function calc_radiation_Efield(σ, fiber, d, r_field, array, save_individual_res::Bool=true, approx_Grm_trans::Tuple=(true, true))
     Grm_rrn = Grm.(Ref(fiber), ωa, Ref(r_field), array, Ref((0, 0)), 1, save_individual_res, Ref(approx_Grm_trans))
-    return E_radiation(σ, Grm_rrn, d)
+    return radiation_Efield(σ, Grm_rrn, d)
 end
 
 
 """
 Calculate the intensity of the radiated light
 """
-function calc_E_radiation(σBα, fiber, d, ηα, r_field, array, save_individual_res::Bool=true, approx_Grm_trans::Tuple=(true, true))
-    throw(ArgumentError("calc_E_radiation has not been implemented for the case including phonons"))
+function calc_radiation_Efield(σBα, fiber, d, ηα, r_field, array, save_individual_res::Bool=true, approx_Grm_trans::Tuple=(true, true))
+    throw(ArgumentError("calc_radiation_Efield has not been implemented for the case including phonons"))
 end
 
 
@@ -553,13 +623,13 @@ Calculate the intensity of the radiated light for parameters given by SP
 
 The function assumes that σBα contains only σ if the Lamb-Dicke parameters are zero
 """
-function calc_E_radiation(SP, σBα, r_field)
+function calc_radiation_Efield(SP, σBα, r_field)
     if SP.d == "chiral" d = chiralDipoleMoment(SP.fiber, SP.ρa) else d = SP.d end
     
     if all(SP.ηα .== 0)
-        return calc_E_radiation(σBα, SP.fiber, d, r_field, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+        return calc_radiation_Efield(σBα, SP.fiber, d, r_field, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
     else
-        return calc_E_radiation(σBα, SP.fiber, d, SP.ηα, r_field, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+        return calc_radiation_Efield(σBα, SP.fiber, d, SP.ηα, r_field, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
     end
 end
 
@@ -568,8 +638,9 @@ end
     Functions pertaining to the eigenmodes of the atomic array
 ================================================#
 """
-Find the eigenvalues and -vectors of a coupling matrix, as well as the dominant k-vector
-(from a discrete Fourier transform) pertaining to each of those eigenvectors
+Find the eigenvalues and -vectors of a coupling matrix (i.e. the collective energies and modes), 
+as well as the dominant k-vector (from a discrete Fourier transform) 
+pertaining to each of those eigenvectors
 """
 function spectrum(Gnm, a)
     eigvals, eigvecs = eigbasis(Gnm)
@@ -594,9 +665,11 @@ end
 
 
 """
-Reconstruct the transmission spectrum from the eigenvalues of the coupling matrix. 
-Specifically, assume that each eigenvalue contributes a Lorentzian resonance to the transmission.
+Calculate collective energies from eigen energies of a coupling matrix
+
+Shallow function, but allows for a good abstraction
 """
-function reconstructTransmission(Δ, eigvals, dFT_κ)
-    return 1 - sum( [coeff*1im*imag(ev)/(Δ + ev) for (ev, coeff) in zip(eigvals, dFT_κ)] )
+function collEnergies_from_eigenEnergies(eigenEnergies)
+    return -real(eigenEnergies), 2*imag(eigenEnergies)
 end
+

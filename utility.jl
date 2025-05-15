@@ -165,7 +165,7 @@ end
 
 function unpack_σBαFromx(x)
     N = Int((sqrt(6*length(x) + 1) - 1)/6) #if length(x) = 2(N + 3N^2), then 6*length(x) + 1 = (6N + 1)^2, and N is equal to the following
-    σ, Bα = empty_σBαVectors(N)
+    σ, Bα = empty_σVector(N), empty_BαVector(N)
     unpack_σBαFromx!(σ, Bα, x)
     return σ, Bα
 end
@@ -320,6 +320,14 @@ Returns a matrix whose rows are given by the entries of the given vector
 """
 function vectorOfRows2Matrix(x)
     return Matrix(transpose(reduce(hcat, x)))
+end
+
+
+"""
+Returns a matrix whose columns are given by the entries of the given vector
+"""
+function vectorOfCols2Matrix(x)
+    return reduce(hcat, x)
 end
 
 

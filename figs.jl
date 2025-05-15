@@ -363,39 +363,41 @@ end
 Plot magnitude and phase of transmission amplitude as a function of detuning
 and mark the position of the eigvals of Gnm
 # """
-function fig_transmission_withGnmeigenEnergies(Δ_range, T, phase, collΔ, collΓ, overlapWithκAbs)
+function fig_loss_withGnmeigenEnergies(Δ_range, L, resonances_abs, collΔ, collΓ, weights_abs)
     # Start figure 
     fig = Figure(size=(800, 900))
     
-    # Plot magnitude squared of the transmission 
-    Label(fig[1, 1], "Transmission coefficient", tellwidth=false)
-    ax1 = Axis(fig[2, 1], limits=(extrema(Δ_range)..., 0, 1), 
-               ylabel=L"$ |t|^2 $")
-    lines!(ax1, Δ_range, T, color=:blue)
+    # Plot the loss
+    Label(fig[1, 1], L"Loss coefficient, individual resonances superimposed $$", tellwidth=false)
+    ax1 = Axis(fig[end+1, 1], limits=(extrema(Δ_range)..., 0, nothing), 
+               xlabel=L"$ \Delta $",
+               ylabel=L"$ 1 - |t|^2 $")
+               lines!(ax1, Δ_range, L, color=:blue, label=L"Loss, $ 1 - |t|^2 $")
     
-    # Plot the phase of the transmission 
-    Label(fig[3, 1], "Transmission phase", tellwidth=false)
-    ax2 = Axis(fig[4, 1], limits=(extrema(Δ_range)..., -π, π), 
-               xlabel=L"$ \Delta/\gamma $", 
-               ylabel=L"arg$ (t) $")
-    lines!(ax2, Δ_range, phase, color=:red)
-    
-    # Mark the position of the Gnm eigvals
-    for ev_r in collΔ
-        vlines!(ax1, ev_r*ones(2), linewidth=0.3, color=:purple, label=false)
-        vlines!(ax2, ev_r*ones(2), linewidth=0.3, color=:purple, label=false)
+    # Plot the resonances
+    for resonance in resonances_abs
+        lines!(ax1, Δ_range, resonance, color=:skyblue, label=L"Resonances, $ \left|\frac{γw}{(Δ - Δ_\text{coll} + iΓ_\text{coll}/2)}\right| $")
     end
+    axislegend(position=:lt, unique=true)
+            
+    # Mark the position of the resonances
+    vlines!(ax1, collΔ, linewidth=0.2, color=:purple, label=false)
     
     # Plot the Gnm eigenmode decay rates as a function of their energy
-    Label(fig[5, 1], "Collective decay", tellwidth=false)
-    ax3 = Axis(fig[6, 1], limits=(extrema(Δ_range), nothing), 
-               ylabel=L"$ \Gamma_\text{coll}(\Delta_\text{coll}) $")
-    scatter!(ax3, collΔ, collΓ, color=:purple)
+    Label(fig[end+1, 1], L"Resonance widths, $ Γ_\text{coll}/γ $", tellwidth=false)
+    ax2 = Axis(fig[end+1, 1], limits=(extrema(Δ_range), nothing), 
+               xlabel=L"$ Δ_\text{coll}/γ $",
+               ylabel=L"$ Γ_\text{coll}(Δ_\text{coll})/γ $", 
+               yscale=log10)
+    scatter!(ax2, collΔ, collΓ, color=:purple)
     
-    # Plot the Gnm eigenmode overlap with κ plane wave as a function of their energy
-    Label(fig[7, 1], "Overlap with κ plane wave", tellwidth=false)
-    ax4 = Axis(fig[8, 1], limits=(extrema(Δ_range), nothing))
-    scatter!(ax4, collΔ, overlapWithκAbs, color=:black)
+    # Plot the weights of the resonances
+    Label(fig[end+1, 1], L"Resonance weights, $ |w| $", tellwidth=false)
+    ax3 = Axis(fig[end+1, 1], limits=(extrema(Δ_range), nothing), 
+               xlabel=L"$ Δ_\text{coll}/γ $",
+               ylabel=L"$ |w(Δ_\text{coll})| $",
+               yscale=log10)
+    scatter!(ax3, collΔ, weights_abs, color=:black)
     
     # Finish figure
     display(GLMakie.Screen(), fig)
