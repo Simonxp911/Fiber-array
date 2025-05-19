@@ -130,7 +130,7 @@ function get_tildeΩs(fiber, d, incField_wlf, array)
     for (w, l, f) in incField_wlf
         En += w*Egm.(Ref(fiber), l, f, array)
     end
-    En /= sqrt(sum([abs2(w) for (w, l, f) in incField_wlf]))
+    En /= sqrt(sum([abs2(w) for (w, l, f) in incField_wlf], init=0.0))
     
     # Put together the driving
     Ωn = Ref(d').*En
@@ -150,7 +150,7 @@ function get_tildeΩs(fiber, d, ηα, incField_wlf, array)
             Enαα[α] += w*Egm.(Ref(fiber), l, f, array, 2, α)
         end
     end
-    normFactor = sqrt(sum([abs2(w) for (w, l, f) in incField_wlf]))
+    normFactor = sqrt(sum([abs2(w) for (w, l, f) in incField_wlf], init=0.0))
     En /= normFactor
     for α in 1:3
         Enα[α]  /= normFactor
@@ -168,7 +168,6 @@ end
 function get_tildeGs(fiber, d::String, array, save_individual_res, approx_Grm_trans)
     if d == "chiral"
         ρa = array[1][1]
-        if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
         d = chiralDipoleMoment(fiber, ρa)
         return get_tildeGs(fiber, d, array, save_individual_res, approx_Grm_trans)
     else
@@ -180,7 +179,6 @@ end
 function get_tildeGs(fiber, d::String, ηα, array, save_individual_res, approx_Grm_trans)
     if d == "chiral"
         ρa = array[1][1]
-        if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
         d = chiralDipoleMoment(fiber, ρa)
         return get_tildeGs(fiber, d, ηα, array, save_individual_res, approx_Grm_trans)
     else
@@ -300,6 +298,34 @@ end
 
 function get_tildeFα(tildeG, να)
     return [tildeG - να[α]*I for α in 1:3]
+end
+
+
+function get_tildeG0(fiber, d::String, array)
+    if d == "chiral"
+        ρa = array[1][1]
+        d = chiralDipoleMoment(fiber, ρa)
+        return get_tildeG0(fiber, d, array)
+    else
+        throw(ArgumentError("get_tildeGs(d::String) is only implemented for d = 'chiral'"))
+    end
+end
+
+
+function get_tildeG0(fiber, d, array)
+    N = length(array)
+    
+    if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
+    
+    G0_ = fill(zeros(ComplexF64, 3, 3), N, N)
+    for j in 1:N, i in 1:j
+        # Calculate vacuum Green's functions
+        G0_[i, j] = G0(ωa, array[i], array[j])
+        G0_[j, i] = transpose(G0_[i, j]) #Onsager reciprocity
+    end
+    
+    # Get the couplings by appropriately multiplying with the dipole moment and some constants
+    return 3*π/ωa*(Ref(d').*G0_.*Ref(d))
 end
 
 
@@ -475,17 +501,17 @@ end
 
 
 """
-Perform time evolution of the atomic, using the analytical approach
+Perform time evolution of the atomic, using the eigenmodes approach
 (for the case of no phonons)
 """
-function timeEvolution_analytical(Δ, tildeΩ, tildeG, initialState, tspan, dtmax, postfix, save_individual_res=true)
+function timeEvolution_eigenmodes(Δ, tildeΩ, tildeG, initialState, tspan, dtmax, postfix, save_individual_res=true)
     filename = "TE_noPh_ana_" * postfix
     folder = "timeEvol/"
     
     if isfile(saveDir * folder * filename * ".txt") return load_as_txt(saveDir * folder, filename) end
     
     times = range(tspan..., Int(floor((tspan[2] - tspan[1])/dtmax)))
-    σTrajectories = timeEvolution_analytical.(times, Δ, Ref(tildeΩ), Ref(tildeG), Ref(initialState))
+    σTrajectories = timeEvolution_eigenmodes.(times, Δ, Ref(tildeΩ), Ref(tildeG), Ref(initialState))
     xTrajectories = pack_σIntox.(σTrajectories)
     
     # Pack and save data
@@ -497,26 +523,26 @@ end
 
 
 """
-Perform time evolution for parameters given by SP, using the analytical approach
+Perform time evolution for parameters given by SP, using the eigenmodes approach
 """
-function timeEvolution_analytical(SP, Δ)
-    if any(SP.ηα .!= 0) throw(ArgumentError("timeEvolution_analytical has only been implemented for the case of no phonons")) end
+function timeEvolution_eigenmodes(SP, Δ)
+    if any(SP.ηα .!= 0) throw(ArgumentError("timeEvolution_eigenmodes has only been implemented for the case of no phonons")) end
     
     postfix = get_postfix(Δ, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax)
     params = get_parameterMatrices(SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
-    return timeEvolution_analytical(Δ, params..., SP.initialState, SP.tspan, SP.dtmax, postfix, SP.save_individual_res)
+    return timeEvolution_eigenmodes(Δ, params..., SP.initialState, SP.tspan, SP.dtmax, postfix, SP.save_individual_res)
 end
     
 
 """
-Scan time evolutions over the detuning, using the analytical approach
+Scan time evolutions over the detuning, using the eigenmodes approach
 """
-function scan_timeEvolution_analytical(SP)
-    if any(SP.ηα .!= 0) throw(ArgumentError("scan_timeEvolution_analytical has only been implemented for the case of no phonons")) end
+function scan_timeEvolution_eigenmodes(SP)
+    if any(SP.ηα .!= 0) throw(ArgumentError("scan_timeEvolution_eigenmodes has only been implemented for the case of no phonons")) end
     
     postfixes = get_postfix.(SP.Δ_range, Ref(SP.d), Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, Ref(SP.tspan), SP.dtmax)
     params = get_parameterMatrices(SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
-    return timeEvolution_analytical.(SP.Δ_range, Ref.(params)..., Ref(SP.initialState), Ref(SP.tspan), SP.dtmax, postfixes, SP.save_individual_res)
+    return timeEvolution_eigenmodes.(SP.Δ_range, Ref.(params)..., Ref(SP.initialState), Ref(SP.tspan), SP.dtmax, postfixes, SP.save_individual_res)
 end
 
 
@@ -579,24 +605,28 @@ end
 
 """
 Calculate the transmission of light through the fiber in the chosen driving mode for parameters given by SP, 
-using the analytical approach
+using the eigenmodes approach
 """
-function calc_transmission_analytical(SP, Δ)
-    params = get_parameterMatrices(SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
-    if all(SP.ηα .== 0) return transmission_analytical(Δ, params..., SP.fiber.propagation_constant_derivative)
-    else throw(ArgumentError("calc_transmission_analytical has only been implemented for the case of no phonons"))
+function calc_transmission_eigenmodes(SP, Δ)
+    if all(SP.ηα .== 0) 
+        tildeΩ, tildeG = get_parameterMatrices(SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+        eigenEnergies, eigenModes = eigbasis(tildeG)
+        return transmission_eigenmodes(Δ, tildeΩ, eigenEnergies, eigenModes, SP.fiber.propagation_constant_derivative)
+    else throw(ArgumentError("calc_transmission_eigenmodes has only been implemented for the case of no phonons"))
     end
 end
 
 
 """
 Scan the transmission of light through the fiber in the chosen driving mode over the detuning for parameters given by SP, 
-using the analytical approach
+using the eigenmodes approach
 """
-function scan_transmission_analytical(SP)
-    params = get_parameterMatrices(SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
-    if all(SP.ηα .== 0) return transmission_analytical.(SP.Δ_range, Ref.(params)..., SP.fiber.propagation_constant_derivative)
-    else throw(ArgumentError("scan_transmission_analytical has only been implemented for the case of no phonons"))
+function scan_transmission_eigenmodes(SP)
+    if all(SP.ηα .== 0) 
+        tildeΩ, tildeG = get_parameterMatrices(SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+        eigenEnergies, eigenModes = eigbasis(tildeG)
+        return transmission_eigenmodes.(SP.Δ_range, Ref(tildeΩ), Ref(eigenEnergies), Ref(eigenModes), SP.fiber.propagation_constant_derivative)
+    else throw(ArgumentError("scan_transmission_eigenmodes has only been implemented for the case of no phonons"))
     end
 end
 
@@ -623,13 +653,13 @@ Calculate the intensity of the radiated light for parameters given by SP
 
 The function assumes that σBα contains only σ if the Lamb-Dicke parameters are zero
 """
-function calc_radiation_Efield(SP, σBα, r_field)
+function calc_radiation_Efield(SP, σBα, r_field, approx_Grm_trans::Tuple=(true, true))
     if SP.d == "chiral" d = chiralDipoleMoment(SP.fiber, SP.ρa) else d = SP.d end
     
     if all(SP.ηα .== 0)
-        return calc_radiation_Efield(σBα, SP.fiber, d, r_field, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+        return calc_radiation_Efield(σBα, SP.fiber, d, r_field, SP.array, SP.save_individual_res, approx_Grm_trans)
     else
-        return calc_radiation_Efield(σBα, SP.fiber, d, SP.ηα, r_field, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+        return calc_radiation_Efield(σBα, SP.fiber, d, SP.ηα, r_field, SP.array, SP.save_individual_res, approx_Grm_trans)
     end
 end
 

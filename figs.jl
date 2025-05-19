@@ -17,7 +17,7 @@ function fig_propConst_vs_ω(ω_range, κ, ρf, n)
                ylabel=L"[nm$^{-1}$]")
     
     # Plot the propagation constant, and the lines y = ω and y = nω
-    lines!(ax1, ω_range, κ          , label=L"$ y = \kappa(\omega) $", color=:black)
+    lines!(ax1, ω_range, κ          , label=L"$ y = κ(\omega) $", color=:black)
     lines!(ax1, ω_range, n * ω_range, label=L"$ y = n\omega $"       , color=:red)
     lines!(ax1, ω_range, ω_range    , label=L"$ y = \omega $"        , color=:blue)
     
@@ -151,16 +151,18 @@ end
 """
 Plot magnitude and phase of transmission amplitude as a function of detuning
 """
-function fig_transmission_vs_Δ(Δ_range, T, phase)
+function fig_transmission_vs_Δ(Δ_range, T, phase, titl)
     # Start figure 
     fig = Figure(size=(800, 600))
     
     # Make title and axis
-    Label(fig[1, 1], "Transmission coefficient", tellwidth=false)
-    ax1 = Axis(fig[2, 1], limits=(extrema(Δ_range)..., 0, 1), 
+    Label(fig[1, :], titl, tellwidth=false)
+    Label(fig[2, 1], "Transmission coefficient", tellwidth=false)
+    ax1 = Axis(fig[3, 1], limits=(extrema(Δ_range)..., 0, 1), 
                xlabel=L"$ \Delta/\gamma $")
-    Label(fig[1, 2], "Transmission phase", tellwidth=false)
-    ax2 = Axis(fig[2, 2], limits=(extrema(Δ_range)..., -π, π), 
+    Label(fig[2, 2], "Transmission phase", tellwidth=false)
+    ax2 = Axis(fig[3, 2], limits=(extrema(Δ_range)..., -π, π),
+               yticks=([-π, -π/2, 0, π/2, π], [L"$ -π $", L"$ -π/2 $", L"$ 0 $", L"$ π/2 $", L"$ π $"]),
                xlabel=L"$ \Delta/\gamma $")
                
     # Plot magnitude squared and the phase of the transmission 
@@ -188,6 +190,7 @@ function fig_classDisorder_transmission_vs_Δ(Δ_range, T_means, T_stds, phase_m
                xlabel=L"$ \Delta/\gamma $")
     Label(fig[1, 2], "Transmission phase", tellwidth=false)
     ax2 = Axis(fig[2, 2], limits=(extrema(Δ_range)..., -π, π), 
+               yticks=([-π, -π/2, 0, π/2, π], [L"$ -π $", L"$ -π/2 $", L"$ 0 $", L"$ π/2 $", L"$ π $"]),
                xlabel=L"$ \Delta/\gamma $")
                
     # Plot magnitude squared and the phase of the transmission with bands for standard deviations
@@ -212,7 +215,8 @@ function fig_radiation_Efield(z_range, x_range, intensity, ρf, array)
     # Make title and axis
     Label(fig[1, 1], L"$ I/(\gamma/\lambda^3) $", tellwidth=false)
     Axis(fig[2, 1], limits=(extrema(z_range), extrema(x_range)), 
-                    xlabel=L"$ \Delta/\gamma $", 
+                    xlabel=L"$ z/\lambda $", 
+                    ylabel=L"$ x/\lambda $", 
                     aspect=DataAspect())
     
     # Plot the E-field intensity
@@ -268,12 +272,143 @@ end
 Plot the eigenvectors of a coupling matrix in real space, as well as its Fourier transform.
 Furthermore, plot the emission pattern of that mode.
 """
-function fig_GnmEigenModes(rs, v, ks, vFT, z_range, x_range, intensity, ρf, array, eigval)
+function fig_GnmEigenModes(rs, v, ks, vFT, z_range, x_range, intensity, ρf, array, eigval, κ, titl)
     # Start figure 
     fig = Figure(size=(800, 700))
     
     # Make title and axis
-    Label(fig[1, 2:3], latexstring(L"Eigval. $ = " * format_Complex_to_String(eigval) * L"$"), tellwidth=false)
+    Label(fig[1, :], titl, tellwidth=false)
+    Label(fig[2, 2:3], latexstring(L"Eigval. $ = " * format_Complex_to_String(eigval) * L"$"), tellwidth=false)
+    Label(fig[3, 2], L"Real space$$", tellwidth=false)
+    Label(fig[3, 3], L"Momentum space$$", tellwidth=false)
+    Label(fig[4, 1], L"Magnitude$$", rotation = pi/2, tellheight=false)
+    Label(fig[5, 1], L"Phase$$", rotation = pi/2, tellheight=false)
+    ax1 = Axis(fig[4, 2])
+    ax2 = Axis(fig[4, 3])
+    ax3 = Axis(fig[5, 2], xlabel=L"$ z/λ $")
+    ax4 = Axis(fig[5, 3], xlabel=L"$ λk_z $")
+    ax5 = Axis(fig[6, 2:3], aspect=DataAspect(), xlabel=L"$ z/λ $", ylabel=L"$ x/λ $")
+    
+    # Plot the real space function
+    lines!(ax1, rs, abs.(v)  , color=:blue)
+    lines!(ax3, rs, angle.(v), color=:blue)
+    
+    # Plot the k-space function
+    lines!(ax2, ks, abs.(vFT)  , color=:red)
+    lines!(ax4, ks, angle.(vFT), color=:red)
+    
+    # Mark the light cone and position of propagation constant
+    vlines!(ax2, [-ωa, ωa], color=:black, linestyle=:dash, linewidth=1, label=L"Light cone$$")
+    vlines!(ax2, [κ], color=:red, linestyle=:dash, linewidth=1, label=L"$ \kappa $")
+    axislegend(ax2)
+    
+    # Plot the E-field intensity
+    hm = heatmap!(ax5, z_range, x_range, intensity, colormap=:viridis)
+    Colorbar(fig[6, 4], hm)
+    
+    # Plot a representation of the fiber
+    poly!(ax5, [(z_range[1], -ρf), (z_range[end], -ρf), (z_range[end], ρf), (z_range[1], ρf)], color=(:gray, 0.3))
+    
+    # Plot a representation of the atomic array
+    scatter!(ax5, [site[3] for site in array], [site[1] for site in array], color=:black, marker=:circle, markersize=10)
+    
+    # Finish figure
+    display(GLMakie.Screen(), fig)
+end
+
+
+"""
+Plot the collective energies of a coupling matrix as a function of the dominant k
+in their discrete Fourier transform (i.e. plot the band structure of the coupling matrix)
+"""
+function fig_eigenEnergies_vs_k(dominant_ks, collΔ, collΓ, weights_abs, κ, titl)
+    # Start figure 
+    fig = Figure(size=(800, 900))
+    
+    # Make title and axis
+    Label(fig[1, :], titl, tellwidth=false)
+    Label(fig[end+1, 1], L"Collective energies, $ Δ_\text{coll}/γ $", tellwidth=false)
+    ax1 = Axis(fig[end+1, 1])
+    Label(fig[end+1, 1], L"Collective decay rates, $ Γ_\text{coll}/γ $", tellwidth=false)
+    ax2 = Axis(fig[end+1, 1])
+    Label(fig[end+1, 1], L"Resonance weights, $ |w| $", tellwidth=false)
+    ax3 = Axis(fig[end+1, 1], 
+               xlabel=L"$ λk_z $",
+               yscale=log10)
+    
+    # Plot the real space function
+    scatter!(ax1, dominant_ks, collΔ, color=:blue)
+    scatter!(ax2, dominant_ks, collΓ, color=:red)
+    scatter!(ax3, dominant_ks, weights_abs, color=:black)
+    
+    # Mark the light cone and position of propagation constant
+    for ax in [ax1, ax2, ax3]
+        vlines!(ax, [-ωa, ωa], color=:black, linestyle=:dash, linewidth=1, label=L"Light cone$$")
+        vlines!(ax, [κ], color=:red, linestyle=:dash, linewidth=1, label=L"$ \kappa $")
+    end
+    
+    # Finish figure
+    axislegend(ax1)
+    display(GLMakie.Screen(), fig)
+end
+
+
+"""
+Plot magnitude and phase of transmission amplitude as a function of detuning
+and mark the position of the eigvals of Gnm
+"""
+function fig_loss_withGnmeigenEnergies(Δ_range, L, resonances_abs, collΔ, collΓ, weights_abs, titl)
+    # Start figure 
+    fig = Figure(size=(800, 900))
+    
+    # Plot the loss
+    Label(fig[1, :], titl, tellwidth=false)
+    Label(fig[end+1, 1], L"Loss coefficient, individual resonances superimposed $$", tellwidth=false)
+    ax1 = Axis(fig[end+1, 1], limits=(extrema(Δ_range)..., 0, nothing), 
+               xlabel=L"$ Δ/γ $",
+               ylabel=L"$ 1 - |t|^2 $")
+               lines!(ax1, Δ_range, L, color=:blue, label=L"Loss, $ 1 - |t|^2 $")
+    
+    # Plot the resonances
+    for resonance in resonances_abs
+        lines!(ax1, Δ_range, resonance, color=:skyblue, label=L"Resonances, $ \left|\frac{γw}{(Δ - Δ_\text{coll} + iΓ_\text{coll}/2)}\right| $")
+    end
+    axislegend(position=:lt, unique=true)
+            
+    # Mark the position of the resonances
+    vlines!(ax1, collΔ, linewidth=0.2, color=:purple, label=false)
+    
+    # Plot the Gnm eigenmode decay rates as a function of their energy
+    Label(fig[end+1, 1], L"Collective decay rates, $ Γ_\text{coll}/γ $", tellwidth=false)
+    ax2 = Axis(fig[end+1, 1], limits=(extrema(Δ_range), nothing), 
+               xlabel=L"$ Δ_\text{coll}/γ $",
+               ylabel=L"$ Γ_\text{coll}(Δ_\text{coll})/γ $", 
+               yscale=log10)
+    scatter!(ax2, collΔ, collΓ, color=:purple)
+    
+    # Plot the weights of the resonances
+    Label(fig[end+1, 1], L"Resonance weights, $ |w| $", tellwidth=false)
+    ax3 = Axis(fig[end+1, 1], limits=(extrema(Δ_range), nothing), 
+               xlabel=L"$ Δ_\text{coll}/γ $",
+               ylabel=L"$ |w(Δ_\text{coll})| $",
+               yscale=log10)
+    scatter!(ax3, collΔ, weights_abs, color=:black)
+    
+    # Finish figure
+    display(GLMakie.Screen(), fig)
+end
+
+
+"""
+Plot the magnitude and phase of the coherences of a state, as well as it discrete
+Fourier transform and its emission pattern
+"""
+function fig_state(rs, v, ks, vFT, z_range, x_range, intensity, ρf, array, κ, titl)
+    # Start figure 
+    fig = Figure(size=(800, 900))
+    
+    # Make title and axis
+    Label(fig[1, :], titl, tellwidth=false)
     Label(fig[2, 2], L"Real space$$", tellwidth=false)
     Label(fig[2, 3], L"Momentum space$$", tellwidth=false)
     Label(fig[3, 1], L"Magnitude$$", rotation = pi/2, tellheight=false)
@@ -292,6 +427,11 @@ function fig_GnmEigenModes(rs, v, ks, vFT, z_range, x_range, intensity, ρf, arr
     lines!(ax2, ks, abs.(vFT)  , color=:red)
     lines!(ax4, ks, angle.(vFT), color=:red)
     
+    # Mark the light cone and position of propagation constant
+    vlines!(ax2, [-ωa, ωa], color=:black, linestyle=:dash, linewidth=1, label=L"Light cone$$")
+    vlines!(ax2, [κ], color=:red, linestyle=:dash, linewidth=1, label=L"$ \kappa $")
+    axislegend(ax2)
+    
     # Plot the E-field intensity
     hm = heatmap!(ax5, z_range, x_range, intensity, colormap=:viridis)
     Colorbar(fig[5, 4], hm)
@@ -306,101 +446,5 @@ function fig_GnmEigenModes(rs, v, ks, vFT, z_range, x_range, intensity, ρf, arr
     display(GLMakie.Screen(), fig)
 end
 
-
-"""
-Plot the collective energies of a coupling matrix as a function of the dominant k
-in their discrete Fourier transform (i.e. plot the band structure of the coupling matrix)
-"""
-function fig_eigenEnergies_vs_k(dominant_ks, collΔ, collΓ)
-    # Start figure 
-    fig = Figure(size=(800, 600))
-    
-    # Make title and axis
-    Label(fig[1, 1], "Real part of eigval", tellwidth=false)
-    Label(fig[1, 2], "Imag part of eigval", tellwidth=false)
-    ax1 = Axis(fig[2, 1], xlabel=L"$ λk_z $")
-    ax2 = Axis(fig[2, 2], xlabel=L"$ λk_z $")
-    
-    # Plot the real space function
-    scatter!(ax1, dominant_ks, collΔ, color=:blue)
-    scatter!(ax2, dominant_ks, collΓ, color=:red)
-    
-    # Mark the light cone
-    vlines!(ax1, [-ωa, ωa], color=:black, linestyle=:dash, linewidth=1)
-    vlines!(ax2, [-ωa, ωa], color=:black, linestyle=:dash, linewidth=1)
-    
-    # Finish figure
-    display(GLMakie.Screen(), fig)
-end
-
-
-"""
-Plot the magnitude of the Fourier transform of the eigenvectors of a coupling matrix 
-as a function of its dominant k in their discrete Fourier transform
-"""
-function fig_eigenModesOverlapWithκ_vs_k(dominant_ks, overlapWithκAbs, κ)
-    # Start figure 
-    fig = Figure(size=(800, 600))
-    
-    # Make title and axis
-    Label(fig[1, 1], "Eigvecs overlap with κ plane wave", tellwidth=false)
-    Axis(fig[2, 1], xlabel=L"$ λk_z $")
-    
-    # Plot the real space function
-    scatter!(dominant_ks, overlapWithκAbs, color=:blue)
-    
-    # Mark the light cone
-    vlines!([-ωa, ωa], color=:black, linestyle=:dash, linewidth=1, label="Light cone")
-    vlines!([-κ, κ], color=:red, linestyle=:dash, linewidth=1, label=L"$ \pm\kappa $")
-    
-    # Finish figure
-    axislegend()
-    display(GLMakie.Screen(), fig)
-end
-
-
-"""
-Plot magnitude and phase of transmission amplitude as a function of detuning
-and mark the position of the eigvals of Gnm
-# """
-function fig_loss_withGnmeigenEnergies(Δ_range, L, resonances_abs, collΔ, collΓ, weights_abs)
-    # Start figure 
-    fig = Figure(size=(800, 900))
-    
-    # Plot the loss
-    Label(fig[1, 1], L"Loss coefficient, individual resonances superimposed $$", tellwidth=false)
-    ax1 = Axis(fig[end+1, 1], limits=(extrema(Δ_range)..., 0, nothing), 
-               xlabel=L"$ \Delta $",
-               ylabel=L"$ 1 - |t|^2 $")
-               lines!(ax1, Δ_range, L, color=:blue, label=L"Loss, $ 1 - |t|^2 $")
-    
-    # Plot the resonances
-    for resonance in resonances_abs
-        lines!(ax1, Δ_range, resonance, color=:skyblue, label=L"Resonances, $ \left|\frac{γw}{(Δ - Δ_\text{coll} + iΓ_\text{coll}/2)}\right| $")
-    end
-    axislegend(position=:lt, unique=true)
-            
-    # Mark the position of the resonances
-    vlines!(ax1, collΔ, linewidth=0.2, color=:purple, label=false)
-    
-    # Plot the Gnm eigenmode decay rates as a function of their energy
-    Label(fig[end+1, 1], L"Resonance widths, $ Γ_\text{coll}/γ $", tellwidth=false)
-    ax2 = Axis(fig[end+1, 1], limits=(extrema(Δ_range), nothing), 
-               xlabel=L"$ Δ_\text{coll}/γ $",
-               ylabel=L"$ Γ_\text{coll}(Δ_\text{coll})/γ $", 
-               yscale=log10)
-    scatter!(ax2, collΔ, collΓ, color=:purple)
-    
-    # Plot the weights of the resonances
-    Label(fig[end+1, 1], L"Resonance weights, $ |w| $", tellwidth=false)
-    ax3 = Axis(fig[end+1, 1], limits=(extrema(Δ_range), nothing), 
-               xlabel=L"$ Δ_\text{coll}/γ $",
-               ylabel=L"$ |w(Δ_\text{coll})| $",
-               yscale=log10)
-    scatter!(ax3, collΔ, weights_abs, color=:black)
-    
-    # Finish figure
-    display(GLMakie.Screen(), fig)
-end
 
 

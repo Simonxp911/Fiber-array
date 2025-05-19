@@ -549,7 +549,7 @@ function remove_atoms_from_array(array, ff)
     N_to_be_kept = Int(floor(N*ff))
     
     # Return N_to_be_kept of the original array sites
-    return array[randperm(N)[1:N_to_be_kept]]
+    return array[sort(randperm(N)[1:N_to_be_kept])]
 end
 
 
@@ -669,9 +669,10 @@ end
 
 
 """
-Analytically calculate the time evolution of the atomic coherences (in the case of no phonons)
+Calculate the time evolution of the atomic coherences (in the case of no phonons)
+using the eigenmodes approach
 """
-function timeEvolution_analytical(t, Δ, tildeΩ, tildeG, initialState)
+function timeEvolution_eigenmodes(t, Δ, tildeΩ, tildeG, initialState)
     # Get the eigenenergies and -modes of tildeG, as well as the basis-transformation matrix Q
     eigenEnergies, eigenModes = eigbasis(tildeG)
     Q = vectorOfCols2Matrix(eigenModes)
@@ -720,27 +721,24 @@ end
 
 
 """
-Calculate the transmission of light through the guided mode, using the analytical approach 
+Calculate the transmission of light through the guided mode, using the eigenmodes approach 
 (in the case of no phonons)
 """
-function transmission_analytical(Δ, tildeΩ, tildeG, κ_prime)
-    eigenEnergies, eigenModes = eigbasis(tildeG)
+function transmission_eigenmodes(Δ, tildeΩ, eigenEnergies, eigenModes, κ_prime)
     Q = vectorOfCols2Matrix(eigenModes)
     return 1 - 3im*π*κ_prime/(2*ωa^2)*sum( [(tildeΩ'*Q)[i]*(inv(Q)*tildeΩ)[i]/(Δ + eigenEnergy) for (i, eigenEnergy) in enumerate(eigenEnergies)] )
 end
 
 
 """
-Calculate the transmission of light through the guided mode, using the analytical approach 
+Calculate the transmission of light through the guided mode, using the eigenmodes approach 
 (in the case of no phonons)
 """
-function transmission_analytical_weights_resonances(Δ_range, tildeΩ, tildeG, κ_prime)
-    eigenEnergies, eigenModes = eigbasis(tildeG)
+function transmission_eigenmodes_weights_resonances(Δ_range, tildeΩ, eigenEnergies, eigenModes, κ_prime)
     Q = vectorOfCols2Matrix(eigenModes)
     
     weights    = [3im*π*κ_prime/(2*ωa^2)*(tildeΩ'*Q)[i]*(inv(Q)*tildeΩ)[i] for i in eachindex(eigenEnergies)]
     resonances = [weights[i]./(Δ_range .+ eigenEnergy) for (i, eigenEnergy) in enumerate(eigenEnergies)]
-    
     return weights, resonances 
 end
 

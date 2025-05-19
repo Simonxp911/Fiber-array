@@ -366,5 +366,5 @@ Returns the transformed function as an N-vector.
 """
 function discFourierTransform(v, a, k)
     N = length(v)
-    return sum( v.*exp.(1im*k*(0:N-1)*a) )/sqrt(N)
+    return sum( v.*exp.(-1im*k*(0:N-1)*a) )/sqrt(N)
 end

@@ -49,18 +49,21 @@ function define_SP_BerlinCS()
     να0_ul = να0/γ0 #unitless version of να0
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-0.5, 0.5, 1000)
+    Δ_specs = (-0.5, 0.5, 300)
     
     # Set array specs and generate array, as well as description for postfix
-    N = 10
+    N = 20
     
     # Lamb-Dicke parameters
     ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
+    # ηα = ηα0 .* [0.01, 0.01, 1]
+    # ηα = [0.01, 0.01, 0.01]
     ηα = [0., 0., 0.]
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
-    ff = 1.0
-    pos_unc = any(ηα .!= 0) ? 0.0 : 0.0#ηα0/ωa
+    ff = 0.8
+    # pos_unc = any(ηα .!= 0) ? 0.0 : 0.0
+    pos_unc = any(ηα .!= 0) ? 0.0 : ηα0/ωa
     n_inst  = any(ηα .!= 0) ?   1 : 1
     
     # Time spand and maximum time step allowed in time evolution
@@ -86,6 +89,7 @@ function define_SP_BerlinCS()
     
     # Whether to save individual results (Im_Grm_trans, steady states, time evolutions)
     save_individual_res = n_inst == 1 && ff == 1 && pos_unc == 0
+    # save_individual_res = pos_unc == 0
     
     # Ranges of z and x values to define r_field for calculating the radiated E-field
     arrayL = (N - 1)*a0_ul
@@ -271,15 +275,15 @@ function main()
     
     # plot_propConst_inOutMom(ωρfn_ranges)
     # plot_coupling_strengths(SP)
-    # plot_σBαTrajectories_σBαSS(SP)
+    plot_σBαTrajectories_σBαSS(SP)
     # plot_transmission_vs_Δ(SP)
     # plot_classDisorder_transmission_vs_Δ(SP)
+    # plot_steadyState_radiation_Efield(SP)
     # plot_radiation_Efield(SP)
     # plot_GnmEigenModes(SP)
     # plot_emissionPatternOfGnmeigenModes(SP)
     # plot_GnmEigenEnergies(SP)
-    # plot_GnmEigenModesOverlapWithκ(SP)
-    plot_transmissionWithGnmEigenEnergies(SP)
+    # plot_transmissionWithGnmEigenEnergies(SP)
     
     return nothing
 end
@@ -350,7 +354,7 @@ function plot_σBαTrajectories_σBαSS(SP)
     Δ = 0.0
     σBα_SS = calc_σBα_steadyState(SP, Δ)
     xTrajectories = timeEvolution(SP, Δ)
-    # xTrajectories = timeEvolution_analytical(SP, Δ)
+    # xTrajectories = timeEvolution_eigenmodes(SP, Δ)
     
     if all(SP.ηα .== 0)
         times, σTrajectories = prep_times_σTrajectories(xTrajectories, SP.N)
@@ -365,10 +369,11 @@ end
 function plot_transmission_vs_Δ(SP)
     σBα_scan = scan_σBα_steadyState(SP)
     t = calc_transmission.(Ref(SP), σBα_scan)
-    # t = scan_transmission_analytical(SP)
+    # t = scan_transmission_eigenmodes(SP)
     
     T, phase = prep_transmission(t)
-    fig_transmission_vs_Δ(SP.Δ_range, T, phase)
+    titl = prep_transmission_title(SP)
+    fig_transmission_vs_Δ(SP.Δ_range, T, phase, titl)
 end
 
 
@@ -399,13 +404,29 @@ function plot_classDisorder_transmission_vs_Δ(SPs)
 end
 
 
+function plot_steadyState_radiation_Efield(SP)
+    Δ = 1.69
+    rs = [site[3] for site in SP.array]
+    if all(SP.ηα .== 0) σ_SS = calc_σBα_steadyState(SP, Δ)
+    else                σ_SS, Bα_SS = calc_σBα_steadyState(SP, Δ)
+    end
+    ks, σ_SS_FT = discFourierTransform(σ_SS, SP.a, true, 1000)
+    
+    E = calc_radiation_Efield.(Ref(SP), Ref(σ_SS), SP.r_field)
+    intensity = norm.(E).^2
+    # intensity = zeros(size(SP.r_field))
+    
+    titl = prep_state_title(SP, Δ)
+    fig_state(rs, σ_SS, ks, σ_SS_FT, SP.z_range, SP.x_range, intensity, SP.ρf, SP.array, SP.fiber.propagation_constant, titl)
+end
+
+
 function plot_radiation_Efield(SP)
     if any(SP.ηα .!= 0) throw(ArgumentError("plot_radiation_Efield is not implemented for the case of including phonons")) end
-    if SP.approx_Grm_trans != (true, true) @warn "The radiation GF is not approximated for plot_radiation_Efield - long calculation time may ensue"; sleep(5) end
-        
+    
     Δ = 0.0
-    σ = calc_σBα_steadyState(SP, Δ)
-    E = calc_radiation_Efield.(Ref(SP), Ref(σ), SP.r_field)
+    σ_SS = calc_σBα_steadyState(SP, Δ)
+    E = calc_radiation_Efield.(Ref(SP), Ref(σ_SS), SP.r_field)
     intensity = norm.(E).^2
     
     fig_radiation_Efield(SP.z_range, SP.x_range, intensity, SP.ρf, SP.array)
@@ -415,16 +436,20 @@ end
 function plot_GnmEigenModes(SP)
     if any(SP.ηα .!= 0) throw(ArgumentError("plot_GnmEigenModes is not implemented for the case of including phonons")) end
     
-    Gnm = get_tildeGs(SP.fiber, SP.d, SP.array, SP.save_individual_res, (true, false))
+    Gnm = get_tildeGs(SP.fiber, SP.d, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
     
-    eigenEnergies, eigenModes = eigbasis(Gnm)
+    eigenEnergies, eigenModes, dominant_ks = spectrum(Gnm, SP.a)
     eigenModes_FT = discFourierTransform.(eigenModes, SP.a, true, 1000)
     
     rs = [site[3] for site in SP.array]
-    for (mode, (ks, mode_FT), eigenEnergy) in zip(eigenModes, eigenModes_FT, eigenEnergies)
-        E = calc_radiation_Efield.(Ref(SP), Ref(mode), SP.r_field)
-        intensity = norm.(E).^2
-        fig_GnmEigenModes(rs, mode, ks, mode_FT, SP.z_range, SP.x_range, intensity, SP.ρf, SP.array, eigenEnergy)
+    iter_list = collect(zip(eigenModes, eigenModes_FT, eigenEnergies, dominant_ks))[sortperm(dominant_ks)]
+    for (mode, (ks, mode_FT), eigenEnergy, dom_k) in iter_list
+        # if -7 < dom_k < -5
+            E = calc_radiation_Efield.(Ref(SP), Ref(mode), SP.r_field)
+            intensity = norm.(E).^2
+            titl = prep_GnmEigenModes_title(SP)
+            fig_GnmEigenModes(rs, mode, ks, mode_FT, SP.z_range, SP.x_range, intensity, SP.ρf, SP.array, eigenEnergy, SP.fiber.propagation_constant, titl)
+        # end
     end
 end
 
@@ -433,7 +458,7 @@ function plot_emissionPatternOfGnmeigenModes(SP)
     if any(SP.ηα .!= 0) throw(ArgumentError("plot_emissionPatternOfGnmeigenModes is not implemented for the case of including phonons")) end
     
     Gnm = get_tildeGs(SP.fiber, SP.d, SP.array, SP.save_individual_res, (true, false))
-    eigenEnergies, eigenModes, dominant_ks = spectrum(Gnm, SP.a)
+    eigenEnergies, eigenModes = eigbasis(Gnm)
     
     for evec in eigenModes
         E = calc_radiation_Efield.(Ref(SP), Ref(evec), SP.r_field)
@@ -446,24 +471,16 @@ end
 function plot_GnmEigenEnergies(SP)
     if any(SP.ηα .!= 0) throw(ArgumentError("plot_GnmEigenEnergies is not implemented for the case of including phonons")) end
     
-    Gnm = get_tildeGs(SP.fiber, SP.d, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+    tildeΩ, tildeG = get_parameterMatrices(SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+    # tildeG = get_tildeG0(SP.fiber, SP.d, SP.array)
     
-    eigenEnergies, eigenModes, dominant_ks = spectrum(Gnm, SP.a)
+    eigenEnergies, eigenModes, dominant_ks = spectrum(tildeG, SP.a)
     collΔ, collΓ = collEnergies_from_eigenEnergies(eigenEnergies)
+    weights, resonances = transmission_eigenmodes_weights_resonances(SP.Δ_range, tildeΩ, eigenEnergies, eigenModes, SP.fiber.propagation_constant_derivative)
+    weights_abs = abs.(weights)
     
-    fig_eigenEnergies_vs_k(dominant_ks, collΔ, collΓ)
-end
-
-
-function plot_GnmEigenModesOverlapWithκ(SP)
-    if any(SP.ηα .!= 0) throw(ArgumentError("plot_GnmEigenModesOverlapWithκ is not implemented for the case of including phonons")) end
-    
-    Gnm = get_tildeGs(SP.fiber, SP.d, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
-    
-    eigenEnergies, eigenModes, dominant_ks = spectrum(Gnm, SP.a)
-    overlapWithκAbs = abs.(discFourierTransform.(eigenModes, SP.a, SP.fiber.propagation_constant))
-    
-    fig_eigenModesOverlapWithκ_vs_k(dominant_ks, overlapWithκAbs, SP.fiber.propagation_constant)
+    titl = prep_GnmEigenEnergies_title(SP)
+    fig_eigenEnergies_vs_k(dominant_ks, collΔ, collΓ, weights_abs, SP.fiber.propagation_constant, titl) 
 end
 
 
@@ -472,17 +489,17 @@ function plot_transmissionWithGnmEigenEnergies(SP)
     
     σBα_scan = scan_σBα_steadyState(SP)
     t = calc_transmission.(Ref(SP), σBα_scan)
+    # t = scan_transmission_eigenmodes(SP)
     
     tildeΩ, tildeG = get_parameterMatrices(SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
     eigenEnergies, eigenModes = eigbasis(tildeG)
     collΔ, collΓ = collEnergies_from_eigenEnergies(eigenEnergies)
-    weights, resonances = transmission_analytical_weights_resonances(SP.Δ_range, tildeΩ, tildeG, SP.fiber.propagation_constant_derivative)
+    weights, resonances = transmission_eigenmodes_weights_resonances(SP.Δ_range, tildeΩ, eigenEnergies, eigenModes, SP.fiber.propagation_constant_derivative)
     
     loss, weights_abs, resonances_abs = prep_loss_weights_resonances(t, weights, resonances)
-    fig_loss_withGnmeigenEnergies(SP.Δ_range, loss, resonances_abs, collΔ, collΓ, weights_abs)
+    titl = prep_transmissionWithGnmEigenEnergies_title(SP)
+    fig_loss_withGnmeigenEnergies(SP.Δ_range, loss, resonances_abs, collΔ, collΓ, weights_abs, titl)
 end
-
-
 
 
 
@@ -494,38 +511,39 @@ println("\n -- Running main() -- \n")
 
 # TODO list:
 
+# Implement Δ_variation - a new potential that must follow tildeG through the code
+    # A Gaussian (?) variation that is zero in the middle, has some width, and some maximum amplitude at the ends
+    # Maybe half a Gaussian, followed by a constant period, and the other half of the Gaussian
+    # A parabolic variation?
 
-# something with overlap between driven/resonant subradiant modes and superradiant modes to explain loss/scattering
-# population of modes vs time 
-# driving in basis of modes
+# Maybe calculate tildeG, etc., in SP? They are not expected to change anyway
+    # Only calculate them if needed..?
 
+# Implement titles for figures that show parameters etc.
+
+# Check that the derivatives of the modes are correctly implemented by comparing with numerically calculated derivatives
+
+# Implement that Im_Grm_trans_ simply returns zero for a certain size of relative_z/fiber_radius or so? (Will go to zero for large inter-atom distance)
+
+# Implement Gnm functions for the case of including phonons
 
 # Calculate Poynting vector and plot instead of/together with emission pattern?
-
-# Consider whether the driven subradiant eigenModes have an overlap with the radiating modes?
 
 # Consider the effect of having a gradually changing Δ
     # Far detuned at the edges and a gradual shift towards whatever value is chosen for the bulk
     # Might halp "ease" the light into the array, to minimize scattering at the edges?
-    
-# Consider population of the eigenModes of Gnm as a function of time to see which ones are populated
-    # in the steady state? One would expect only the subradiant to be populated, but still there's a lot of scattering?
 
 # Get it to work on the cluster
     # Use MPI?
     # clean up before moving to the cluster: comments, naming, minor issues below, checks of derivatives
-    
+
 # Calculate reflection and loss
 
 # Implement n_inst in a better way? That is, dont have a list of SPs, but include the many instantiations in the same SP?
 
-# Check that the derivatives of the modes are correctly implemented by comparing with numerically calculated derivatives
-
 # Implement saving and loading of the parameter matrices?
 
 # Clean up and split up files? physics.jl and utility.jl in particular
-
-# Implement a approx_Im_Grm_trans?
 
 # Implement non-lazy version of get_tildeGs(fiber, d::String... ? Presumably significantly faster when exploiting knowledge of which components etc. are actually needed, but also very messy...
 
