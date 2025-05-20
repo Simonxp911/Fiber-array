@@ -541,6 +541,22 @@ end
 
 
 """
+Calculate a list of the atomic positions along the fiber for with random z-positions,
+but otherwise placed at x = ρa and y = 0 (as in the ideal 1D chain case),
+possibly including imperfect filling fraction and (classical) positional uncertainty
+"""
+function get_randomzArray(N, ρa, L, ff=1, pos_unc=0)
+    # Get the perfect array (no missing atoms, no randomness in position)
+    array = [[ρa, 0, zn] for zn in L*rand(N)]
+    # array = [SVector{3}([ρa, 0, a*n]) for n in 1:N]
+    
+    if      ff != 1 array = remove_atoms_from_array(array, ff) end
+    if pos_unc != 0 array = introduce_position_uncertainty_to_array_sites(array, pos_unc) end
+    return array
+end
+
+
+"""
 Create imperfectly filled array according to the filling fraction ff
 """
 function remove_atoms_from_array(array, ff)

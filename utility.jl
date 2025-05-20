@@ -298,6 +298,18 @@ end
 
 
 """
+arrayDescription for the random z and otherwise usual 1D chain along the fiber, as given by get_randomzArray()
+"""
+function randomzArrayDescription(N, ρa, L, ff, pos_unc)
+    if pos_unc isa Number
+        return "randzA_N_$(N)_rhoa_$(ro(ρa))_L_$(ro(L))_ff_$(ro(ff))_pu_$(ro(pos_unc))"
+    else
+        return "randzA_N_$(N)_rhoa_$(ro(ρa))_L_$(ro(L))_ff_$(ro(ff))_pu_$(join(ro.(pos_unc), ","))"
+    end
+end
+
+
+"""
 arrayDescription for the usual 1D chain along the fiber, as given by get_array()
 """
 function ΔvariDescription(Δvari_dependence, Δvari_args)

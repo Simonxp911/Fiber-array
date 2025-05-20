@@ -52,25 +52,31 @@ function define_SP_BerlinCS()
     Δ_specs = (-0.5, 0.5, 300)
     
     # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
-    Δvari_dependence = "Gaussian"
-    Δvari_args = -3, 50*a0_ul
-    # Δvari_args = nothing
+    Δvari_dependence = "flat"
+    # Δvari_args = -3, 50*a0_ul
+    Δvari_args = nothing
     Δvari_description = ΔvariDescription(Δvari_dependence, Δvari_args)
     
     # Set array specs and generate array, as well as description for postfix
-    N = 250
+    N = 25
     
     # Lamb-Dicke parameters
     ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
-    ηα = ηα0 .* [0.2, 0.2, 0.2]
+    # ηα = ηα0 .* [0.2, 0.2, 0.2]
     # ηα = [0.01, 0.01, 0.01]
-    # ηα = [0., 0., 0.]
+    ηα = [0., 0., 0.]
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
     pos_unc = any(ηα .!= 0) ? 0.0 : 0.0
     # pos_unc = any(ηα .!= 0) ? 0.0 : ηα0/ωa
     n_inst  = any(ηα .!= 0) ?   1 : 1
+    
+    # Generate a specific array
+    # L = (N - 1)*a0_ul
+    # array = get_randomzArray(N, ρa0_ul, L, ff, pos_unc)
+    # arrayDescription = randomzArrayDescription(N, ρa0_ul, L, ff, pos_unc)
+    array = nothing
     
     # Time spand and maximum time step allowed in time evolution
     tspan = (0, 100)
@@ -106,16 +112,7 @@ function define_SP_BerlinCS()
     y_fix   = ρa0_ul
     
     
-    if n_inst == 1
-        return SysPar(ρf0_ul, n0, ωa,
-                      Δ_specs,
-                      Δvari_dependence, Δvari_args, Δvari_description,
-                      tspan, dtmax, initialState, initialStateDescription,
-                      N, ρa0_ul, a0_ul, ff, pos_unc,
-                      να0_ul, ηα,
-                      d, incField_wlf, save_individual_res, approx_Grm_trans,
-                      z_range, x_range, y_fix)
-    else
+    if n_inst != 1
         return [SysPar(ρf0_ul, n0, ωa,
                        Δ_specs,
                        Δvari_dependence, Δvari_args, Δvari_description,
@@ -124,6 +121,24 @@ function define_SP_BerlinCS()
                        να0_ul, ηα,
                        d, incField_wlf, save_individual_res, approx_Grm_trans,
                        z_range, x_range, y_fix) for _ in 1:n_inst]
+    elseif !isnothing(array)
+        return SysPar(ρf0_ul, n0, ωa,
+                      Δ_specs,
+                      Δvari_dependence, Δvari_args, Δvari_description,
+                      tspan, dtmax, initialState, initialStateDescription,
+                      array, arrayDescription,
+                      να0_ul, ηα,
+                      d, incField_wlf, save_individual_res, approx_Grm_trans,
+                      z_range, x_range, y_fix)
+    else
+        return SysPar(ρf0_ul, n0, ωa,
+                      Δ_specs,
+                      Δvari_dependence, Δvari_args, Δvari_description,
+                      tspan, dtmax, initialState, initialStateDescription,
+                      N, ρa0_ul, a0_ul, ff, pos_unc,
+                      να0_ul, ηα,
+                      d, incField_wlf, save_individual_res, approx_Grm_trans,
+                      z_range, x_range, y_fix)
     end
 end
 

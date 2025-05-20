@@ -182,23 +182,21 @@ struct SysPar
                     Δ_specs::Tuple{Real, Real, Int},
                     Δvari_dependence::String, Δvari_args::Union{Tuple, Nothing}, Δvari_description::String,
                     tspan::Tuple{Real, Real}, dtmax::Real, initialState::Vector, initialStateDescription::String,
-                    array::Vector{Vector}, arrayDescription::String,
+                    array::Vector, arrayDescription::String,
                     να::Vector, ηα::Vector,
-                    d::Union{Vector, String}, incField_wlf::Vector, save_individual_res::Bool, approx_Grm_trans::Tuple)
+                    d::Union{Vector, String}, incField_wlf::Vector, save_individual_res::Bool, approx_Grm_trans::Tuple,
+                    z_range::AbstractRange, x_range::AbstractRange, y_fix::Real)
         
-        if d == "chiral" && any([site[1] != ρa || site[2] != 0 for site in array]) throw(ArgumentError("d = 'dipole' assumes an array (ρa, 0, z)")) end
+        if d == "chiral" && any([site[1] != array[1][1] || site[2] != 0 for site in array]) throw(ArgumentError("d = 'dipole' assumes an array (ρa, 0, z)")) end
         
         fiber = Fiber(ρf, n, ω)
         Δ_range = range(Δ_specs...)
         N  = length(array)
         ρa = nothing
         a  = nothing
-        ff = nothing
-        pos_unc = nothing
-        z_range = nothing
-        x_range = nothing
-        y_fix   = nothing
-        r_field = nothing
+        ff = 1.0
+        pos_unc = 0.0
+        r_field = [[x, y_fix, z] for z in z_range, x in x_range]
         
         return new(ρf, n, ω, fiber,
                    Δ_specs, Δ_range,
