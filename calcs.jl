@@ -62,16 +62,17 @@ end
 #================================================
     Functions pertaining to calculating the driving and couplings of the system
 ================================================#
-function get_parameterMatrices(fiber, d, να, ηα, incField_wlf, array, save_individual_res, approx_Grm_trans)
+function get_parameterMatrices(Δvari_dependence, Δvari_args, fiber, d, να, ηα, incField_wlf, array, save_individual_res, approx_Grm_trans)
+    Δvari = get_Δvari(Δvari_dependence, Δvari_args, array)
     if all(ηα .== 0)
         tildeΩ = get_tildeΩs(fiber, d, incField_wlf, array)
         tildeG = get_tildeGs(fiber, d, array, save_individual_res, approx_Grm_trans)
-        return tildeΩ, tildeG
+        return Δvari, tildeΩ, tildeG
     else
         tildeΩ, tildeΩα            = get_tildeΩs(fiber, d, ηα, incField_wlf, array)
         tildeG, tildeGα1, tildeGα2 = get_tildeGs(fiber, d, ηα, array, save_individual_res, approx_Grm_trans)
         tildeFα                    = get_tildeFα(tildeG, να)
-        return tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2
+        return Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2
     end
 end
 
@@ -364,20 +365,55 @@ function get_Γrm(fiber, d, r1, r2, save_individual_res, approx_Grm_trans)
 end
 
 
+function get_Δvari(Δvari_dependence, Δvari_args, array)
+    if Δvari_dependence == "flat"
+        return Di(zeros(size(array)))
+    
+    elseif Δvari_dependence == "Gaussian"
+        amp, edge_width = Δvari_args
+        zn = [site[3] for site in array]
+        Gaussian_edges(z) = begin
+            if     minimum(zn) <= z <= minimum(zn) + edge_width return (1 - exp(log(0.01)*(z - (minimum(zn) + edge_width))^2/edge_width^2))/0.99
+            elseif maximum(zn) - edge_width <= z <= maximum(zn) return (1 - exp(log(0.01)*(z - (maximum(zn) - edge_width))^2/edge_width^2))/0.99
+            else return 0 end
+        end
+        return Di(amp*Gaussian_edges.(zn))
+    
+    elseif Δvari_dependence == "linear"
+        amp, edge_width = Δvari_args
+        zn = [site[3] for site in array]
+        linear_edges(z) = begin
+            if     minimum(zn) <= z <= minimum(zn) + edge_width return abs((z - (minimum(zn) + edge_width))/edge_width)
+            elseif maximum(zn) - edge_width <= z <= maximum(zn) return abs((z - (maximum(zn) - edge_width))/edge_width)
+            else return 0 end
+        end
+        return Di(amp*linear_edges.(zn))
+    
+    elseif Δvari_dependence == "parabolic"
+        amp = Δvari_args[1]
+        zn = [site[3] for site in array]
+        zn_shifted = zn .- (maximum(zn) + minimum(zn))/2
+        parabola = zn_shifted.^2
+        parabola_normalized = parabola./maximum(parabola)
+        return Di(amp*parabola_normalized)
+    end
+end
+
+
 #================================================
     Functions pertaining to the time evolution of the atomic and phononic degrees of freedom
 ================================================#
 """
 Calculate the steady state values of atomic coherences σ and the atom-phonon correlations Bα
 """
-function calc_σBα_steadyState(Δ, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2, postfix, save_individual_res=true)
+function calc_σBα_steadyState(Δ, Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2, postfix, save_individual_res=true)
     filename = "sigmaBalpha_" * postfix
     folder = "steadyStates/"
     
     if isfile(saveDir * folder * filename * ".jld2") return load_as_jld2(saveDir * folder, filename) end
     
     # Calculate steady state σBα
-    result = σBα_steadyState(Δ, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2)
+    result = σBα_steadyState(Δ, Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2)
     
     if save_individual_res save_as_jld2(result, saveDir * folder, filename) end
     return result
@@ -388,14 +424,14 @@ end
 Calculate the steady state values of atomic coherences σ and the atom-phonon correlations Bα
 (for the case of no phonons)
 """
-function calc_σ_steadyState(Δ, tildeΩ, tildeG, postfix, save_individual_res=true)
+function calc_σ_steadyState(Δ, Δvari, tildeΩ, tildeG, postfix, save_individual_res=true)
     filename = "sigma_" * postfix
     folder = "steadyStates/"
     
     if isfile(saveDir * folder * filename * ".jld2") return load_as_jld2(saveDir * folder, filename) end
     
     # Calculate steady state σ
-    result = σ_steadyState(Δ, tildeΩ, tildeG)
+    result = σ_steadyState(Δ, Δvari, tildeΩ, tildeG)
     
     if save_individual_res save_as_jld2(result, saveDir * folder, filename) end
     return result
@@ -407,8 +443,8 @@ Calculate the steady state values of atomic coherences σ and the atom-phonon co
 for parameters given by SP and a given detuning
 """
 function calc_σBα_steadyState(SP, Δ)
-    postfix = get_postfix(Δ, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.arrayDescription, SP.fiber.postfix)
-    params = get_parameterMatrices(SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+    postfix = get_postfix(Δ, SP.Δvari_description, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.arrayDescription, SP.fiber.postfix)
+    params = get_parameterMatrices(SP.Δvari_dependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
     if all(SP.ηα .== 0) return calc_σ_steadyState(Δ, params..., postfix, SP.save_individual_res)
     else                return calc_σBα_steadyState(Δ, params..., postfix, SP.save_individual_res)
     end
@@ -419,8 +455,8 @@ end
 Scan the steady state values of atomic coherences σ and the atom-phonon correlations Bα over the detuning
 """
 function scan_σBα_steadyState(SP)
-    postfixes = get_postfix.(SP.Δ_range, Ref(SP.d), Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), SP.arrayDescription, SP.fiber.postfix)
-    params = get_parameterMatrices(SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+    postfixes = get_postfix.(SP.Δ_range, SP.Δvari_description, Ref(SP.d), Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), SP.arrayDescription, SP.fiber.postfix)
+    params = get_parameterMatrices(SP.Δvari_dependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
     if all(SP.ηα .== 0) return calc_σ_steadyState.(SP.Δ_range, Ref.(params)..., postfixes, SP.save_individual_res)
     else                return calc_σBα_steadyState.(SP.Δ_range, Ref.(params)..., postfixes, SP.save_individual_res)
     end
@@ -430,14 +466,14 @@ end
 """
 Perform time evolution of the atomic
 """
-function timeEvolution(Δ, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2, N, initialState, tspan, dtmax, postfix, save_individual_res=true)
+function timeEvolution(Δ, Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2, N, initialState, tspan, dtmax, postfix, save_individual_res=true)
     filename = "TE_" * postfix
     folder = "timeEvol/"
     
     if isfile(saveDir * folder * filename * ".txt") return load_as_txt(saveDir * folder, filename) end
     
     args = empty_σVector(N), empty_BαVector(N), empty_σVector(N), empty_BαVector(N), 
-           Δ, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2
+           Δ, Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2
     
     # Prepare the time evolution problem
     prob = ODEProblem(EoMs_wrap, initialState, tspan, args)
@@ -457,14 +493,14 @@ end
 Perform time evolution of the atomic and phononic degrees of freedom
 (for the case of no phonons)
 """
-function timeEvolution(Δ, tildeΩ, tildeG, N, initialState, tspan, dtmax, postfix, save_individual_res=true)
+function timeEvolution(Δ, Δvari, tildeΩ, tildeG, N, initialState, tspan, dtmax, postfix, save_individual_res=true)
     filename = "TE_noPh_" * postfix
     folder = "timeEvol/"
     
     if isfile(saveDir * folder * filename * ".txt") return load_as_txt(saveDir * folder, filename) end
     
     args = empty_σVector(N), empty_σVector(N), 
-           Δ, tildeΩ, tildeG
+           Δ, Δvari, tildeΩ, tildeG
     
     # Prepare the time evolution problem
     prob = ODEProblem(EoMs_wrap_noPh, initialState, tspan, args)
@@ -484,8 +520,8 @@ end
 Perform time evolution for parameters given by SP
 """
 function timeEvolution(SP, Δ)
-    postfix = get_postfix(Δ, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax)
-    params = get_parameterMatrices(SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+    postfix = get_postfix(Δ, SP.Δvari_description, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax)
+    params = get_parameterMatrices(SP.Δvari_dependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
     return timeEvolution(Δ, params..., SP.N, SP.initialState, SP.tspan, SP.dtmax, postfix, SP.save_individual_res)
 end
     
@@ -494,8 +530,8 @@ end
 Scan time evolutions over the detuning
 """
 function scan_timeEvolution(SP)
-    postfixes = get_postfix.(SP.Δ_range, Ref(SP.d), Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, Ref(SP.tspan), SP.dtmax)
-    params = get_parameterMatrices(SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+    postfixes = get_postfix.(SP.Δ_range, SP.Δvari_description, Ref(SP.d), Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, Ref(SP.tspan), SP.dtmax)
+    params = get_parameterMatrices(SP.Δvari_dependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
     return timeEvolution.(SP.Δ_range, Ref.(params)..., SP.N, Ref(SP.initialState), Ref(SP.tspan), SP.dtmax, postfixes, SP.save_individual_res)
 end
 
@@ -504,14 +540,14 @@ end
 Perform time evolution of the atomic, using the eigenmodes approach
 (for the case of no phonons)
 """
-function timeEvolution_eigenmodes(Δ, tildeΩ, tildeG, initialState, tspan, dtmax, postfix, save_individual_res=true)
+function timeEvolution_eigenmodes(Δ, Δvari, tildeΩ, tildeG, initialState, tspan, dtmax, postfix, save_individual_res=true)
     filename = "TE_noPh_ana_" * postfix
     folder = "timeEvol/"
     
     if isfile(saveDir * folder * filename * ".txt") return load_as_txt(saveDir * folder, filename) end
     
     times = range(tspan..., Int(floor((tspan[2] - tspan[1])/dtmax)))
-    σTrajectories = timeEvolution_eigenmodes.(times, Δ, Ref(tildeΩ), Ref(tildeG), Ref(initialState))
+    σTrajectories = timeEvolution_eigenmodes.(times, Δ, Ref(Δvari), Ref(tildeΩ), Ref(tildeG), Ref(initialState))
     xTrajectories = pack_σIntox.(σTrajectories)
     
     # Pack and save data
@@ -528,8 +564,8 @@ Perform time evolution for parameters given by SP, using the eigenmodes approach
 function timeEvolution_eigenmodes(SP, Δ)
     if any(SP.ηα .!= 0) throw(ArgumentError("timeEvolution_eigenmodes has only been implemented for the case of no phonons")) end
     
-    postfix = get_postfix(Δ, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax)
-    params = get_parameterMatrices(SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+    postfix = get_postfix(Δ, SP.Δvari_description, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax)
+    params = get_parameterMatrices(SP.Δvari_dependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
     return timeEvolution_eigenmodes(Δ, params..., SP.initialState, SP.tspan, SP.dtmax, postfix, SP.save_individual_res)
 end
     
@@ -540,8 +576,8 @@ Scan time evolutions over the detuning, using the eigenmodes approach
 function scan_timeEvolution_eigenmodes(SP)
     if any(SP.ηα .!= 0) throw(ArgumentError("scan_timeEvolution_eigenmodes has only been implemented for the case of no phonons")) end
     
-    postfixes = get_postfix.(SP.Δ_range, Ref(SP.d), Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, Ref(SP.tspan), SP.dtmax)
-    params = get_parameterMatrices(SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+    postfixes = get_postfix.(SP.Δ_range, SP.Δvari_description, Ref(SP.d), Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, Ref(SP.tspan), SP.dtmax)
+    params = get_parameterMatrices(SP.Δvari_dependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
     return timeEvolution_eigenmodes.(SP.Δ_range, Ref.(params)..., Ref(SP.initialState), Ref(SP.tspan), SP.dtmax, postfixes, SP.save_individual_res)
 end
 
@@ -609,8 +645,8 @@ using the eigenmodes approach
 """
 function calc_transmission_eigenmodes(SP, Δ)
     if all(SP.ηα .== 0) 
-        tildeΩ, tildeG = get_parameterMatrices(SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
-        eigenEnergies, eigenModes = eigbasis(tildeG)
+        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.Δvari_dependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+        eigenEnergies, eigenModes = eigbasis(Δvari + tildeG)
         return transmission_eigenmodes(Δ, tildeΩ, eigenEnergies, eigenModes, SP.fiber.propagation_constant_derivative)
     else throw(ArgumentError("calc_transmission_eigenmodes has only been implemented for the case of no phonons"))
     end
@@ -623,8 +659,8 @@ using the eigenmodes approach
 """
 function scan_transmission_eigenmodes(SP)
     if all(SP.ηα .== 0) 
-        tildeΩ, tildeG = get_parameterMatrices(SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
-        eigenEnergies, eigenModes = eigbasis(tildeG)
+        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.Δvari_dependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+        eigenEnergies, eigenModes = eigbasis(Δvari + tildeG)
         return transmission_eigenmodes.(SP.Δ_range, Ref(tildeΩ), Ref(eigenEnergies), Ref(eigenModes), SP.fiber.propagation_constant_derivative)
     else throw(ArgumentError("scan_transmission_eigenmodes has only been implemented for the case of no phonons"))
     end

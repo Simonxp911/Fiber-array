@@ -68,7 +68,7 @@ end
 Prepare title for the transmission plot
 """
 function prep_transmission_title(SP)
-    return L"test$$"
+    return L"title waiting to be implemented...$$"
 end
 
 
@@ -76,7 +76,7 @@ end
 Prepare title for the state plot
 """
 function prep_state_title(SP, Δ)
-    return L"test$$"
+    return L"title waiting to be implemented...$$"
 end
 
 
@@ -84,7 +84,7 @@ end
 Prepare title for the coupling matrix eigenmodes plot
 """
 function prep_GnmEigenModes_title(SP)
-    return L"test$$"
+    return L"title waiting to be implemented...$$"
 end
 
 
@@ -92,7 +92,7 @@ end
 Prepare title for the coupling matrix eigenenergies plot
 """
 function prep_GnmEigenEnergies_title(SP)
-    return L"test$$"
+    return L"title waiting to be implemented...$$"
 end
 
 
@@ -100,7 +100,7 @@ end
 Prepare title for the transmission with coupling matrix eigenenergies etc. plot
 """
 function prep_transmissionWithGnmEigenEnergies_title(SP)
-    return L"test$$"
+    return L"title waiting to be implemented...$$"
 end
 
 

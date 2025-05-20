@@ -298,6 +298,20 @@ end
 
 
 """
+arrayDescription for the usual 1D chain along the fiber, as given by get_array()
+"""
+function ΔvariDescription(Δvari_dependence, Δvari_args)
+    if Δvari_dependence == "flat"
+        return Δvari_dependence
+    elseif Δvari_dependence ∈ ("Gaussian", "linear", "parabolic")
+        return Δvari_dependence * "_" * join(ro.(Δvari_args), ",")
+    else 
+        throw(ArgumentError("ΔvariDescription has not been implemented for Δvari_dependence = " * Δvari_dependence))
+    end
+end
+
+
+"""
 A nice way to format complex numbers in strings
 """
 function format_Complex_to_String(z)

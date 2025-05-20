@@ -85,6 +85,10 @@ struct SysPar
     Δ_specs::Tuple{Real, Real, Int}                 # Specs for detuning for scanning time evolution, steady states, etc.
     Δ_range::AbstractRange                          # Range of detuning for scanning time evolution, steady states, etc.
     
+    Δvari_dependence::String                        # String identifier for the site-dependent detuning variation
+    Δvari_args::Union{Tuple, Nothing}               # Arguments for the calculation of the site-dependent detuning variation
+    Δvari_description::String                       # Description of the above for postfix
+    
     tspan::Tuple{Real, Real}                        # Time span (min and max value) for time evolution
     dtmax::Real                                     # Maximum allowed time step for time evolution
     initialState::Vector{<:Real}                    # Initial state for time evolution
@@ -120,6 +124,7 @@ struct SysPar
     
     function SysPar(ρf::Real, n::Real, ω::Real,
                     Δ_specs::Tuple{Real, Real, Int},
+                    Δvari_dependence::String, Δvari_args::Union{Tuple, Nothing}, Δvari_description::String,
                     tspan::Tuple{Real, Real}, dtmax::Real, initialState::Vector, initialStateDescription::String,
                     N::Int, ρa::Real, a::Real, ff::Real, pos_unc::Union{Real, Vector},
                     να::Vector, ηα::Vector,
@@ -134,16 +139,18 @@ struct SysPar
         r_field = [[x, y_fix, z] for z in z_range, x in x_range]
         
         return new(ρf, n, ω, fiber,
-            Δ_specs, Δ_range,
-            tspan, dtmax, initialState, initialStateDescription,
-            N, ρa, a, ff, pos_unc, array, arrayDescription,
-            να, ηα,
-            d, incField_wlf, save_individual_res, approx_Grm_trans,
-            z_range, x_range, y_fix, r_field)
+                   Δ_specs, Δ_range,
+                   Δvari_dependence, Δvari_args, Δvari_description,
+                   tspan, dtmax, initialState, initialStateDescription,
+                   N, ρa, a, ff, pos_unc, array, arrayDescription,
+                   να, ηα,
+                   d, incField_wlf, save_individual_res, approx_Grm_trans,
+                   z_range, x_range, y_fix, r_field)
     end
     
     function SysPar(ρf::Real, n::Real, ω::Real,
                     Δ_specs::Tuple{Real, Real, Int},
+                    Δvari_dependence::String, Δvari_args::Union{Tuple, Nothing}, Δvari_description::String,
                     tspan::Tuple{Real, Real}, dtmax::Real, initialState::Vector, initialStateDescription::String,
                     N::Int, ρa::Real, a::Real,
                     να::Vector, ηα::Vector,
@@ -162,16 +169,18 @@ struct SysPar
         r_field = nothing
 
         return new(ρf, n, ω, fiber,
-                Δ_specs, Δ_range,
-                tspan, dtmax, initialState, initialStateDescription,
-                N, ρa, a, ff, pos_unc, array, arrayDescription,
-                να, ηα,
-                d, incField_wlf, save_individual_res, approx_Grm_trans,
-                z_range, x_range, y_fix, r_field)
+                   Δ_specs, Δ_range,
+                   Δvari_dependence, Δvari_args, Δvari_description,
+                   tspan, dtmax, initialState, initialStateDescription,
+                   N, ρa, a, ff, pos_unc, array, arrayDescription,
+                   να, ηα,
+                   d, incField_wlf, save_individual_res, approx_Grm_trans,
+                   z_range, x_range, y_fix, r_field)
     end
     
     function SysPar(ρf::Real, n::Real, ω::Real,
                     Δ_specs::Tuple{Real, Real, Int},
+                    Δvari_dependence::String, Δvari_args::Union{Tuple, Nothing}, Δvari_description::String,
                     tspan::Tuple{Real, Real}, dtmax::Real, initialState::Vector, initialStateDescription::String,
                     array::Vector{Vector}, arrayDescription::String,
                     να::Vector, ηα::Vector,
@@ -193,6 +202,7 @@ struct SysPar
         
         return new(ρf, n, ω, fiber,
                    Δ_specs, Δ_range,
+                   Δvari_dependence, Δvari_args, Δvari_description,
                    tspan, dtmax, initialState, initialStateDescription,
                    N, ρa, a, ff, pos_unc, array, arrayDescription,
                    να, ηα,
@@ -210,6 +220,11 @@ function Base.show(io::IO, SP::SysPar)
     
     println(io, "Specs for scan of time evolution and steady state")
     println(io, "Δ_specs: ", SP.Δ_specs)
+    println(io, "")
+    
+    println(io, "Parameters of site-dependent detuning")
+    println(io, "Δvari_dependence: ", SP.Δvari_dependence)
+    println(io, "Δvari_args: ", SP.Δvari_args)
     println(io, "")
     
     println(io, "Time span and maximum time step allowed in time evolution")

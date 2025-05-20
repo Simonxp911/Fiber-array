@@ -156,7 +156,7 @@ function fig_transmission_vs_Δ(Δ_range, T, phase, titl)
     fig = Figure(size=(800, 600))
     
     # Make title and axis
-    Label(fig[1, :], titl, tellwidth=false)
+    Label(fig[1, 1:2], titl, tellwidth=false)
     Label(fig[2, 1], "Transmission coefficient", tellwidth=false)
     ax1 = Axis(fig[3, 1], limits=(extrema(Δ_range)..., 0, 1), 
                xlabel=L"$ \Delta/\gamma $")
@@ -277,7 +277,7 @@ function fig_GnmEigenModes(rs, v, ks, vFT, z_range, x_range, intensity, ρf, arr
     fig = Figure(size=(800, 700))
     
     # Make title and axis
-    Label(fig[1, :], titl, tellwidth=false)
+    Label(fig[1, 1:3], titl, tellwidth=false)
     Label(fig[2, 2:3], latexstring(L"Eigval. $ = " * format_Complex_to_String(eigval) * L"$"), tellwidth=false)
     Label(fig[3, 2], L"Real space$$", tellwidth=false)
     Label(fig[3, 3], L"Momentum space$$", tellwidth=false)
@@ -326,7 +326,7 @@ function fig_eigenEnergies_vs_k(dominant_ks, collΔ, collΓ, weights_abs, κ, ti
     fig = Figure(size=(800, 900))
     
     # Make title and axis
-    Label(fig[1, :], titl, tellwidth=false)
+    Label(fig[1, 1], titl, tellwidth=false)
     Label(fig[end+1, 1], L"Collective energies, $ Δ_\text{coll}/γ $", tellwidth=false)
     ax1 = Axis(fig[end+1, 1])
     Label(fig[end+1, 1], L"Collective decay rates, $ Γ_\text{coll}/γ $", tellwidth=false)
@@ -362,7 +362,7 @@ function fig_loss_withGnmeigenEnergies(Δ_range, L, resonances_abs, collΔ, coll
     fig = Figure(size=(800, 900))
     
     # Plot the loss
-    Label(fig[1, :], titl, tellwidth=false)
+    Label(fig[1, 1], titl, tellwidth=false)
     Label(fig[end+1, 1], L"Loss coefficient, individual resonances superimposed $$", tellwidth=false)
     ax1 = Axis(fig[end+1, 1], limits=(extrema(Δ_range)..., 0, nothing), 
                xlabel=L"$ Δ/γ $",
@@ -408,7 +408,7 @@ function fig_state(rs, v, ks, vFT, z_range, x_range, intensity, ρf, array, κ, 
     fig = Figure(size=(800, 900))
     
     # Make title and axis
-    Label(fig[1, :], titl, tellwidth=false)
+    Label(fig[1, 1:3], titl, tellwidth=false)
     Label(fig[2, 2], L"Real space$$", tellwidth=false)
     Label(fig[2, 3], L"Momentum space$$", tellwidth=false)
     Label(fig[3, 1], L"Magnitude$$", rotation = pi/2, tellheight=false)

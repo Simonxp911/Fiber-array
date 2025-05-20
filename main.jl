@@ -51,19 +51,25 @@ function define_SP_BerlinCS()
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
     Δ_specs = (-0.5, 0.5, 300)
     
+    # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
+    Δvari_dependence = "Gaussian"
+    Δvari_args = -3, 50*a0_ul
+    # Δvari_args = nothing
+    Δvari_description = ΔvariDescription(Δvari_dependence, Δvari_args)
+    
     # Set array specs and generate array, as well as description for postfix
-    N = 20
+    N = 250
     
     # Lamb-Dicke parameters
     ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
-    # ηα = ηα0 .* [0.01, 0.01, 1]
+    ηα = ηα0 .* [0.2, 0.2, 0.2]
     # ηα = [0.01, 0.01, 0.01]
-    ηα = [0., 0., 0.]
+    # ηα = [0., 0., 0.]
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
-    ff = 0.8
-    # pos_unc = any(ηα .!= 0) ? 0.0 : 0.0
-    pos_unc = any(ηα .!= 0) ? 0.0 : ηα0/ωa
+    ff = 1.0
+    pos_unc = any(ηα .!= 0) ? 0.0 : 0.0
+    # pos_unc = any(ηα .!= 0) ? 0.0 : ηα0/ωa
     n_inst  = any(ηα .!= 0) ?   1 : 1
     
     # Time spand and maximum time step allowed in time evolution
@@ -93,14 +99,17 @@ function define_SP_BerlinCS()
     
     # Ranges of z and x values to define r_field for calculating the radiated E-field
     arrayL = (N - 1)*a0_ul
-    z_range = range(-0.5*arrayL, 1.5*arrayL, 60)
-    x_range = range(ρa0_ul - 0.3*arrayL, ρa0_ul + 0.3*arrayL, 60)
+    # z_range = range(-0.5*arrayL, 1.5*arrayL, 60)
+    # x_range = range(ρa0_ul - 0.3*arrayL, ρa0_ul + 0.3*arrayL, 60)
+    z_range = range(-10, arrayL + 10, 60)
+    x_range = range(-ρf0_ul - 10, ρf0_ul + ρa0_ul + 10, 60)
     y_fix   = ρa0_ul
     
     
     if n_inst == 1
         return SysPar(ρf0_ul, n0, ωa,
                       Δ_specs,
+                      Δvari_dependence, Δvari_args, Δvari_description,
                       tspan, dtmax, initialState, initialStateDescription,
                       N, ρa0_ul, a0_ul, ff, pos_unc,
                       να0_ul, ηα,
@@ -109,6 +118,7 @@ function define_SP_BerlinCS()
     else
         return [SysPar(ρf0_ul, n0, ωa,
                        Δ_specs,
+                       Δvari_dependence, Δvari_args, Δvari_description,
                        tspan, dtmax, initialState, initialStateDescription,
                        N, ρa0_ul, a0_ul, ff, pos_unc,
                        να0_ul, ηα,
@@ -130,6 +140,11 @@ function define_SP_Olmos()
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
     Δ_specs = (-10, 10, 1000)
+    
+    # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "parabolic" (amp))
+    Δvari_dependence = "flat"
+    Δvari_args = nothing
+    Δvari_description = ΔvariDescription(Δvari_dependence, Δvari_args)
     
     # Time spand and maximum time step allowed in time evolution
     tspan = (0, 100)
@@ -161,6 +176,7 @@ function define_SP_Olmos()
     
     return SysPar(ρf_ul, n, ωa,
                   Δ_specs,
+                  Δvari_dependence, Δvari_args, Δvari_description,
                   tspan, dtmax, initialState, initialStateDescription,
                   N, ρa, a,
                   να, ηα,
@@ -179,6 +195,11 @@ function define_SP_Rauschenbeutel()
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
     Δ_specs = (-30, 30, 100)
+    
+    # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "parabolic" (amp))
+    Δvari_dependence = "flat"
+    Δvari_args = nothing
+    Δvari_description = ΔvariDescription(Δvari_dependence, Δvari_args)
     
     # Time spand and maximum time step allowed in time evolution
     tspan = (0, 5)
@@ -210,6 +231,7 @@ function define_SP_Rauschenbeutel()
     
     return SysPar(ρf_ul, n, ωa,
                   Δ_specs,
+                  Δvari_dependence, Δvari_args, Δvari_description,
                   tspan, dtmax, initialState, initialStateDescription,
                   N, ρa, a,
                   να, ηα,
@@ -224,6 +246,11 @@ function define_SP_Chang()
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
     Δ_specs = (-10, 10, 300)
+    
+    # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "parabolic" (amp))
+    Δvari_dependence = "flat"
+    Δvari_args = nothing
+    Δvari_description = ΔvariDescription(Δvari_dependence, Δvari_args)
     
     # Time spand and maximum time step allowed in time evolution
     tspan = (0, 5)
@@ -255,6 +282,7 @@ function define_SP_Chang()
     
     return SysPar(ρf, n, ωa,
                   Δ_specs,
+                  Δvari_dependence, Δvari_args, Δvari_description,
                   tspan, dtmax, initialState, initialStateDescription,
                   N, ρa, a,
                   να, ηα,
@@ -275,15 +303,15 @@ function main()
     
     # plot_propConst_inOutMom(ωρfn_ranges)
     # plot_coupling_strengths(SP)
-    plot_σBαTrajectories_σBαSS(SP)
-    # plot_transmission_vs_Δ(SP)
+    # plot_σBαTrajectories_σBαSS(SP)
+    plot_transmission_vs_Δ(SP)
     # plot_classDisorder_transmission_vs_Δ(SP)
     # plot_steadyState_radiation_Efield(SP)
     # plot_radiation_Efield(SP)
     # plot_GnmEigenModes(SP)
     # plot_emissionPatternOfGnmeigenModes(SP)
     # plot_GnmEigenEnergies(SP)
-    # plot_transmissionWithGnmEigenEnergies(SP)
+    # plot_lossWithGnmEigenEnergies(SP)
     
     return nothing
 end
@@ -405,7 +433,7 @@ end
 
 
 function plot_steadyState_radiation_Efield(SP)
-    Δ = 1.69
+    Δ = -0.25
     rs = [site[3] for site in SP.array]
     if all(SP.ηα .== 0) σ_SS = calc_σBα_steadyState(SP, Δ)
     else                σ_SS, Bα_SS = calc_σBα_steadyState(SP, Δ)
@@ -471,10 +499,10 @@ end
 function plot_GnmEigenEnergies(SP)
     if any(SP.ηα .!= 0) throw(ArgumentError("plot_GnmEigenEnergies is not implemented for the case of including phonons")) end
     
-    tildeΩ, tildeG = get_parameterMatrices(SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+    Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.Δvari_dependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
     # tildeG = get_tildeG0(SP.fiber, SP.d, SP.array)
     
-    eigenEnergies, eigenModes, dominant_ks = spectrum(tildeG, SP.a)
+    eigenEnergies, eigenModes, dominant_ks = spectrum(Δvari + tildeG, SP.a)
     collΔ, collΓ = collEnergies_from_eigenEnergies(eigenEnergies)
     weights, resonances = transmission_eigenmodes_weights_resonances(SP.Δ_range, tildeΩ, eigenEnergies, eigenModes, SP.fiber.propagation_constant_derivative)
     weights_abs = abs.(weights)
@@ -484,15 +512,15 @@ function plot_GnmEigenEnergies(SP)
 end
 
 
-function plot_transmissionWithGnmEigenEnergies(SP)
-    if any(SP.ηα .!= 0) throw(ArgumentError("plot_transmissionWithGnmEigenEnergies is not implemented for the case of including phonons")) end
+function plot_lossWithGnmEigenEnergies(SP)
+    if any(SP.ηα .!= 0) throw(ArgumentError("plot_lossWithGnmEigenEnergies is not implemented for the case of including phonons")) end
     
     σBα_scan = scan_σBα_steadyState(SP)
     t = calc_transmission.(Ref(SP), σBα_scan)
     # t = scan_transmission_eigenmodes(SP)
     
-    tildeΩ, tildeG = get_parameterMatrices(SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
-    eigenEnergies, eigenModes = eigbasis(tildeG)
+    Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.Δvari_dependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+    eigenEnergies, eigenModes = eigbasis(Δvari + tildeG)
     collΔ, collΓ = collEnergies_from_eigenEnergies(eigenEnergies)
     weights, resonances = transmission_eigenmodes_weights_resonances(SP.Δ_range, tildeΩ, eigenEnergies, eigenModes, SP.fiber.propagation_constant_derivative)
     
@@ -511,10 +539,9 @@ println("\n -- Running main() -- \n")
 
 # TODO list:
 
-# Implement Δ_variation - a new potential that must follow tildeG through the code
-    # A Gaussian (?) variation that is zero in the middle, has some width, and some maximum amplitude at the ends
-    # Maybe half a Gaussian, followed by a constant period, and the other half of the Gaussian
-    # A parabolic variation?
+# Implement random array, to see how bad the transmission/loss is
+    # Compare with filling 0.1 to see if there is a difference
+# Implement 1D on both sides of the fiber
 
 # Maybe calculate tildeG, etc., in SP? They are not expected to change anyway
     # Only calculate them if needed..?
@@ -527,6 +554,8 @@ println("\n -- Running main() -- \n")
 
 # Implement Gnm functions for the case of including phonons
 
+# Implement radiation_Efield for the case of including phonons
+
 # Calculate Poynting vector and plot instead of/together with emission pattern?
 
 # Consider the effect of having a gradually changing Δ
@@ -537,6 +566,9 @@ println("\n -- Running main() -- \n")
     # Use MPI?
     # clean up before moving to the cluster: comments, naming, minor issues below, checks of derivatives
 
+# Systematically scan the effect of η and ff
+    # Pick a value of Δ with T ~ 1 and phase ~ pi, and plot these things as a function of η and ff?
+    
 # Calculate reflection and loss
 
 # Implement n_inst in a better way? That is, dont have a list of SPs, but include the many instantiations in the same SP?
@@ -573,10 +605,6 @@ println("\n -- Running main() -- \n")
 # Update interface comments and make a description of notation/conventions somewhere
 
 # Make small ω version of fiber_equation work? Implement HomotopyContinuation solution?
-
-# Figure out how to add (super-)titles to figures
-    # Possibly define function that takes a plot and adds the title to it, by moving existing plots around
-# Related to this, figure out how to define proper, nice-looking, robust layouts of plots
 
 # Consider making structs for x-vector and σBα, to make their structure easier to get an overview of
 

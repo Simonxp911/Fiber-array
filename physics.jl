@@ -574,9 +574,9 @@ end
 Implements the equations of motion for the atomic of freedom
 to first order in the driving (for the case of no phonons)
 """
-function EoMs!(dσdt, σ, Δ, tildeΩ, tildeG)
+function EoMs!(dσdt, σ, Δ, Δvari, tildeΩ, tildeG)
     dσdt  .= -1im*(
-                   -tildeΩ - (Δ*I + tildeG)*σ
+                   -tildeΩ - (Δ*I + Δvari + tildeG)*σ
                   )
 end
 
@@ -585,9 +585,9 @@ end
 Implements the equations of motion for the atomic and phononic degrees of freedom
 to first order in the driving and to second order in the Lamb-Dicke parameter
 """
-function EoMs!(dσdt, dBαdt, σ, Bα, Δ, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2)
+function EoMs!(dσdt, dBαdt, σ, Bα, Δ, Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2)
     dσdt  .= -1im*(
-                   -tildeΩ - (Δ*I + tildeG)*σ - sum(@. di(Bα*transpose(tildeGα1)) + tildeGα2*di(Bα))
+                   -tildeΩ - (Δ*I + Δvari + tildeG)*σ - sum(@. di(Bα*transpose(tildeGα1)) + tildeGα2*di(Bα))
                   )
     dBαdt .= -1im*(
                    -Bα.*transpose.(tildeFα) - Di.(tildeΩα + tildeGα1.*Ref(σ)) - Ref(Di(σ)).*transpose.(tildeGα2)
@@ -598,7 +598,7 @@ end
 """
 Wraps the EoMs to conform with the requirements of NonlinearSolve (in the case of no phonons).
 
-args = dσdt, σ, Δ, tildeΩ, tildeG
+args = dσdt, σ, Δ, Δvari, tildeΩ, tildeG
 """
 function EoMs_wrap_noPh(dxdt, x, args, t)
     # Unpack args
@@ -619,7 +619,7 @@ end
 """
 Wraps the EoMs to conform with the requirements of NonlinearSolve.
 
-args = dσdt, dBαdt, σ, Bα, Δ, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2
+args = dσdt, dBαdt, σ, Bα, Δ, Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2
 """
 function EoMs_wrap(dxdt, x, args, t)
     # Unpack args
@@ -641,8 +641,8 @@ end
 Implements the analytical solution for the steady state values of the atomic 
 degrees of freedom to first order in the driving (in the case of no phonons)
 """
-function σ_steadyState(Δ, tildeΩ, tildeG)
-    return -(Δ*I + tildeG)\tildeΩ
+function σ_steadyState(Δ, Δvari, tildeΩ, tildeG)
+    return -(Δ*I + Δvari + tildeG)\tildeΩ
 end
 
 
@@ -650,7 +650,7 @@ end
 Implements the analytical solution for the steady state values of the atomic and phononic 
 degrees of freedom to first order in the driving and to second order in the Lamb-Dicke parameter.
 """
-function σBα_steadyState(Δ, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2)
+function σBα_steadyState(Δ, Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2)
     tildeFα_inv = inv.(tildeFα)
     
     # Calculate the coefficient matrices
@@ -662,7 +662,7 @@ function σBα_steadyState(Δ, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, 
              + tildeGα2*Diag(tildeFα_inv*tildeGα2) )
     
     # Finally, we calculate the steady state values
-    σ_SS  = -(Δ*I + tildeG - sum(Dα))\(tildeΩ - sum(Cα.*tildeΩα))
+    σ_SS  = -(Δ*I + Δvari + tildeG - sum(Dα))\(tildeΩ - sum(Cα.*tildeΩα))
     Bα_SS = -(Di.(tildeΩα + tildeGα1.*Ref(σ_SS)) + Ref(Di(σ_SS)).*transpose.(tildeGα2)).*transpose(tildeFα_inv)
     return σ_SS, Bα_SS
 end
@@ -672,9 +672,9 @@ end
 Calculate the time evolution of the atomic coherences (in the case of no phonons)
 using the eigenmodes approach
 """
-function timeEvolution_eigenmodes(t, Δ, tildeΩ, tildeG, initialState)
+function timeEvolution_eigenmodes(t, Δ, Δvari, tildeΩ, tildeG, initialState)
     # Get the eigenenergies and -modes of tildeG, as well as the basis-transformation matrix Q
-    eigenEnergies, eigenModes = eigbasis(tildeG)
+    eigenEnergies, eigenModes = eigbasis(Δvari + tildeG)
     Q = vectorOfCols2Matrix(eigenModes)
     
     # Prepare the initial state (in the real space basis and the eigenmode basis)
