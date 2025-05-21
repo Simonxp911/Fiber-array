@@ -251,7 +251,7 @@ function dbesselsphh(derivOrder, n, j, x)
             throw(ArgumentError("The 'kind'-index j (= $j) must take values 1 or 2 in dbesselsphh"))
         end
     else
-        return dbesselsphh(derivOrder - 1, n - 1, j, x) - (n + 1)*sum([binomial(derivOrder - 1, i)*(-1)^i*factorial(i)/x^(i + 1)*dbesselsphh(derivOrder - 1 - i, n, j, x) for i in 0:derivOrder - 1])
+        return (n*dbesselsphh(derivOrder - 1, n - 1, j, x) - (n + 1)*dbesselsphh(derivOrder - 1, n + 1, j, x))/(2*n + 1)
     end
 end
 

@@ -2,9 +2,9 @@
 include("preamble.jl")
 
 
-#================================================
-    Main functions
-================================================#
+# ================================================
+#   Main functions
+# ================================================
 function define_ω_ρf_n_ranges()
     λ0  = 852       #nm, guided mode wavelength, transition frequency of cs133
     ω0  = 2π/λ0     #nm^-1, guided mode angular frequency
@@ -52,19 +52,19 @@ function define_SP_BerlinCS()
     Δ_specs = (-0.5, 0.5, 300)
     
     # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
-    Δvari_dependence = "flat"
-    # Δvari_args = -3, 50*a0_ul
-    Δvari_args = nothing
+    Δvari_dependence = "Gaussian"
+    Δvari_args = -1, 50*a0_ul
     Δvari_description = ΔvariDescription(Δvari_dependence, Δvari_args)
     
     # Set array specs and generate array, as well as description for postfix
-    N = 25
+    N = 200
     
     # Lamb-Dicke parameters
-    ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
-    # ηα = ηα0 .* [0.2, 0.2, 0.2]
+    # ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
+    # ηα = ηα0 .* [0.1, 0.2, 0.1]
+    ηα = ηα0 * 0.4
     # ηα = [0.01, 0.01, 0.01]
-    ηα = [0., 0., 0.]
+    # ηα = [0., 0., 0.]
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
@@ -319,7 +319,7 @@ function main()
     # plot_propConst_inOutMom(ωρfn_ranges)
     # plot_coupling_strengths(SP)
     # plot_σBαTrajectories_σBαSS(SP)
-    plot_transmission_vs_Δ(SP)
+    # plot_transmission_vs_Δ(SP)
     # plot_classDisorder_transmission_vs_Δ(SP)
     # plot_steadyState_radiation_Efield(SP)
     # plot_radiation_Efield(SP)
@@ -328,13 +328,15 @@ function main()
     # plot_GnmEigenEnergies(SP)
     # plot_lossWithGnmEigenEnergies(SP)
     
+    test_GF_derivatives(SP)
+    
     return nothing
 end
 
 
-#================================================
-    Generate figures
-================================================#
+# ================================================
+#   Generate figures
+# ================================================
 function plot_propConst_inOutMom(ω_ρf_n_ranges)
     κ = scan_propConst(ω_ρf_n_ranges)
     
@@ -545,6 +547,277 @@ function plot_lossWithGnmEigenEnergies(SP)
 end
 
 
+function test_GF_derivatives(SP)
+    r_field  = 2*rand(3)
+    r_source = 2*rand(3)
+    # r_field  = [0, 0, 0]
+    # r_source = [0, 0, 0]
+    # r_field  = [1.2816028684298284, 1.2879443686486276, 1.9924819214950855]
+    # r_source = [1.76196091201186, 0.6922410493113891, 1.37470819601583]
+    
+    # println(r_field)
+    # println(r_source)
+    # println("")
+    
+    dd = 1e-4
+    dx = [dd, 0, 0]
+    dy = [0, dd, 0]
+    dz = [0, 0, dd]
+    dα = [dx, dy, dz]
+    
+    
+    
+    
+    # Ggm
+    # for α in 1:3
+    #     println("(1, 0), α = ", α)
+    #     deriv_approx = (Ggm(SP.fiber, r_field + dα[α]/2, r_source) - Ggm(SP.fiber, r_field - dα[α]/2, r_source))/dd
+    #     deriv_exact  =  Ggm(SP.fiber, r_field, r_source, (1, 0), α)
+    #     display(round.(deriv_approx - deriv_exact, digits=8))
+    #     # println(maximum(abs.(deriv_approx - deriv_exact)))
+    #     println("")
+        
+    #     println("(0, 1), α = ", α)
+    #     deriv_approx = (Ggm(SP.fiber, r_field, r_source + dα[α]/2) - Ggm(SP.fiber, r_field, r_source - dα[α]/2))/dd
+    #     deriv_exact  =  Ggm(SP.fiber, r_field, r_source, (0, 1), α)
+    #     display(round.(deriv_approx - deriv_exact, digits=8))
+    #     # println(maximum(abs.(deriv_approx - deriv_exact)))
+    #     println("")
+        
+    #     println("(2, 0), α = ", α)
+    #     deriv_approx = (Ggm(SP.fiber, r_field + dα[α], r_source) + Ggm(SP.fiber, r_field - dα[α], r_source) - 2*Ggm(SP.fiber, r_field, r_source))/dd^2
+    #     deriv_exact  =  Ggm(SP.fiber, r_field, r_source, (2, 0), α)
+    #     display(round.(deriv_approx - deriv_exact, digits=8))
+    #     # println(maximum(abs.(deriv_approx - deriv_exact)))
+    #     println("")
+        
+    #     println("(0, 2), α = ", α)
+    #     deriv_approx = (Ggm(SP.fiber, r_field, r_source + dα[α]) + Ggm(SP.fiber, r_field, r_source - dα[α]) - 2*Ggm(SP.fiber, r_field, r_source))/dd^2
+    #     deriv_exact  =  Ggm(SP.fiber, r_field, r_source, (0, 2), α)
+    #     display(round.(deriv_approx - deriv_exact, digits=8))
+    #     # println(maximum(abs.(deriv_approx - deriv_exact)))
+    #     println("")
+        
+    # end
+    
+    # Grm
+    # for α in 1:3
+    #     println("(1, 0), α = ", α)
+    #     deriv_approx = (Grm(SP.fiber, ωa, r_field + dα[α]/2, r_source, (0, 0), 1, false, (true, false)) - Grm(SP.fiber, ωa, r_field - dα[α]/2, r_source, (0, 0), 1, false, (true, false)))/dd
+    #     deriv_exact  =  Grm(SP.fiber, ωa, r_field, r_source, (1, 0), α, false, (true, false))
+    #     # display(round.(deriv_approx - deriv_exact, digits=4))
+    #     # display(round.(imag(deriv_approx), digits=4))
+    #     # display(round.(imag(deriv_exact), digits=4))
+    #     # display(round.(imag(deriv_approx - deriv_exact), digits=4))
+    #     # println(maximum(real.(deriv_approx - deriv_exact)./real.(deriv_approx)))
+    #     # println(maximum(imag.(deriv_approx - deriv_exact)./imag.(deriv_approx)))
+    #     println(maximum(abs.(deriv_approx - deriv_exact)))
+    #     println("")
+        
+    #     println("(0, 1), α = ", α)
+    #     deriv_approx = (Grm(SP.fiber, ωa, r_field, r_source + dα[α]/2, (0, 0), 1, false, (true, false)) - Grm(SP.fiber, ωa, r_field, r_source - dα[α]/2, (0, 0), 1, false, (true, false)))/dd
+    #     deriv_exact  =  Grm(SP.fiber, ωa, r_field, r_source, (0, 1), α, false, (true, false))
+    #     # display(round.(deriv_approx - deriv_exact, digits=4))
+    #     # display(round.(imag(deriv_approx), digits=4))
+    #     # display(round.(imag(deriv_exact), digits=4))
+    #     # display(round.(imag(deriv_approx - deriv_exact), digits=4))
+    #     # println(maximum(real.(deriv_approx - deriv_exact)./real.(deriv_approx)))
+    #     # println(maximum(imag.(deriv_approx - deriv_exact)./imag.(deriv_approx)))
+    #     println(maximum(abs.(deriv_approx - deriv_exact)))
+    #     println("")
+        
+    #     println("(2, 0), α = ", α)
+    #     deriv_approx = (Grm(SP.fiber, ωa, r_field + dα[α], r_source, (0, 0), 1, false, (true, false)) + Grm(SP.fiber, ωa, r_field - dα[α], r_source, (0, 0), 1, false, (true, false)) - 2*Grm(SP.fiber, ωa, r_field, r_source, (0, 0), 1, false, (true, false)))/dd^2
+    #     deriv_exact  =  Grm(SP.fiber, ωa, r_field, r_source, (2, 0), α, false, (true, false))
+    #     # display(round.(deriv_approx - deriv_exact, digits=4))
+    #     # display(round.(imag(deriv_approx), digits=4))
+    #     # display(round.(imag(deriv_exact), digits=4))
+    #     # display(round.(imag(deriv_approx - deriv_exact), digits=4))
+    #     # println(maximum(real.(deriv_approx - deriv_exact)./real.(deriv_approx)))
+    #     # println(maximum(imag.(deriv_approx - deriv_exact)./imag.(deriv_approx)))
+    #     println(maximum(abs.(deriv_approx - deriv_exact)))
+    #     println("")
+        
+    #     println("(0, 2), α = ", α)
+    #     deriv_approx = (Grm(SP.fiber, ωa, r_field, r_source + dα[α], (0, 0), 1, false, (true, false)) + Grm(SP.fiber, ωa, r_field, r_source - dα[α], (0, 0), 1, false, (true, false)) - 2*Grm(SP.fiber, ωa, r_field, r_source, (0, 0), 1, false, (true, false)))/dd^2
+    #     deriv_exact  =  Grm(SP.fiber, ωa, r_field, r_source, (0, 2), α, false, (true, false))
+    #     # display(round.(deriv_approx - deriv_exact, digits=4))
+    #     # display(round.(imag(deriv_approx), digits=4))
+    #     # display(round.(imag(deriv_exact), digits=4))
+    #     # display(round.(imag(deriv_approx - deriv_exact), digits=4))
+    #     # println(maximum(real.(deriv_approx - deriv_exact)./real.(deriv_approx)))
+    #     # println(maximum(imag.(deriv_approx - deriv_exact)./imag.(deriv_approx)))
+    #     println(maximum(abs.(deriv_approx - deriv_exact)))
+    #     println("")
+        
+    # end
+    
+    # G0
+    # for α in 1:3
+    #     # println("(1, 0), α = ", α)
+    #     # deriv_approx = (G0(ωa, r_field + dα[α]/2, r_source) - G0(ωa, r_field - dα[α]/2, r_source))/dd
+    #     # deriv_exact  =  G0(ωa, r_field, r_source, (1, 0), α)
+    #     # # display(round.(deriv_approx - deriv_exact, digits=4))
+    #     # # println(maximum(real.(deriv_approx - deriv_exact)))
+    #     # # println(maximum(imag.(deriv_approx - deriv_exact)))
+    #     # println(maximum(abs.(deriv_approx - deriv_exact)))
+    #     # println("")
+        
+    #     # println("(0, 1), α = ", α)
+    #     # deriv_approx = (G0(ωa, r_field, r_source + dα[α]/2) - G0(ωa, r_field, r_source - dα[α]/2))/dd
+    #     # deriv_exact  =  G0(ωa, r_field, r_source, (0, 1), α)
+    #     # # display(round.(deriv_approx - deriv_exact, digits=4))
+    #     # # println(maximum(real.(deriv_approx - deriv_exact)))
+    #     # # println(maximum(imag.(deriv_approx - deriv_exact)))
+    #     # println(maximum(abs.(deriv_approx - deriv_exact)))
+    #     # println("")
+        
+    #     println("(2, 0), α = ", α)
+    #     deriv_approx = (G0(ωa, r_field + dα[α], r_source) + G0(ωa, r_field - dα[α], r_source) - 2*G0(ωa, r_field, r_source))/dd^2
+    #     deriv_exact  =  G0(ωa, r_field, r_source, (2, 0), α)
+    #     # display(round.(deriv_approx - deriv_exact, digits=4))
+    #     # display(round.(imag(deriv_approx - deriv_exact), digits=6))
+    #     # println(maximum(real.(deriv_approx - deriv_exact)))
+    #     println(maximum(imag.(deriv_approx - deriv_exact)))
+    #     # println(maximum(abs.(deriv_approx - deriv_exact)))
+    #     println("")
+        
+    #     println("(0, 2), α = ", α)
+    #     deriv_approx = (G0(ωa, r_field, r_source + dα[α]) + G0(ωa, r_field, r_source - dα[α]) - 2*G0(ωa, r_field, r_source))/dd^2
+    #     deriv_exact  =  G0(ωa, r_field, r_source, (0, 2), α)
+    #     # display(round.(deriv_approx - deriv_exact, digits=4))
+    #     # display(round.(imag(deriv_approx - deriv_exact), digits=6))
+    #     # println(maximum(real.(deriv_approx - deriv_exact)))
+    #     println(maximum(imag.(deriv_approx - deriv_exact)))
+    #     # println(maximum(abs.(deriv_approx - deriv_exact)))
+    #     println("") 
+    # end
+    
+    # G0_long
+    # for α in 1:3
+    #     println("(1, 0), α = ", α)
+    #     deriv_approx = (G0_long(ωa, r_field + dα[α]/2, r_source) - G0_long(ωa, r_field - dα[α]/2, r_source))/dd
+    #     deriv_exact  =  G0_long(ωa, r_field, r_source, (1, 0), α)
+    #     # display(round.(deriv_approx - deriv_exact, digits=4))
+    #     # println(maximum(real.(deriv_approx - deriv_exact)))
+    #     # println(maximum(imag.(deriv_approx - deriv_exact)))
+    #     println(maximum(abs.(deriv_approx - deriv_exact)))
+    #     println("")
+        
+    #     println("(0, 1), α = ", α)
+    #     deriv_approx = (G0_long(ωa, r_field, r_source + dα[α]/2) - G0_long(ωa, r_field, r_source - dα[α]/2))/dd
+    #     deriv_exact  =  G0_long(ωa, r_field, r_source, (0, 1), α)
+    #     # display(round.(deriv_approx - deriv_exact, digits=4))
+    #     # println(maximum(real.(deriv_approx - deriv_exact)))
+    #     # println(maximum(imag.(deriv_approx - deriv_exact)))
+    #     println(maximum(abs.(deriv_approx - deriv_exact)))
+    #     println("")
+        
+    #     println("(2, 0), α = ", α)
+    #     deriv_approx = (G0_long(ωa, r_field + dα[α], r_source) + G0_long(ωa, r_field - dα[α], r_source) - 2*G0_long(ωa, r_field, r_source))/dd^2
+    #     deriv_exact  =  G0_long(ωa, r_field, r_source, (2, 0), α)
+    #     # display(round.(deriv_approx - deriv_exact, digits=4))
+    #     # println(maximum(real.(deriv_approx - deriv_exact)))
+    #     # println(maximum(imag.(deriv_approx - deriv_exact)))
+    #     println(maximum(abs.(deriv_approx - deriv_exact)))
+    #     println("")
+        
+    #     println("(0, 2), α = ", α)
+    #     deriv_approx = (G0_long(ωa, r_field, r_source + dα[α]) + G0_long(ωa, r_field, r_source - dα[α]) - 2*G0_long(ωa, r_field, r_source))/dd^2
+    #     deriv_exact  =  G0_long(ωa, r_field, r_source, (0, 2), α)
+    #     # display(round.(deriv_approx - deriv_exact, digits=4))
+    #     # println(maximum(real.(deriv_approx - deriv_exact)))
+    #     # println(maximum(imag.(deriv_approx - deriv_exact)))
+    #     println(maximum(abs.(deriv_approx - deriv_exact)))
+    #     println("") 
+    # end
+    
+# #     # dbesselsphh
+#     x = 0.1*rand()
+#     # x = 0.015123397568520658
+#     println("x = ", x)
+#     for n in 1:5, j in 1:2
+#         # println("(n, j) = ", (n, j))
+#         # println(abs(dbesselsphh(0, n - 1, j, x) + dbesselsphh(0, n + 1, j, x) - (2*n + 1)/x*dbesselsphh(0, n, j, x)))
+        
+#         # deriv = (dbesselsphh(0, n, j, x + dd/2) - dbesselsphh(0, n, j, x - dd/2))/dd
+#         # println(abs(n*dbesselsphh(0, n - 1, j, x) - (n + 1)*dbesselsphh(0, n + 1, j, x) - (2*n + 1)*deriv))
+#         # println("")
+        
+        
+#         # println("derivOrder = 1, (n, j) = ", (n, j))
+#         # deriv_approx = (dbesselsphh(0, n, j, x + dd/2) - dbesselsphh(0, n, j, x - dd/2))/dd
+#         # # deriv_exact1 =  dbesselsphh(0, n - 1, j, x) - (n + 1)/x*dbesselsphh(0, n, j, x)
+#         # # deriv_exact2 = -dbesselsphh(0, n + 1, j, x) + n/x*dbesselsphh(0, n, j, x)
+#         # deriv_exact =  dbesselsphh(1, n, j, x)
+#         # # println(abs(deriv_approx - deriv_exact1))
+#         # # println(abs(deriv_approx - deriv_exact2))
+#         # # println(abs(deriv_approx - deriv_exact))
+#         # println(abs(deriv_approx - deriv_exact)/abs(deriv_approx))
+#         # println("")
+        
+#         # println("derivOrder = 2, (n, j) = ", (n, j))
+#         # deriv_approx = (dbesselsphh(0, n, j, x + dd) + dbesselsphh(0, n, j, x - dd) - 2*dbesselsphh(0, n, j, x))/dd^2
+#         # # deriv_exact1 = (n*((n - 1)*dbesselsphh(0, n - 2, j, x) - n*dbesselsphh(0, n, j, x))/(2*n - 1) - (n + 1)*((n + 1)*dbesselsphh(0, n, j, x) - (n + 2)*dbesselsphh(0, n + 2, j, x))/(2*n + 3))/(2*n + 1)
+#         # deriv_exact =  dbesselsphh(2, n, j, x)
+#         # # println(abs(deriv_approx - deriv_exact1))
+#         # # println(abs(deriv_approx - deriv_exact))
+#         # println(abs(deriv_approx - deriv_exact)/abs(deriv_approx))
+#         # println("")
+        
+#         println("derivOrder = 3, (n, j) = ", (n, j))
+#         deriv_approx = (dbesselsphh(0, n, j, x + 3*dd/2) - 3*dbesselsphh(0, n, j, x + dd/2) + 3*dbesselsphh(0, n, j, x - dd/2) - dbesselsphh(0, n, j, x - 3*dd/2))/dd^3
+#         deriv_exact =  dbesselsphh(3, n, j, x)
+#         # println(abs(deriv_approx - deriv_exact))
+#         println(abs(deriv_approx - deriv_exact)/abs(deriv_approx))
+#         println("")
+#     end
+    
+    # # drhatrhat
+    # for α in 1:3
+    #     println("derivOrder = 1, α = ", α)
+    #     deriv_approx = (drhatrhat(r_field + dα[α]/2, 0, α) - drhatrhat(r_field - dα[α]/2, 0, α))/dd
+    #     deriv_exact = drhatrhat(r_field, 1, α)
+    #     println(maximum(abs.(deriv_approx - deriv_exact)))
+    #     println("") 
+        
+    #     println("derivOrder = 2, α = ", α)
+    #     deriv_approx = (drhatrhat(r_field + dα[α], 0, α)  + drhatrhat(r_field - dα[α], 0, α) - 2*drhatrhat(r_field, 0, α))/dd^2
+    #     deriv_exact = drhatrhat(r_field, 2, α)
+    #     println(maximum(abs.(deriv_approx - deriv_exact)))
+    #     println("") 
+    # end
+    
+    # # Erm
+    # κ = rand()*ωa
+    # for α in 1:3, m in -5:5, l in (-1, 1)
+    #     println("α = ", α, ", m = ", m, ", l = ", l)
+    #     println("")
+        
+    #     println("derivorder = 1")
+    #     deriv_approx = (Erm(SP.fiber, ωa, κ, m, l, r_field + dα[α]/2) - Erm(SP.fiber, ωa, κ, m, l, r_field - dα[α]/2))/dd
+    #     deriv_exact  =  Erm(SP.fiber, ωa, κ, m, l, r_field, 1, α)
+    #     # display(round.(deriv_approx - deriv_exact, digits=4))
+    #     # println(maximum(real.(deriv_approx - deriv_exact)./real.(deriv_approx)))
+    #     # println(maximum(imag.(deriv_approx - deriv_exact)./imag.(deriv_approx)))
+    #     println(maximum(abs.(deriv_approx - deriv_exact)))
+    #     println("")
+        
+    #     println("derivorder = 2")
+    #     deriv_approx = (Erm(SP.fiber, ωa, κ, m, l, r_field + dα[α]) + Erm(SP.fiber, ωa, κ, m, l, r_field - dα[α]) - 2*Erm(SP.fiber, ωa, κ, m, l, r_field))/dd^2
+    #     deriv_exact  =  Erm(SP.fiber, ωa, κ, m, l, r_field, 2, α)
+    #     # display(round.(deriv_approx - deriv_exact, digits=4))
+    #     # println(maximum(real.(deriv_approx - deriv_exact)./real.(deriv_approx)))
+    #     # println(maximum(imag.(deriv_approx - deriv_exact)./imag.(deriv_approx)))
+    #     println(maximum(abs.(deriv_approx - deriv_exact)))
+    #     println("")
+        
+    # end
+
+end
+
+
+
 
 println("\n -- Running main() -- \n")
 @time main()
@@ -563,8 +836,6 @@ println("\n -- Running main() -- \n")
 
 # Implement titles for figures that show parameters etc.
 
-# Check that the derivatives of the modes are correctly implemented by comparing with numerically calculated derivatives
-
 # Implement that Im_Grm_trans_ simply returns zero for a certain size of relative_z/fiber_radius or so? (Will go to zero for large inter-atom distance)
 
 # Implement Gnm functions for the case of including phonons
@@ -572,10 +843,6 @@ println("\n -- Running main() -- \n")
 # Implement radiation_Efield for the case of including phonons
 
 # Calculate Poynting vector and plot instead of/together with emission pattern?
-
-# Consider the effect of having a gradually changing Δ
-    # Far detuned at the edges and a gradual shift towards whatever value is chosen for the bulk
-    # Might halp "ease" the light into the array, to minimize scattering at the edges?
 
 # Get it to work on the cluster
     # Use MPI?

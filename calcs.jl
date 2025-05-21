@@ -1,8 +1,8 @@
 
 
-#================================================
-    Functions pertaining to the propagation constant
-================================================#
+# ================================================
+#   Functions pertaining to the propagation constant
+# ================================================
 """
 Find the roots of the fiber eigenequation.
 
@@ -59,9 +59,9 @@ function calc_propConstDerivative(ω, ρf, n, dω = 1e-9)
 end
 
 
-#================================================
-    Functions pertaining to calculating the driving and couplings of the system
-================================================#
+# ================================================
+#   Functions pertaining to calculating the driving and couplings of the system
+# ================================================
 function get_parameterMatrices(Δvari_dependence, Δvari_args, fiber, d, να, ηα, incField_wlf, array, save_individual_res, approx_Grm_trans)
     Δvari = get_Δvari(Δvari_dependence, Δvari_args, array)
     if all(ηα .== 0)
@@ -400,9 +400,9 @@ function get_Δvari(Δvari_dependence, Δvari_args, array)
 end
 
 
-#================================================
-    Functions pertaining to the time evolution of the atomic and phononic degrees of freedom
-================================================#
+# ================================================
+#   Functions pertaining to the time evolution of the atomic and phononic degrees of freedom
+# ================================================
 """
 Calculate the steady state values of atomic coherences σ and the atom-phonon correlations Bα
 """
@@ -582,9 +582,9 @@ function scan_timeEvolution_eigenmodes(SP)
 end
 
 
-#================================================
-    Functions pertaining to transmission through the fiber
-================================================#
+# ================================================
+#   Functions pertaining to transmission through the fiber
+# ================================================
 """
 Calculate the transmission of light through the fiber (in the case of no phonons) 
 in the same mode as used for the driving (note that there may be further transmitted
@@ -700,9 +700,9 @@ function calc_radiation_Efield(SP, σBα, r_field, approx_Grm_trans::Tuple=(true
 end
 
 
-#================================================
-    Functions pertaining to the eigenmodes of the atomic array
-================================================#
+# ================================================
+#   Functions pertaining to the eigenmodes of the atomic array
+# ================================================
 """
 Find the eigenvalues and -vectors of a coupling matrix (i.e. the collective energies and modes), 
 as well as the dominant k-vector (from a discrete Fourier transform) 

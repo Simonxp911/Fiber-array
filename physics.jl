@@ -1,8 +1,8 @@
 
 
-#================================================
-    Functions pertaining to physics of the fiber and its modes
-================================================#
+# ================================================
+#   Functions pertaining to physics of the fiber and its modes
+# ================================================
 """
 The momentum h related to the inside of the fiber, used in several fiber-related equations
 """
@@ -361,7 +361,7 @@ function G0(ω, r_field, r_source, derivOrder=(0, 0), α=1)
     if r == 0
         if sum(derivOrder) == 0 return 1im*ω/(6*π)*I(3) end
         if sum(derivOrder) == 1 return zeros(ComplexF64, 3, 3) end
-        if sum(derivOrder) == 2 return 1im*ω^3/(8*π)*(-I(3) + 1/2*αhat*αhat') end
+        if sum(derivOrder) == 2 return 1im*ω^3/(15*π)*(-I(3) + 1/2*αhat*αhat') end
     end
     
     # Prepare rr dyad and its derivatives
@@ -372,19 +372,20 @@ function G0(ω, r_field, r_source, derivOrder=(0, 0), α=1)
     
     # Calculate derivatives (including zeroth order)
     if sum(derivOrder) == 0
-        G0 = 1im*ω/(4*π)*((2/3*dbesselsphh(0, 0, 1, ω*r) - 1/3*dbesselsphh(0, 2, 1, ω*r))*I + dbesselsphh(0, 2, 1, ω*r)*rr)
+        G0 =                           (2/3*dbesselsphh(0, 0, 1, ω*r) - 1/3*dbesselsphh(0, 2, 1, ω*r))*I + dbesselsphh(0, 2, 1, ω*r)*rr
     elseif sum(derivOrder) == 1
-        G0 =  1im*ω/(4*π)*ω*αcoor/r*((2/3*dbesselsphh(1, 0, 1, ω*r) - 1/3*dbesselsphh(1, 2, 1, ω*r))*I + dbesselsphh(1, 2, 1, ω*r)*rr)
-            + 1im*ω/(4*π)*(dbesselsphh(1, 2, 1, ω*r)*drr)
+        G0 = (              ω*αcoor/r*((2/3*dbesselsphh(1, 0, 1, ω*r) - 1/3*dbesselsphh(1, 2, 1, ω*r))*I + dbesselsphh(1, 2, 1, ω*r)*rr)
+                                                                                                         + dbesselsphh(0, 2, 1, ω*r)*drr )
     elseif sum(derivOrder) == 2
-        G0 =  1im*ω/(4*π)*ω*(1 - αcoor^2/r^2)/r*((2/3*dbesselsphh(1, 0, 1, ω*r) - 1/3*dbesselsphh(1, 2, 1, ω*r))*I + dbesselsphh(1, 2, 1, ω*r)*rr)
-            + 1im*ω/(4*π)*(ω*αcoor/r)^2*((2/3*dbesselsphh(2, 0, 1, ω*r) - 1/3*dbesselsphh(2, 2, 1, ω*r))*I + dbesselsphh(2, 2, 1, ω*r)*rr)
-            + 1im*ω/(4*π)*(dbesselsphh(2, 2, 1, ω*r)*drr)
-            + 1im*ω/(4*π)*(dbesselsphh(1, 2, 1, ω*r)*d2rr)
+        G0 = (          (ω*αcoor/r)^2*((2/3*dbesselsphh(2, 0, 1, ω*r) - 1/3*dbesselsphh(2, 2, 1, ω*r))*I + dbesselsphh(2, 2, 1, ω*r)*rr)
+              + ω*(1 - αcoor^2/r^2)/r*((2/3*dbesselsphh(1, 0, 1, ω*r) - 1/3*dbesselsphh(1, 2, 1, ω*r))*I + dbesselsphh(1, 2, 1, ω*r)*rr)
+                                                                                             + 2*ω*αcoor/r*dbesselsphh(1, 2, 1, ω*r)*drr
+                                                                                                         + dbesselsphh(0, 2, 1, ω*r)*d2rr )
     end
     
     # Return result after appending a sign acoording to how many times the derivative was taken with respect to r_source
-    return (-1)^derivOrder[2]*G0
+    # and multiplying by some global constants
+    return (-1)^derivOrder[2]*1im*ω/(4*π)*G0
 end
 
 
@@ -445,7 +446,7 @@ function Im_Grm_trans(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, sav
     if approx_Im_Grm_trans return imag(G0(ω, r_field, r_source, derivOrder, α)) end
     
     if r_field[3] < r_source[3]
-        return transpose(Im_Grm_trans_(fiber, ω, r_source, r_field, derivOrder, α, save_individual_res))
+        return transpose(Im_Grm_trans_(fiber, ω, r_source, r_field, reverse(derivOrder), α, save_individual_res))
     else
         return Im_Grm_trans_(fiber, ω, r_field, r_source, derivOrder, α, save_individual_res)
     end
@@ -522,9 +523,9 @@ function chiralDipoleMoment(fiber, ρa)
 end
 
 
-#================================================
-    Functions pertaining to atomic array
-================================================#
+# ================================================
+#   Functions pertaining to atomic array
+# ================================================
 """
 Calculate a list of the atomic positions along the fiber for 1D chain array,
 possibly including imperfect filling fraction and (classical) positional uncertainty
@@ -583,9 +584,9 @@ function introduce_position_uncertainty_to_array_sites(array, pos_unc)
 end
 
 
-#================================================
-    Functions pertaining to the time evolution of the atomic and phononic degrees of freedom
-================================================#
+# ================================================
+#   Functions pertaining to the time evolution of the atomic and phononic degrees of freedom
+# ================================================
 """
 Implements the equations of motion for the atomic of freedom
 to first order in the driving (for the case of no phonons)
@@ -672,7 +673,7 @@ function σBα_steadyState(Δ, Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, til
     # Calculate the coefficient matrices
     Cα = @. (  Diag(tildeGα1*tildeFα_inv)
              + tildeGα2*Diag(tildeFα_inv) )
-    Dα = @. ( Diag(tildeGα1*tildeFα_inv)*tildeGα1
+    Dα = @. (  Diag(tildeGα1*tildeFα_inv)*tildeGα1
              + Diag(tildeGα1*tildeFα_inv*tildeGα2)
              + tildeGα2*Diag(tildeFα_inv)*tildeGα1
              + tildeGα2*Diag(tildeFα_inv*tildeGα2) )
@@ -717,9 +718,9 @@ function groundstate(N, noPh=false)
 end
 
 
-#================================================
-    Functions pertaining to transport of light through the fiber
-================================================#
+# ================================================
+#   Functions pertaining to transport of light through the fiber
+# ================================================
 """
 Calculates the transmission through the guided mode (in the case of no phonons)
 """

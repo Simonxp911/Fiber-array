@@ -1,7 +1,7 @@
 
-#================================================
-    Julia libraries
-================================================#
+# ================================================
+#   Julia libraries
+# ================================================
 using OrdinaryDiffEq #solve differential equation for time-evolution or steady state
 using NonlinearSolve #addition to OrdinaryDiffEq for nonlinear EoMs
 using Integrals #for computing integrals
@@ -22,9 +22,9 @@ using Random #for random permutations etc.
 using Statistics #for calculating mean, standard deviation, etc.
 
 
-#================================================
-    Files
-================================================#
+# ================================================
+#   Files
+# ================================================
 include("calcs.jl")
 include("prep.jl")
 include("figs.jl")
@@ -33,9 +33,9 @@ include("utility.jl")
 include("save_load.jl")
 
 
-#================================================
-    Structures and constants
-================================================#
+# ================================================
+#   Structures and constants
+# ================================================
 struct Fiber
     radius::Real                           # radius of the fiber 
     refractive_index::Real                 # refractive index of the fiber material
@@ -282,9 +282,9 @@ const ωa = 2π
 const saveDir = "C:/Users/Simon/Forskning/Data/fiber_array_data/"
 
 
-#================================================
-    Regarding units
-================================================#
+# ================================================
+#   Regarding units
+# ================================================
 # We have set μ0 = ϵ0 = ħ = 1 (and thus c = 1)
 # Furthermore, we have set the driving strength Ω = d*Ein = 1 and the atomic decay rate γ = 1
 # Most quantities we care about become independent of Ω (e.g. the transmission) 
