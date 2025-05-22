@@ -527,33 +527,40 @@ end
 #   Functions pertaining to atomic array
 # ================================================
 """
-Calculate a list of the atomic positions along the fiber for 1D chain array,
+Calculate a list of the atomic positions along the fiber,
 possibly including imperfect filling fraction and (classical) positional uncertainty
+
+Implemented arrayType's are\n
+1Dchain: Standard 1D chain along fiber\n
+doubleChain: Double 1D chain, positioned on opposite sides of the fiber\n
+randomZ: Standard 1D chain along fiber, but with random position in z\n
+
+For random arrays, the lattice spacing, a, defines the length along z of the array via L = (N - 1)a
 """
-function get_array(N, ρa, a, ff=1, pos_unc=0)
-    # Get the perfect array (no missing atoms, no randomness in position)
-    array = [[ρa, 0, a*n] for n in 0:N-1]
-    # array = [SVector{3}([ρa, 0, a*n]) for n in 1:N]
+function get_array(arrayType, N, ρa, a, ff=1, pos_unc=0)
+    # Get the perfect array (no missing atoms, no position uncertainty)
+    if arrayType == "1Dchain"
+        array = [[ρa, 0, a*n] for n in 0:N-1]
+        arrayName = "singCh_"
+        
+    elseif arrayType == "doubleChain"
+        if !iseven(N) throw(ArgumentError("The number of atoms, N = $N, must be even for arrayType = doubleChain")) end
+        array = [[ρa, 0, a*n] for n in 0:N/2-1]
+        push!(array, array.*[-1, 1, 1])
+        arrayName = "doubCh_"
+        
+    elseif arrayType == "randomZ"
+        array = [[ρa, 0, zn] for zn in a*(N - 1)*rand(N)]
+        arrayName = "randZCh_"
+        
+    else throw(ArgumentError("The arrayType = $arrayType has not been implemented in get_array")) 
+    end
     
     if      ff != 1 array = remove_atoms_from_array(array, ff) end
     if pos_unc != 0 array = introduce_position_uncertainty_to_array_sites(array, pos_unc) end
-    return array
-end
-
-
-"""
-Calculate a list of the atomic positions along the fiber for with random z-positions,
-but otherwise placed at x = ρa and y = 0 (as in the ideal 1D chain case),
-possibly including imperfect filling fraction and (classical) positional uncertainty
-"""
-function get_randomzArray(N, ρa, L, ff=1, pos_unc=0)
-    # Get the perfect array (no missing atoms, no randomness in position)
-    array = [[ρa, 0, zn] for zn in L*rand(N)]
-    # array = [SVector{3}([ρa, 0, a*n]) for n in 1:N]
     
-    if      ff != 1 array = remove_atoms_from_array(array, ff) end
-    if pos_unc != 0 array = introduce_position_uncertainty_to_array_sites(array, pos_unc) end
-    return array
+    arrayDescription = arrayName * arrayDescript(N, ρa, a, ff, pos_unc)
+    return array, arrayDescription
 end
 
 

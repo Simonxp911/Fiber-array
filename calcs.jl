@@ -62,8 +62,8 @@ end
 # ================================================
 #   Functions pertaining to calculating the driving and couplings of the system
 # ================================================
-function get_parameterMatrices(Δvari_dependence, Δvari_args, fiber, d, να, ηα, incField_wlf, array, save_individual_res, approx_Grm_trans)
-    Δvari = get_Δvari(Δvari_dependence, Δvari_args, array)
+function get_parameterMatrices(ΔvariDependence, Δvari_args, fiber, d, να, ηα, incField_wlf, array, save_individual_res, approx_Grm_trans)
+    Δvari = get_Δvari(ΔvariDependence, Δvari_args, array)
     if all(ηα .== 0)
         tildeΩ = get_tildeΩs(fiber, d, incField_wlf, array)
         tildeG = get_tildeGs(fiber, d, array, save_individual_res, approx_Grm_trans)
@@ -365,11 +365,11 @@ function get_Γrm(fiber, d, r1, r2, save_individual_res, approx_Grm_trans)
 end
 
 
-function get_Δvari(Δvari_dependence, Δvari_args, array)
-    if Δvari_dependence == "flat"
+function get_Δvari(ΔvariDependence, Δvari_args, array)
+    if ΔvariDependence == "flat"
         return Di(zeros(size(array)))
     
-    elseif Δvari_dependence == "Gaussian"
+    elseif ΔvariDependence == "Gaussian"
         amp, edge_width = Δvari_args
         zn = [site[3] for site in array]
         Gaussian_edges(z) = begin
@@ -379,7 +379,7 @@ function get_Δvari(Δvari_dependence, Δvari_args, array)
         end
         return Di(amp*Gaussian_edges.(zn))
     
-    elseif Δvari_dependence == "linear"
+    elseif ΔvariDependence == "linear"
         amp, edge_width = Δvari_args
         zn = [site[3] for site in array]
         linear_edges(z) = begin
@@ -389,7 +389,7 @@ function get_Δvari(Δvari_dependence, Δvari_args, array)
         end
         return Di(amp*linear_edges.(zn))
     
-    elseif Δvari_dependence == "parabolic"
+    elseif ΔvariDependence == "parabolic"
         amp = Δvari_args[1]
         zn = [site[3] for site in array]
         zn_shifted = zn .- (maximum(zn) + minimum(zn))/2
@@ -443,8 +443,8 @@ Calculate the steady state values of atomic coherences σ and the atom-phonon co
 for parameters given by SP and a given detuning
 """
 function calc_σBα_steadyState(SP, Δ)
-    postfix = get_postfix(Δ, SP.Δvari_description, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.arrayDescription, SP.fiber.postfix)
-    params = get_parameterMatrices(SP.Δvari_dependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+    postfix = get_postfix(Δ, SP.ΔvariDescription, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.arrayDescription, SP.fiber.postfix)
+    params = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
     if all(SP.ηα .== 0) return calc_σ_steadyState(Δ, params..., postfix, SP.save_individual_res)
     else                return calc_σBα_steadyState(Δ, params..., postfix, SP.save_individual_res)
     end
@@ -455,8 +455,8 @@ end
 Scan the steady state values of atomic coherences σ and the atom-phonon correlations Bα over the detuning
 """
 function scan_σBα_steadyState(SP)
-    postfixes = get_postfix.(SP.Δ_range, SP.Δvari_description, Ref(SP.d), Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), SP.arrayDescription, SP.fiber.postfix)
-    params = get_parameterMatrices(SP.Δvari_dependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+    postfixes = get_postfix.(SP.Δ_range, SP.ΔvariDescription, Ref(SP.d), Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), SP.arrayDescription, SP.fiber.postfix)
+    params = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
     if all(SP.ηα .== 0) return calc_σ_steadyState.(SP.Δ_range, Ref.(params)..., postfixes, SP.save_individual_res)
     else                return calc_σBα_steadyState.(SP.Δ_range, Ref.(params)..., postfixes, SP.save_individual_res)
     end
@@ -520,8 +520,8 @@ end
 Perform time evolution for parameters given by SP
 """
 function timeEvolution(SP, Δ)
-    postfix = get_postfix(Δ, SP.Δvari_description, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax)
-    params = get_parameterMatrices(SP.Δvari_dependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+    postfix = get_postfix(Δ, SP.ΔvariDescription, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax)
+    params = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
     return timeEvolution(Δ, params..., SP.N, SP.initialState, SP.tspan, SP.dtmax, postfix, SP.save_individual_res)
 end
     
@@ -530,8 +530,8 @@ end
 Scan time evolutions over the detuning
 """
 function scan_timeEvolution(SP)
-    postfixes = get_postfix.(SP.Δ_range, SP.Δvari_description, Ref(SP.d), Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, Ref(SP.tspan), SP.dtmax)
-    params = get_parameterMatrices(SP.Δvari_dependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+    postfixes = get_postfix.(SP.Δ_range, SP.ΔvariDescription, Ref(SP.d), Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, Ref(SP.tspan), SP.dtmax)
+    params = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
     return timeEvolution.(SP.Δ_range, Ref.(params)..., SP.N, Ref(SP.initialState), Ref(SP.tspan), SP.dtmax, postfixes, SP.save_individual_res)
 end
 
@@ -564,8 +564,8 @@ Perform time evolution for parameters given by SP, using the eigenmodes approach
 function timeEvolution_eigenmodes(SP, Δ)
     if any(SP.ηα .!= 0) throw(ArgumentError("timeEvolution_eigenmodes has only been implemented for the case of no phonons")) end
     
-    postfix = get_postfix(Δ, SP.Δvari_description, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax)
-    params = get_parameterMatrices(SP.Δvari_dependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+    postfix = get_postfix(Δ, SP.ΔvariDescription, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax)
+    params = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
     return timeEvolution_eigenmodes(Δ, params..., SP.initialState, SP.tspan, SP.dtmax, postfix, SP.save_individual_res)
 end
     
@@ -576,8 +576,8 @@ Scan time evolutions over the detuning, using the eigenmodes approach
 function scan_timeEvolution_eigenmodes(SP)
     if any(SP.ηα .!= 0) throw(ArgumentError("scan_timeEvolution_eigenmodes has only been implemented for the case of no phonons")) end
     
-    postfixes = get_postfix.(SP.Δ_range, SP.Δvari_description, Ref(SP.d), Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, Ref(SP.tspan), SP.dtmax)
-    params = get_parameterMatrices(SP.Δvari_dependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+    postfixes = get_postfix.(SP.Δ_range, SP.ΔvariDescription, Ref(SP.d), Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, Ref(SP.tspan), SP.dtmax)
+    params = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
     return timeEvolution_eigenmodes.(SP.Δ_range, Ref.(params)..., Ref(SP.initialState), Ref(SP.tspan), SP.dtmax, postfixes, SP.save_individual_res)
 end
 
@@ -645,7 +645,7 @@ using the eigenmodes approach
 """
 function calc_transmission_eigenmodes(SP, Δ)
     if all(SP.ηα .== 0) 
-        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.Δvari_dependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
         eigenEnergies, eigenModes = eigbasis(Δvari + tildeG)
         return transmission_eigenmodes(Δ, tildeΩ, eigenEnergies, eigenModes, SP.fiber.propagation_constant_derivative)
     else throw(ArgumentError("calc_transmission_eigenmodes has only been implemented for the case of no phonons"))
@@ -659,7 +659,7 @@ using the eigenmodes approach
 """
 function scan_transmission_eigenmodes(SP)
     if all(SP.ηα .== 0) 
-        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.Δvari_dependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
         eigenEnergies, eigenModes = eigbasis(Δvari + tildeG)
         return transmission_eigenmodes.(SP.Δ_range, Ref(tildeΩ), Ref(eigenEnergies), Ref(eigenModes), SP.fiber.propagation_constant_derivative)
     else throw(ArgumentError("scan_transmission_eigenmodes has only been implemented for the case of no phonons"))

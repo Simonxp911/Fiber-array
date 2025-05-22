@@ -85,15 +85,16 @@ struct SysPar
     Δ_specs::Tuple{Real, Real, Int}                 # Specs for detuning for scanning time evolution, steady states, etc.
     Δ_range::AbstractRange                          # Range of detuning for scanning time evolution, steady states, etc.
     
-    Δvari_dependence::String                        # String identifier for the site-dependent detuning variation
+    ΔvariDependence::String                        # String identifier for the site-dependent detuning variation
     Δvari_args::Union{Tuple, Nothing}               # Arguments for the calculation of the site-dependent detuning variation
-    Δvari_description::String                       # Description of the above for postfix
+    ΔvariDescription::String                       # Description of the above for postfix
     
     tspan::Tuple{Real, Real}                        # Time span (min and max value) for time evolution
     dtmax::Real                                     # Maximum allowed time step for time evolution
     initialState::Vector{<:Real}                    # Initial state for time evolution
     initialStateDescription::String                 # Description of initial state for postfix
     
+    arrayType::String                               # String defining the type of array used
     N::Int                                          # Number of atoms in array
     ρa::Union{Real, Nothing}                        # Radial coordinate of regular array of atoms (set to nothing if array is not regular)
     a::Union{Real, Nothing}                         # Lattice spacing of regular array of atoms (set to nothing if array is not regular)
@@ -124,25 +125,24 @@ struct SysPar
     
     function SysPar(ρf::Real, n::Real, ω::Real,
                     Δ_specs::Tuple{Real, Real, Int},
-                    Δvari_dependence::String, Δvari_args::Union{Tuple, Nothing}, Δvari_description::String,
+                    ΔvariDependence::String, Δvari_args::Union{Tuple, Nothing}, ΔvariDescription::String,
                     tspan::Tuple{Real, Real}, dtmax::Real, initialState::Vector, initialStateDescription::String,
-                    N::Int, ρa::Real, a::Real, ff::Real, pos_unc::Union{Real, Vector},
+                    arrayType::String, N::Int, ρa::Real, a::Real, ff::Real, pos_unc::Union{Real, Vector},
                     να::Vector, ηα::Vector,
                     d::Union{Vector, String}, incField_wlf::Vector, save_individual_res::Bool, approx_Grm_trans::Tuple,
                     z_range::AbstractRange, x_range::AbstractRange, y_fix::Real)
 
         fiber = Fiber(ρf, n, ω)
         Δ_range = range(Δ_specs...)
-        array = get_array(N, ρa, a, ff, pos_unc)
-        arrayDescription = standardArrayDescription(N, ρa, a, ff, pos_unc)
+        array, arrayDescription = get_array(arrayType, N, ρa, a, ff, pos_unc)
         if ff != 1 N = length(array) end
         r_field = [[x, y_fix, z] for z in z_range, x in x_range]
         
         return new(ρf, n, ω, fiber,
                    Δ_specs, Δ_range,
-                   Δvari_dependence, Δvari_args, Δvari_description,
+                   ΔvariDependence, Δvari_args, ΔvariDescription,
                    tspan, dtmax, initialState, initialStateDescription,
-                   N, ρa, a, ff, pos_unc, array, arrayDescription,
+                   arrayType, N, ρa, a, ff, pos_unc, array, arrayDescription,
                    να, ηα,
                    d, incField_wlf, save_individual_res, approx_Grm_trans,
                    z_range, x_range, y_fix, r_field)
@@ -150,18 +150,17 @@ struct SysPar
     
     function SysPar(ρf::Real, n::Real, ω::Real,
                     Δ_specs::Tuple{Real, Real, Int},
-                    Δvari_dependence::String, Δvari_args::Union{Tuple, Nothing}, Δvari_description::String,
+                    ΔvariDependence::String, Δvari_args::Union{Tuple, Nothing}, ΔvariDescription::String,
                     tspan::Tuple{Real, Real}, dtmax::Real, initialState::Vector, initialStateDescription::String,
-                    N::Int, ρa::Real, a::Real,
+                    arrayType::String, N::Int, ρa::Real, a::Real,
                     να::Vector, ηα::Vector,
                     d::Union{Vector, String}, incField_wlf::Vector, approx_Grm_trans::Tuple)
         
         fiber = Fiber(ρf, n, ω)
         Δ_range = range(Δ_specs...)
-        array = get_array(N, ρa, a)
         ff = 1.0
         pos_unc = 0.0
-        arrayDescription = standardArrayDescription(N, ρa, a, ff, pos_unc)
+        array, arrayDescription = get_array(arrayType, N, ρa, a, ff, pos_unc)
         save_individual_res = true
         z_range = nothing
         x_range = nothing
@@ -170,39 +169,9 @@ struct SysPar
 
         return new(ρf, n, ω, fiber,
                    Δ_specs, Δ_range,
-                   Δvari_dependence, Δvari_args, Δvari_description,
+                   ΔvariDependence, Δvari_args, ΔvariDescription,
                    tspan, dtmax, initialState, initialStateDescription,
-                   N, ρa, a, ff, pos_unc, array, arrayDescription,
-                   να, ηα,
-                   d, incField_wlf, save_individual_res, approx_Grm_trans,
-                   z_range, x_range, y_fix, r_field)
-    end
-    
-    function SysPar(ρf::Real, n::Real, ω::Real,
-                    Δ_specs::Tuple{Real, Real, Int},
-                    Δvari_dependence::String, Δvari_args::Union{Tuple, Nothing}, Δvari_description::String,
-                    tspan::Tuple{Real, Real}, dtmax::Real, initialState::Vector, initialStateDescription::String,
-                    array::Vector, arrayDescription::String,
-                    να::Vector, ηα::Vector,
-                    d::Union{Vector, String}, incField_wlf::Vector, save_individual_res::Bool, approx_Grm_trans::Tuple,
-                    z_range::AbstractRange, x_range::AbstractRange, y_fix::Real)
-        
-        if d == "chiral" && any([site[1] != array[1][1] || site[2] != 0 for site in array]) throw(ArgumentError("d = 'dipole' assumes an array (ρa, 0, z)")) end
-        
-        fiber = Fiber(ρf, n, ω)
-        Δ_range = range(Δ_specs...)
-        N  = length(array)
-        ρa = nothing
-        a  = nothing
-        ff = 1.0
-        pos_unc = 0.0
-        r_field = [[x, y_fix, z] for z in z_range, x in x_range]
-        
-        return new(ρf, n, ω, fiber,
-                   Δ_specs, Δ_range,
-                   Δvari_dependence, Δvari_args, Δvari_description,
-                   tspan, dtmax, initialState, initialStateDescription,
-                   N, ρa, a, ff, pos_unc, array, arrayDescription,
+                   arrayType, N, ρa, a, ff, pos_unc, array, arrayDescription,
                    να, ηα,
                    d, incField_wlf, save_individual_res, approx_Grm_trans,
                    z_range, x_range, y_fix, r_field)
@@ -221,7 +190,7 @@ function Base.show(io::IO, SP::SysPar)
     println(io, "")
     
     println(io, "Parameters of site-dependent detuning")
-    println(io, "Δvari_dependence: ", SP.Δvari_dependence)
+    println(io, "ΔvariDependence: ", SP.ΔvariDependence)
     println(io, "Δvari_args: ", SP.Δvari_args)
     println(io, "")
     

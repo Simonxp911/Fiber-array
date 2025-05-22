@@ -29,7 +29,7 @@ end
 """
 For calculation of steady state σ and Bα
 """
-function get_postfix(Δ, Δvari_description, d, να, ηα, incField_wlf, arrayDescription, fiberPostfix)
+function get_postfix(Δ, ΔvariDescription, d, να, ηα, incField_wlf, arrayDescription, fiberPostfix)
     if typeof(d) == String
         dipole_moment_string = "d_$d"
     else
@@ -38,7 +38,7 @@ function get_postfix(Δ, Δvari_description, d, να, ηα, incField_wlf, arrayD
     
     postfix_components = [
         "Delta_$(ro(Δ))",
-        Δvari_description,
+        ΔvariDescription,
         dipole_moment_string,
         "trapFreqs_$(join(ro.(να), ","))",
         "LamDic_$(join(ro.(ηα), ","))",
@@ -53,7 +53,7 @@ end
 """
 For calculation of transmission over classically disordered arrays
 """
-function get_postfix(Δ_specs, Δvari_description, d, να, ηα, incField_wlf, n_inst, arrayDescription, fiberPostfix)
+function get_postfix(Δ_specs, ΔvariDescription, d, να, ηα, incField_wlf, n_inst, arrayDescription, fiberPostfix)
     if typeof(d) == String
         dipole_moment_string = "d_$d"
     else
@@ -62,7 +62,7 @@ function get_postfix(Δ_specs, Δvari_description, d, να, ηα, incField_wlf, 
     
     postfix_components = [
         "Delta_$(join((ro(Δ_specs[1]), ro(Δ_specs[2]), Δ_specs[3]), ","))",
-        Δvari_description,
+        ΔvariDescription,
         dipole_moment_string,
         "trapFreqs_$(join(ro.(να), ","))",
         "LamDic_$(join(ro.(ηα), ","))",
@@ -78,7 +78,7 @@ end
 """
 For time evolution
 """
-function get_postfix(Δ, Δvari_description, d, να, ηα, incField_wlf, arrayDescription, fiberPostfix, initialStateDescription, tspan, dtmax)
+function get_postfix(Δ, ΔvariDescription, d, να, ηα, incField_wlf, arrayDescription, fiberPostfix, initialStateDescription, tspan, dtmax)
     if typeof(d) == String
         dipole_moment_string = "d_$d"
     else
@@ -87,7 +87,7 @@ function get_postfix(Δ, Δvari_description, d, να, ηα, incField_wlf, arrayD
     
     postfix_components = [
         "Delta_$(ro(Δ))",
-        Δvari_description,
+        ΔvariDescription,
         dipole_moment_string,
         "trapFreqs_$(join(ro.(να), ","))",
         "LamDic_$(join(ro.(ηα), ","))",

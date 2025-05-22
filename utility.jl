@@ -286,39 +286,27 @@ end
 
 
 """
-arrayDescription for the usual 1D chain along the fiber, as given by get_array()
+arrayDescription for the arrays given by get_array()
 """
-function standardArrayDescription(N, ρa, a, ff, pos_unc)
+function arrayDescript(N, ρa, a, ff, pos_unc)
     if pos_unc isa Number
-        return "stA_N_$(N)_rhoa_$(ro(ρa))_a_$(ro(a))_ff_$(ro(ff))_pu_$(ro(pos_unc))"
+        return "N_$(N)_rhoa_$(ro(ρa))_a_$(ro(a))_ff_$(ro(ff))_pu_$(ro(pos_unc))"
     else
-        return "stA_N_$(N)_rhoa_$(ro(ρa))_a_$(ro(a))_ff_$(ro(ff))_pu_$(join(ro.(pos_unc), ","))"
+        return "N_$(N)_rhoa_$(ro(ρa))_a_$(ro(a))_ff_$(ro(ff))_pu_$(join(ro.(pos_unc), ","))"
     end
 end
 
 
 """
-arrayDescription for the random z and otherwise usual 1D chain along the fiber, as given by get_randomzArray()
+ΔvariDescription for the Δ-variation/potential over the array
 """
-function randomzArrayDescription(N, ρa, L, ff, pos_unc)
-    if pos_unc isa Number
-        return "randzA_N_$(N)_rhoa_$(ro(ρa))_L_$(ro(L))_ff_$(ro(ff))_pu_$(ro(pos_unc))"
-    else
-        return "randzA_N_$(N)_rhoa_$(ro(ρa))_L_$(ro(L))_ff_$(ro(ff))_pu_$(join(ro.(pos_unc), ","))"
-    end
-end
-
-
-"""
-arrayDescription for the usual 1D chain along the fiber, as given by get_array()
-"""
-function ΔvariDescription(Δvari_dependence, Δvari_args)
-    if Δvari_dependence == "flat"
-        return Δvari_dependence
-    elseif Δvari_dependence ∈ ("Gaussian", "linear", "parabolic")
-        return Δvari_dependence * "_" * join(ro.(Δvari_args), ",")
+function ΔvariDescript(ΔvariDependence, Δvari_args)
+    if ΔvariDependence == "flat"
+        return ΔvariDependence
+    elseif ΔvariDependence ∈ ("Gaussian", "linear", "parabolic")
+        return ΔvariDependence * "_" * join(ro.(Δvari_args), ",")
     else 
-        throw(ArgumentError("ΔvariDescription has not been implemented for Δvari_dependence = " * Δvari_dependence))
+        throw(ArgumentError("ΔvariDescription has not been implemented for ΔvariDependence = " * ΔvariDependence))
     end
 end
 
