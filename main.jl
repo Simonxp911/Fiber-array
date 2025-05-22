@@ -57,11 +57,11 @@ function define_SP_BerlinCS()
     ΔvariDescription = ΔvariDescript(ΔvariDependence, Δvari_args)
     
     # Lamb-Dicke parameters
-    # ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
+    ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
     # ηα = ηα0 .* [0.1, 0.2, 0.1]
     # ηα = ηα0 * 0.4
     # ηα = [0.01, 0.01, 0.01]
-    ηα = [0., 0., 0.]
+    # ηα = [0., 0., 0.]
     
     # Set which kind of array to use ("1Dchain", "doubleChain", "randomZ")
     arrayType = "1Dchain"
@@ -72,8 +72,8 @@ function define_SP_BerlinCS()
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
     pos_unc = any(ηα .!= 0) ? 0.0 : 0.0
-    pos_unc = any(ηα .!= 0) ? 0.0 : ηα0/ωa * 0.4
-    n_inst  = any(ηα .!= 0) ?   1 : 10
+    # pos_unc = any(ηα .!= 0) ? 0.0 : ηα0/ωa * 0.4
+    n_inst  = any(ηα .!= 0) ?   1 : 1
     
     # Time spand and maximum time step allowed in time evolution
     tspan = (0, 100)
@@ -309,9 +309,9 @@ function main()
     # plot_propConst_inOutMom(ωρfn_ranges)
     # plot_coupling_strengths(SP)
     # plot_σBαTrajectories_σBαSS(SP)
-    # plot_transmission_vs_Δ(SP)
-    plot_classDisorder_transmission_vs_Δ(SP)
-    # plot_steadyState_radiation_Efield(SP)
+    plot_transmission_vs_Δ(SP)
+    # plot_classDisorder_transmission_vs_Δ(SP)
+    plot_steadyState_radiation_Efield(SP)
     # plot_radiation_Efield(SP)
     # plot_GnmEigenModes(SP)
     # plot_emissionPatternOfGnmeigenModes(SP)
@@ -434,21 +434,21 @@ function plot_classDisorder_transmission_vs_Δ(SPs)
         save_as_txt(formattedResult, saveDir * folder, filename)
     end
     
-    fig_classDisorder_transmission_vs_Δ(SPs[1].Δ_range, T_means, T_stds, phase_means, phase_stds)
+    titl = prep_classDisorder_transmission_title(SPs[1])
+    fig_classDisorder_transmission_vs_Δ(SPs[1].Δ_range, T_means, T_stds, phase_means, phase_stds, titl)
 end
 
 
 function plot_steadyState_radiation_Efield(SP)
     Δ = -0.25
     rs = [site[3] for site in SP.array]
-    if all(SP.ηα .== 0) σ_SS = calc_σBα_steadyState(SP, Δ)
-    else                σ_SS, Bα_SS = calc_σBα_steadyState(SP, Δ)
+    if all(SP.ηα .== 0) σBα_SS = calc_σBα_steadyState(SP, Δ); σ_SS = σBα_SS
+    else                σBα_SS = calc_σBα_steadyState(SP, Δ); σ_SS = σBα_SS[1]
     end
     ks, σ_SS_FT = discFourierTransform(σ_SS, SP.a, true, 1000)
     
-    E = calc_radiation_Efield.(Ref(SP), Ref(σ_SS), SP.r_field)
+    E = calc_radiation_Efield.(Ref(SP), Ref(σBα_SS), SP.r_field)
     intensity = norm.(E).^2
-    # intensity = zeros(size(SP.r_field))
     
     titl = prep_state_title(SP, Δ)
     fig_state(rs, σ_SS, ks, σ_SS_FT, SP.z_range, SP.x_range, intensity, SP.ρf, SP.array, SP.fiber.propagation_constant, titl)
@@ -547,27 +547,34 @@ println("\n -- Running main() -- \n")
 
 # TODO list:
 
-# Make chiral dipole moment work for atoms on the opposite side of the array
-
-# Maybe calculate tildeG, etc., in SP? They are not expected to change anyway
-    # Only calculate them if needed..?
-
-# Implement titles for figures that show parameters etc.
-
-# Implement that Im_Grm_trans_ simply returns zero for a certain size of relative_z/fiber_radius or so? (Will go to zero for large inter-atom distance)
-
 # Implement Gnm functions for the case of including phonons
+    # Eigenmodes and -values of some large coupling matrix, that is found by vectorising the linear EoMs
+    # Time evolution in terms of these eigenmodes
+    # Transmission in terms of these eigenmodes
 
 # Implement radiation_Efield for the case of including phonons
-
-# Calculate Poynting vector and plot instead of/together with emission pattern?
+    # I.e. derive the input-output relation for the radiation field while with an expansion in eta
+    
+# Implement non-lazy version of get_tildeGs(fiber, d::String... ? 
+    # Presumably significantly faster when exploiting knowledge of which components etc. are actually needed, but also very messy...
+    # Useful for calculations with classical disorder, as we need many evaluations but dont intend to save the results
+    
 
 # Get it to work on the cluster
-    # Use MPI?
-    # clean up before moving to the cluster: comments, naming, minor issues below, checks of derivatives
+    # Use MPI
+    # Clean up before moving to the cluster: comments, naming
+    # Systematically scan the effect of η and ff
+        # Pick a value of Δ with T ~ 1 and phase ~ pi, and plot these things as a function of η and ff
 
-# Systematically scan the effect of η and ff
-    # Pick a value of Δ with T ~ 1 and phase ~ pi, and plot these things as a function of η and ff?
+
+# Calculate Poynting vector and plot instead of/together with emission pattern
+    
+# Implement that Im_Grm_trans_ simply returns zero for a certain size of relative_z/fiber_radius or so? (Will go to zero for large inter-atom distance)
+    # Check how it decays as a function of z for different parameters... find some distance at which it can safely be neglected
+
+# Make chiral dipole moment work for atoms on the opposite side of the array
+
+# Implement titles for figures that show parameters etc.
     
 # Calculate reflection and loss
 
@@ -577,28 +584,16 @@ println("\n -- Running main() -- \n")
 
 # Clean up and split up files? physics.jl and utility.jl in particular
 
-# Implement non-lazy version of get_tildeGs(fiber, d::String... ? Presumably significantly faster when exploiting knowledge of which components etc. are actually needed, but also very messy...
-
 # Implement the correct real part of the radiation GF
     # But maybe not relevant since atoms are far-ish from the fiber, such that using vacuum-approximation should be good
     
-# When calculating Im_Grm_trans, only calculate needed components? And exploit that some entries appear to be zero depending on derivOrder and α,
+# When calculating Im_Grm_trans, exploit that some entries appear to be zero depending on derivOrder and α,
     # presumably because of the simple array structure
 
-# Reconsider factoring of code, particularly whether calculation of parameters etc. 
-    # should take place outside of scanning loops
-    # One step deeper, the calculation of mode components should perhaps also be done 
-    # outside of loops over atomic array
-# Perhaps make a struct that contains all information needed to make a scan of some type?
-    # Prepare for a scan by optimally preparing all parameters
-    # then perform scan with the prepared quantities as input
-    # Each type of scan can have its own struct-thing?
-    # Functions that calculate different things can either take SP-like parameters
-    # and calculate parameters on its own, or it takes the already prepared parameters?
-    # or some wrapper which can direct to do either one thing or the other. Such that
-    # different calculation functions can still be called without making a whole scan...
-# When calculating GFs (and maybe other quantities), go through which calculations actually depend on the input that is varied (positions, frequencies, ...) 
-    # and refactor to optimize this (no need to repeat the same position-independent calculation for each point in the array, etc.)
+# When scanning over different variables (detuning, (relative) atomic positions, ...) consider using structs as input for the scans
+    # In some optimal way calculate all things needed for the scan
+    # Put in a struct and use as input for scan
+    # To optimize calculation time when scanning
 
 # Use only zeroth order tildeFα in σBα_steadyState? Reduce to second order in eta in other ways (i.e. calculate for eta=0 and eta≠0 to extract exact dependencies)? Time evolution anyways also finds results that are effectively higher order
     
@@ -608,10 +603,6 @@ println("\n -- Running main() -- \n")
 
 # Consider making structs for x-vector and σBα, to make their structure easier to get an overview of
 
-# Split utility.jl according to theme or which file has need of the functions
-    # simply code utility/no physics concatenated
-    # physics functions according to which file has need of them
-    
 # Consider never using JLD2
     # Invent some packing/unpacking scheme to put any kind of data into real matrices
 

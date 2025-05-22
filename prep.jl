@@ -73,6 +73,14 @@ end
 
 
 """
+Prepare title for the transmission plot with classical disorder
+"""
+function prep_classDisorder_transmission_title(SP)
+    return L"title waiting to be implemented...$$"
+end
+
+
+"""
 Prepare title for the state plot
 """
 function prep_state_title(SP, Δ)

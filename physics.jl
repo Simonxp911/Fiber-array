@@ -687,7 +687,7 @@ function σBα_steadyState(Δ, Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, til
     
     # Finally, we calculate the steady state values
     σ_SS  = -(Δ*I + Δvari + tildeG - sum(Dα))\(tildeΩ - sum(Cα.*tildeΩα))
-    Bα_SS = -(Di.(tildeΩα + tildeGα1.*Ref(σ_SS)) + Ref(Di(σ_SS)).*transpose.(tildeGα2)).*transpose(tildeFα_inv)
+    Bα_SS = -(Di.(tildeΩα .+ tildeGα1.*Ref(σ_SS)) .+ Ref(Di(σ_SS)).*transpose.(tildeGα2)).*transpose.(tildeFα_inv)
     return σ_SS, Bα_SS
 end
 
@@ -774,4 +774,13 @@ Calculate the radiated E-field, assuming no incoming radiation field
 function radiation_Efield(σ, Grm_rrn, d)
     d_mag = sqrt(3π/ωa^3)
     return ωa^2*sum( Grm_rrn.*Ref(d_mag*d).*σ )
+end
+
+
+"""
+Calculate the radiated E-field, assuming no incoming radiation field
+"""
+function radiation_Efield(σ, Bα, tildeGrm_rrn, tildeGα2rm_rrn, d)
+    d_mag = sqrt(3π/ωa^3)
+    return ωa^2*sum( tildeGrm_rrn.*Ref(d_mag*d).*σ + sum([tildeGα2rm_rrn[α].*Ref(d_mag*d).*di(Bα[α]) for α in 1:3]) )
 end

@@ -180,16 +180,17 @@ Plot mean magnitude and phase of transmission amplitude as a function of detunin
 
 with bands given by the standard deviation
 """
-function fig_classDisorder_transmission_vs_Δ(Δ_range, T_means, T_stds, phase_means, phase_stds)
+function fig_classDisorder_transmission_vs_Δ(Δ_range, T_means, T_stds, phase_means, phase_stds, titl)
     # Start figure 
     fig = Figure(size=(800, 600))
     
     # Make title and axis
-    Label(fig[1, 1], "Transmission coefficient", tellwidth=false)
-    ax1 = Axis(fig[2, 1], limits=(extrema(Δ_range)..., 0, 1), 
+    Label(fig[1, 1:2], titl, tellwidth=false)
+    Label(fig[2, 1], "Transmission coefficient", tellwidth=false)
+    ax1 = Axis(fig[3, 1], limits=(extrema(Δ_range)..., 0, 1), 
                xlabel=L"$ \Delta/\gamma $")
-    Label(fig[1, 2], "Transmission phase", tellwidth=false)
-    ax2 = Axis(fig[2, 2], limits=(extrema(Δ_range)..., -π, π), 
+    Label(fig[2, 2], "Transmission phase", tellwidth=false)
+    ax2 = Axis(fig[3, 2], limits=(extrema(Δ_range)..., -π, π), 
                yticks=([-π, -π/2, 0, π/2, π], [L"$ -π $", L"$ -π/2 $", L"$ 0 $", L"$ π/2 $", L"$ π $"]),
                xlabel=L"$ \Delta/\gamma $")
                

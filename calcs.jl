@@ -680,7 +680,14 @@ end
 Calculate the intensity of the radiated light
 """
 function calc_radiation_Efield(σBα, fiber, d, ηα, r_field, array, save_individual_res::Bool=true, approx_Grm_trans::Tuple=(true, true))
-    throw(ArgumentError("calc_radiation_Efield has not been implemented for the case including phonons"))
+    Grm_rrn     =  Grm.(Ref(fiber), ωa, Ref(r_field), array, Ref((0, 0)), 1, save_individual_res, Ref(approx_Grm_trans))
+    Grm_rrnα2   = [Grm.(Ref(fiber), ωa, Ref(r_field), array, Ref((0, 1)), α, save_individual_res, Ref(approx_Grm_trans)) for α in 1:3]
+    Grm_rrnαα22 = [Grm.(Ref(fiber), ωa, Ref(r_field), array, Ref((0, 2)), α, save_individual_res, Ref(approx_Grm_trans)) for α in 1:3]
+    
+    tildeGrm_rrn   = Grm_rrn + sum(@. ηα^2*Grm_rrnαα22)/(2*ωa^2)
+    tildeGα2rm_rrn = ηα.*Grm_rrnα2/ωa
+    
+    return radiation_Efield(σBα..., tildeGrm_rrn, tildeGα2rm_rrn, d)
 end
 
 
