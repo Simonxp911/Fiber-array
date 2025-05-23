@@ -303,15 +303,16 @@ function main()
     # SP = define_SP_Rauschenbeutel()
     # SP = define_SP_Chang()
     # show(SP)
-     
+    
+    
     
     
     # plot_propConst_inOutMom(ωρfn_ranges)
     # plot_coupling_strengths(SP)
     # plot_σBαTrajectories_σBαSS(SP)
-    plot_transmission_vs_Δ(SP)
+    # plot_transmission_vs_Δ(SP)
     # plot_classDisorder_transmission_vs_Δ(SP)
-    plot_steadyState_radiation_Efield(SP)
+    # plot_steadyState_radiation_Efield(SP)
     # plot_radiation_Efield(SP)
     # plot_GnmEigenModes(SP)
     # plot_emissionPatternOfGnmeigenModes(SP)
@@ -551,13 +552,6 @@ println("\n -- Running main() -- \n")
     # Eigenmodes and -values of some large coupling matrix, that is found by vectorising the linear EoMs
     # Time evolution in terms of these eigenmodes
     # Transmission in terms of these eigenmodes
-
-# Implement radiation_Efield for the case of including phonons
-    # I.e. derive the input-output relation for the radiation field while with an expansion in eta
-    
-# Implement non-lazy version of get_tildeGs(fiber, d::String... ? 
-    # Presumably significantly faster when exploiting knowledge of which components etc. are actually needed, but also very messy...
-    # Useful for calculations with classical disorder, as we need many evaluations but dont intend to save the results
     
 
 # Get it to work on the cluster
@@ -571,6 +565,12 @@ println("\n -- Running main() -- \n")
     
 # Implement that Im_Grm_trans_ simply returns zero for a certain size of relative_z/fiber_radius or so? (Will go to zero for large inter-atom distance)
     # Check how it decays as a function of z for different parameters... find some distance at which it can safely be neglected
+
+# Implement non-lazy version of get_tildeGs(fiber, d::String... for the case of including phonons? 
+    # Presumably significantly faster when exploiting knowledge of which components etc. are actually needed, but also very messy...
+    # Not needed for classical disorder calculations, so the need is not so great, since the calculations without classical disorder can exploit the z-translational invariance to reduce number of calculations
+    # Possibly only implement optimized calculation of integral
+        # Less work, and this is obviously the slow part of the overall calculation
 
 # Make chiral dipole moment work for atoms on the opposite side of the array
 

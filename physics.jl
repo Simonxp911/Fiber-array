@@ -478,7 +478,7 @@ function Im_Grm_trans_(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, sa
     summand_m = ones(ComplexF64, 3, 3)
     m = 0
     while maximum(abs.(summand_m)) > abstol
-        summand_m = zeros(ComplexF64, 3, 3)
+        summand_m .= 0
         for l in (-1, 1)
             args = (m, l)
             prob = IntegralProblem(integrand, domain, args)
@@ -491,7 +491,7 @@ function Im_Grm_trans_(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, sa
                 summand_m += integral.u/(4*ω)
             end
         end
-        # summand_m is always real (after adding all combinations of l and (m, -m)), even though integral is not
+        # summand_m is always real (after adding all combinations of l and (m, -m)), even though integral.u is not
         Im_Grm_trans += real(summand_m)
         m += 1
     end

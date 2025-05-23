@@ -114,7 +114,7 @@ function get_tildeΩs(fiber, d::String, ηα, incField_wlf, array)
         Ωn   =  sqrt(8)*eρ*ez/dNorm*propPhase
         Ωnα  = [sqrt(2)*(ez*eρ_ρ + eρ*ez_ρ)/dNorm*propPhase,
                 zeros(ComplexF64, size(propPhase)),
-                1im*κ*sqrt(8)*eρ*ez/dNorm*propPhase]
+                1im*κ*Ωn]
         Ωnαα = [sqrt(2)*(ez*eρ_ρρ + eρ*ez_ρρ)/dNorm*propPhase,
                 -sqrt(2)*ez*(3*eρ + 2*eϕ)/(dNorm*ρa^2)*propPhase + sqrt(2)*(ez*eρ_ρ + eρ*ez_ρ)/(dNorm*ρa)*propPhase,
                 -κ^2*Ωn]
@@ -167,10 +167,100 @@ end
 
 
 function get_tildeGs(fiber, d::String, array, save_individual_res, approx_Grm_trans)
+    if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
+    
     if d == "chiral"
+        # Prepare some parameters and quantities
+        κ = fiber.propagation_constant
+        κ_prime = fiber.propagation_constant_derivative
+        N = length(array)
         ρa = array[1][1]
-        d = chiralDipoleMoment(fiber, ρa)
-        return get_tildeGs(fiber, d, array, save_individual_res, approx_Grm_trans)
+        eρ_gm, eϕ_gm, ez_gm = guidedModeComps(fiber, ρa)
+        eρ_gm = -1im*eρ_gm #remove overall imaginary unit for ease of expressions
+        
+        # Prepare for the integral
+        abstol = 1e-4
+        domain = (-ωa + eps(1.0), ωa - eps(1.0))
+        function integrand(x, args) 
+            eρ_rm, eϕ_rm, ez_rm = radiationModeComps(fiber, ωa, x, args[1], args[2], ρa)
+            return abs2(-1im*ez_gm*eρ_rm + eρ_gm*ez_rm)/(eρ_gm^2 + ez_gm^2) * exp(1im*x*args[3])
+        end
+        
+        # Start calculating
+        Ggm_ = zeros(ComplexF64, N, N)
+        Grm_ = deepcopy(Ggm_)
+        for j in 1:N, i in 1:j
+            z_rel = array[i][3] - array[j][3]
+            
+            # The guided mode GF (exploiting Onsager reciprocity)
+            if z_rel >= 0
+                Ggm_[i, j] += 1im/(2*ωa)*κ_prime*heaviside(z_rel)*
+                            8*eρ_gm^2*ez_gm^2/(eρ_gm^2 + ez_gm^2)*exp(1im*κ*z_rel)
+            else
+                Ggm_[j, i] += 1im/(2*ωa)*κ_prime*heaviside(-z_rel)*
+                            8*eρ_gm^2*ez_gm^2/(eρ_gm^2 + ez_gm^2)*exp(-1im*κ*z_rel)
+            end
+            
+            # The radiation mode GF
+            # The real part
+            Re_Grm = 0.0im
+            if approx_Grm_trans[1]
+                if z_rel != 0
+                    r = abs(z_rel)
+                    Re_Grm = -ωa/(4*π)*(2/3*sphericalbessely(0, ωa*r) - 1/3*sphericalbessely(2, ωa*r) + sphericalbessely(2, ωa*r)*eρ_gm^2/(eρ_gm^2 + ez_gm^2))
+                end
+            else
+                throw(ArgumentError("The non-approximate calculation of real part of the transverse part of radiation mode Green's function or its derivatives in get_tildeGs has not been implemented"))
+            end
+            
+            # The imaginary (transverse) part
+            Im_Grm_tr = 0.0im
+            if approx_Grm_trans[2]
+                if z_rel == 0
+                    Im_Grm_tr = ωa/(6*π)
+                else
+                    r = abs(z_rel)
+                    Im_Grm_tr = ωa/(4*π)*((2/3*sphericalbesselj(0, ωa*r) - 1/3*sphericalbesselj(2, ωa*r)) + sphericalbesselj(2, ωa*r)*eρ_gm^2/(eρ_gm^2 + ez_gm^2))
+                end
+            else
+                # Perform the combined sum and integration
+                summand_m = 2*abstol + 0.0im
+                m = 0
+                while abs(summand_m) > abstol
+                    summand_m = 0.0im
+                    for l in (-1, 1)
+                        args = (m, l, z_rel)
+                        prob = IntegralProblem(integrand, domain, args)
+                        integral = Integrals.solve(prob, HCubatureJL())
+                        summand_m += integral.u/(4*ωa)
+                        if m != 0
+                            args = (-m, l, z_rel)
+                            prob = IntegralProblem(integrand, domain, args)
+                            integral = Integrals.solve(prob, HCubatureJL())
+                            summand_m += integral.u/(4*ωa)
+                        end
+                    end
+                    Im_Grm_tr += summand_m
+                    m += 1
+                end
+            end
+            Grm_[i, j] = Re_Grm + 1im*Im_Grm_tr
+            Grm_[j, i] = Re_Grm + 1im*conj(Im_Grm_tr) # Onsager reciprocity
+        end
+        
+        # Get the couplings by appropriately multiplying some constants
+        Ggm_ *= 3*π/ωa
+        Grm_ *= 3*π/ωa
+        
+        # Scale the real part of the radiation GF with the local radiation decay rates (if Re_Grm_trans is being approximated)
+        if approx_Grm_trans[1]
+            gammas = 2*diag(imag(Grm_))
+            scaleFactors = sqrt.(gammas*gammas')
+            Grm_ = real(Grm_).*scaleFactors + 1im*imag(Grm_)
+        end
+        
+        # Put together the full Green's function and return it
+        return Ggm_ + Grm_
     else
         throw(ArgumentError("get_tildeGs(d::String) is only implemented for d = 'chiral'"))
     end
@@ -189,10 +279,9 @@ end
 
 
 function get_tildeGs(fiber, d, array, save_individual_res, approx_Grm_trans)
-    N = length(array)
-    
     if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
     
+    N = length(array)
     Ggm_ = fill(zeros(ComplexF64, 3, 3), N, N)
     Grm_ = deepcopy(Ggm_)
     for j in 1:N, i in 1:j
@@ -219,10 +308,9 @@ end
 
 
 function get_tildeGs(fiber, d, ηα, array, save_individual_res, approx_Grm_trans)
-    N = length(array)
-    
     if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
     
+    N = length(array)
     Ggm_     = fill(zeros(ComplexF64, 3, 3), N, N)
     Ggm_α1   = [deepcopy(Ggm_) for α in 1:3]
     Ggm_α2   = deepcopy(Ggm_α1)
