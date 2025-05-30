@@ -52,14 +52,14 @@ function define_SP_BerlinCS()
     Δ_specs = (-0.5, 0.5, 300)
     
     # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
-    ΔvariDependence = "Gaussian"
-    Δvari_args = -3, 5*a0_ul
+    ΔvariDependence = "flat"
+    Δvari_args = -3, 2*a0_ul
     ΔvariDescription = ΔvariDescript(ΔvariDependence, Δvari_args)
     
     # Lamb-Dicke parameters
-    ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
+    # ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
     # ηα = ηα0 .* [0.1, 0.2, 0.1]
-    # ηα = ηα0 * 0.4
+    ηα = ηα0 * 0.1
     # ηα = [0.01, 0.01, 0.01]
     # ηα = [0., 0., 0.]
     
@@ -67,7 +67,7 @@ function define_SP_BerlinCS()
     arrayType = "1Dchain"
     
     # Set array specs and generate array, as well as description for postfix
-    N = 50
+    N = 20
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
@@ -76,7 +76,7 @@ function define_SP_BerlinCS()
     n_inst  = any(ηα .!= 0) ?   1 : 1
     
     # Time spand and maximum time step allowed in time evolution
-    tspan = (0, 100)
+    tspan = (0, 10)
     dtmax = 0.01
     
     # Prepare initial state for time evolution, as well as description for postfix
@@ -314,7 +314,7 @@ function main()
     # plot_classDisorder_transmission_vs_Δ(SP)
     # plot_steadyState_radiation_Efield(SP)
     # plot_radiation_Efield(SP)
-    # plot_GnmEigenModes(SP)
+    plot_GnmEigenModes(SP)
     # plot_emissionPatternOfGnmeigenModes(SP)
     # plot_GnmEigenEnergies(SP)
     # plot_lossWithGnmEigenEnergies(SP)
@@ -388,8 +388,8 @@ end
 function plot_σBαTrajectories_σBαSS(SP)
     Δ = 0.0
     σBα_SS = calc_σBα_steadyState(SP, Δ)
-    xTrajectories = timeEvolution(SP, Δ)
-    # xTrajectories = timeEvolution_eigenmodes(SP, Δ)
+    xTrajectories = calc_timeEvolution(SP, Δ)
+    # xTrajectories = calc_timeEvolution_eigenmodes(SP, Δ)
     
     if all(SP.ηα .== 0)
         times, σTrajectories = prep_times_σTrajectories(xTrajectories, SP.N)
@@ -442,7 +442,7 @@ end
 
 function plot_steadyState_radiation_Efield(SP)
     Δ = -0.25
-    rs = [site[3] for site in SP.array]
+    zs = [site[3] for site in SP.array]
     if all(SP.ηα .== 0) σBα_SS = calc_σBα_steadyState(SP, Δ); σ_SS = σBα_SS
     else                σBα_SS = calc_σBα_steadyState(SP, Δ); σ_SS = σBα_SS[1]
     end
@@ -452,13 +452,11 @@ function plot_steadyState_radiation_Efield(SP)
     intensity = norm.(E).^2
     
     titl = prep_state_title(SP, Δ)
-    fig_state(rs, σ_SS, ks, σ_SS_FT, SP.z_range, SP.x_range, intensity, SP.ρf, SP.array, SP.fiber.propagation_constant, titl)
+    fig_state(zs, σ_SS, ks, σ_SS_FT, SP.z_range, SP.x_range, intensity, SP.ρf, SP.array, SP.fiber.propagation_constant, titl)
 end
 
 
 function plot_radiation_Efield(SP)
-    if any(SP.ηα .!= 0) throw(ArgumentError("plot_radiation_Efield is not implemented for the case of including phonons")) end
-    
     Δ = 0.0
     σ_SS = calc_σBα_steadyState(SP, Δ)
     E = calc_radiation_Efield.(Ref(SP), Ref(σ_SS), SP.r_field)
@@ -469,34 +467,90 @@ end
 
 
 function plot_GnmEigenModes(SP)
-    if any(SP.ηα .!= 0) throw(ArgumentError("plot_GnmEigenModes is not implemented for the case of including phonons")) end
+    zs = [site[3] for site in SP.array]
     
-    Gnm = get_tildeGs(SP.fiber, SP.d, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
-    
-    eigenEnergies, eigenModes, dominant_ks = spectrum(Gnm, SP.a)
-    eigenModes_FT = discFourierTransform.(eigenModes, SP.a, true, 1000)
-    
-    rs = [site[3] for site in SP.array]
-    iter_list = collect(zip(eigenModes, eigenModes_FT, eigenEnergies, dominant_ks))[sortperm(dominant_ks)]
-    for (mode, (ks, mode_FT), eigenEnergy, dom_k) in iter_list
-        # if -7 < dom_k < -5
-            E = calc_radiation_Efield.(Ref(SP), Ref(mode), SP.r_field)
-            intensity = norm.(E).^2
-            titl = prep_GnmEigenModes_title(SP)
-            fig_GnmEigenModes(rs, mode, ks, mode_FT, SP.z_range, SP.x_range, intensity, SP.ρf, SP.array, eigenEnergy, SP.fiber.propagation_constant, titl)
+    if all(SP.ηα .== 0)
+        # Get coupling matrix and its spectrum
+        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+        eigenEnergies, eigen_σs, dominant_ks = spectrum_dominant_ks(Δvari + tildeG, SP.a)
+        
+        # Pack the eigenmodes
+        eigen_σs_FT = discFourierTransform.(eigen_σs, SP.a, true, 1000)
+        
+        # Prepare iteration list to facilitate sorting according to dominant_ks
+        iter_list = collect(zip(eigen_σs, eigen_σs_FT, eigenEnergies, dominant_ks))[sortperm(dominant_ks)]
+        
+        # Plot
+        for (eigen_σ, (ks, eigen_σ_FT), eigenEnergy, dom_k) in iter_list
+            collΔ, collΓ = collEnergies_from_eigenEnergies(eigenEnergy)
+            if collΓ < 10^-2.7
+            # if -7 < dom_k < -5
+                E = calc_radiation_Efield.(Ref(SP), Ref(eigen_σ), SP.r_field)
+                intensity = norm.(E).^2
+                
+                titl = prep_GnmEigenModes_title(SP)
+                fig_GnmEigenModes(zs, eigen_σ, ks, eigen_σ_FT, SP.z_range, SP.x_range, intensity, SP.ρf, SP.array, eigenEnergy, SP.fiber.propagation_constant, titl)
+            end
+        end
+        
+    else
+        # Get coupling matrix and its spectrum
+        Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+        fullCoupling = get_fullCouplingMatrix(Δvari, tildeG, tildeFα, tildeGα1, tildeGα2)
+        eigenEnergies, eigenModes = spectrum(fullCoupling)
+        
+        # Pack the eigenmodes
+        eigen_σBαs = unpack_σBαFromσBαVec.(eigenModes)
+        eigen_σs   = [eigen_σBα[1] for eigen_σBα in eigen_σBαs]
+        eigen_Bαs  = [eigen_σBα[2] for eigen_σBα in eigen_σBαs]
+        eigen_diagBαs = [diag.(eigen_Bα) for eigen_Bα in eigen_Bαs]
+        
+        # Fourier transform
+        eigen_σs_FT      =   discFourierTransform.(eigen_σs, SP.a, true, 1000)
+        eigen_diagBαs_FT = [[discFourierTransform(eigen_diagBα[α], SP.a, true, 1000)[2] for α in 1:3] for eigen_diagBα in eigen_diagBαs]
+        
+        # Plot
+        for (eigen_σBα, eigen_σ, (ks, eigen_σ_FT), eigen_diagBα, eigen_diagBα_FT, eigenEnergy) in 
+            zip(eigen_σBαs, eigen_σs, eigen_σs_FT, eigen_diagBαs, eigen_diagBαs_FT, eigenEnergies)
+            # collect(zip(eigen_σBαs, eigen_σs, eigen_σs_FT, eigen_diagBαs, eigen_diagBαs_FT, eigenEnergies))[1:30]
+            collΔ, collΓ = collEnergies_from_eigenEnergies(eigenEnergy)
+            if collΓ < 10^-2.7
+                E = calc_radiation_Efield.(Ref(SP), Ref(eigen_σBα), SP.r_field)
+                intensity = norm.(E).^2
+                
+                titl = prep_GnmEigenModes_title(SP)
+                fig_GnmEigenModes(zs, eigen_σ, eigen_diagBα, ks, eigen_σ_FT, eigen_diagBα_FT, SP.z_range, SP.x_range, intensity, SP.ρf, SP.array, eigenEnergy, SP.fiber.propagation_constant, titl)
+            end
+        end
+        # for (eigen_Bα, eigenEnergy) in zip(eigen_Bαs, eigenEnergies)
+        #     collΔ, collΓ = collEnergies_from_eigenEnergies(eigenEnergy)
+        #     if collΓ < 10^-2.7
+        #         for α in 1:3
+        #             eigen_Bα_FT = discFourierTransform(eigen_Bα[α], SP.a, true, 1000)
+        #             fig_fOnSquare(zs, eigen_Bα[α], eigen_Bα_FT...)
+        #         end
+        #     end
         # end
     end
 end
 
 
 function plot_emissionPatternOfGnmeigenModes(SP)
-    if any(SP.ηα .!= 0) throw(ArgumentError("plot_emissionPatternOfGnmeigenModes is not implemented for the case of including phonons")) end
+    if all(SP.ηα .== 0)
+        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+        eigenEnergies, eigen_σs = spectrum(Δvari + tildeG)
+        eigen_σBαs = eigenModes
+    else
+        Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+        fullCoupling = get_fullCouplingMatrix(Δvari, tildeG, tildeFα, tildeGα1, tildeGα2)
+        eigenEnergies, eigenModes = spectrum(fullCoupling)
+        eigen_σBαs = unpack_σBαFromσBαVec.(eigenModes)
+        eigen_σs   = [eigen_σBα[1] for eigen_σBα in eigen_σBαs]
+        eigen_Bαs  = [eigen_σBα[2] for eigen_σBα in eigen_σBαs]
+    end
     
-    Gnm = get_tildeGs(SP.fiber, SP.d, SP.array, SP.save_individual_res, (true, false))
-    eigenEnergies, eigenModes = eigbasis(Gnm)
-    
-    for evec in eigenModes
-        E = calc_radiation_Efield.(Ref(SP), Ref(evec), SP.r_field)
+    for eigen_σBα in eigen_σBαs
+        E = calc_radiation_Efield.(Ref(SP), Ref(eigen_σBα), SP.r_field)
         intensity = norm.(E).^2
         fig_radiation_Efield(SP.z_range, SP.x_range, intensity, SP.ρf, SP.array)
     end
@@ -504,14 +558,15 @@ end
 
 
 function plot_GnmEigenEnergies(SP)
+    # The eigenmodes when including phonons do not have a clear band structure
     if any(SP.ηα .!= 0) throw(ArgumentError("plot_GnmEigenEnergies is not implemented for the case of including phonons")) end
     
     Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
     # tildeG = get_tildeG0(SP.fiber, SP.d, SP.array)
     
-    eigenEnergies, eigenModes, dominant_ks = spectrum(Δvari + tildeG, SP.a)
+    eigenEnergies, dominant_ks, eigenModesMatrix, eigenModesMatrix_inv = spectrum_dominant_ks_basisMatrices(Δvari + tildeG, SP.a)
     collΔ, collΓ = collEnergies_from_eigenEnergies(eigenEnergies)
-    weights, resonances = transmission_eigenmodes_weights_resonances(SP.Δ_range, tildeΩ, eigenEnergies, eigenModes, SP.fiber.propagation_constant_derivative)
+    weights, resonances = transmission_eigenmodes_weights_resonances(SP.Δ_range, tildeΩ, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, SP.fiber.propagation_constant_derivative)
     weights_abs = abs.(weights)
     
     titl = prep_GnmEigenEnergies_title(SP)
@@ -520,16 +575,22 @@ end
 
 
 function plot_lossWithGnmEigenEnergies(SP)
-    if any(SP.ηα .!= 0) throw(ArgumentError("plot_lossWithGnmEigenEnergies is not implemented for the case of including phonons")) end
-    
     σBα_scan = scan_σBα_steadyState(SP)
     t = calc_transmission.(Ref(SP), σBα_scan)
-    # t = scan_transmission_eigenmodes(SP)
     
-    Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
-    eigenEnergies, eigenModes = eigbasis(Δvari + tildeG)
+    if all(SP.ηα .== 0)
+        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+        drive = tildeΩ
+        fullCoupling = Δvari + tildeG
+    else
+        Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+        drive = get_fullDriveVector(tildeΩ, tildeΩα)
+        fullCoupling = get_fullCouplingMatrix(Δvari, tildeG, tildeFα, tildeGα1, tildeGα2)
+    end
+    
+    eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = spectrum_basisMatrices(fullCoupling)
     collΔ, collΓ = collEnergies_from_eigenEnergies(eigenEnergies)
-    weights, resonances = transmission_eigenmodes_weights_resonances(SP.Δ_range, tildeΩ, eigenEnergies, eigenModes, SP.fiber.propagation_constant_derivative)
+    weights, resonances = transmission_eigenmodes_weights_resonances(SP.Δ_range, drive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, SP.fiber.propagation_constant_derivative)
     
     loss, weights_abs, resonances_abs = prep_loss_weights_resonances(t, weights, resonances)
     titl = prep_transmissionWithGnmEigenEnergies_title(SP)
@@ -540,29 +601,33 @@ end
 
 
 
-println("\n -- Running main() -- \n")
-@time main()
-
+@time begin
+    println("\n -- Running main() -- \n")
+    main() 
+    println(" -- -- ")
+    println("Runtime etc. of main():")
+end
 
 
 
 # TODO list:
 
-# Implement Gnm functions for the case of including phonons
-    # Eigenmodes and -values of some large coupling matrix, that is found by vectorising the linear EoMs
-    # Time evolution in terms of these eigenmodes
-    # Transmission in terms of these eigenmodes
-    
+# Clean up code: naming?, repeated structures, inconsistent structures
+
 
 # Get it to work on the cluster
     # Use MPI
-    # Clean up before moving to the cluster: comments, naming
+    # Clean up before moving to the cluster: comments, naming, split code
     # Systematically scan the effect of η and ff
         # Pick a value of Δ with T ~ 1 and phase ~ pi, and plot these things as a function of η and ff
+        # ff is most interesting for experiment - could probably just keep the same η or only consider a few values (10 50 100 percent of their present values)
 
+# Implement plot_GnmEigenEnergies for the case of including phonons
+    # Figure out how to order the eigenvalues of the fullCouplingMatrix
+    # real part vs imag part?
+    # separate into dominated by σ or Bα? 
+    # 2D momentum?
 
-# Calculate Poynting vector and plot instead of/together with emission pattern
-    
 # Implement that Im_Grm_trans_ simply returns zero for a certain size of relative_z/fiber_radius or so? (Will go to zero for large inter-atom distance)
     # Check how it decays as a function of z for different parameters... find some distance at which it can safely be neglected
 

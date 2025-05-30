@@ -247,10 +247,10 @@ function fig_fOnChain(rs, v, ks, vFT)
     fig = Figure(size=(800, 600))
     
     # Make title and axis
-    Label(fig[1, 2], "Real space")
-    Label(fig[1, 3], "Momentum space")
-    Label(fig[2, 1], "Magnitude", rotation = pi/2)
-    Label(fig[3, 1], "Phase", rotation = pi/2)
+    Label(fig[1, 2], L"Real space$$", tellwidth=false)
+    Label(fig[1, 3], L"Momentum space$$", tellwidth=false)
+    Label(fig[2, 1], L"Magnitude$$", rotation = pi/2, tellheight=false)
+    Label(fig[3, 1], L"Phase$$", rotation = pi/2, tellheight=false)
     ax1 = Axis(fig[2, 2])
     ax2 = Axis(fig[2, 3])
     ax3 = Axis(fig[3, 2], xlabel=L"$ z/λ $")
@@ -270,10 +270,45 @@ end
 
 
 """
-Plot the eigenvectors of a coupling matrix in real space, as well as its Fourier transform.
+Plot a (complex) function (represented by an (N, N)-matrix M) on a 2D square lattice,
+as well as its discrete Fourier transform.
+"""
+function fig_fOnSquare(rs, M, ks, MFT)
+    # Start figure 
+    fig = Figure(size=(800, 600))
+    
+    # Make title and axis
+    Label(fig[1, 2], L"Real space$$", tellwidth=false)
+    Label(fig[1, 4], L"Momentum space$$", tellwidth=false)
+    Label(fig[2, 1], L"Magnitude$$", rotation = pi/2, tellheight=false)
+    Label(fig[3, 1], L"Phase$$", rotation = pi/2, tellheight=false)
+    ax1 = Axis(fig[2, 2])
+    ax2 = Axis(fig[2, 4])
+    ax3 = Axis(fig[3, 2], xlabel=L"$ z/λ $")
+    ax4 = Axis(fig[3, 4], xlabel=L"$ λk_z $")
+    
+    # Plot the real space function
+    hm1 = heatmap!(ax1, rs, rs, abs.(M), colormap=:viridis)
+    hm3 = heatmap!(ax3, rs, rs, angle.(M), colormap=:RdBu)
+    Colorbar(fig[2, 3], hm1)
+    Colorbar(fig[3, 3], hm3)
+    
+    # Plot the k-space function
+    hm2 = heatmap!(ax2, ks, ks, abs.(MFT), colormap=:viridis)
+    hm4 = heatmap!(ax4, ks, ks, angle.(MFT), colormap=:RdBu)
+    Colorbar(fig[2, 5], hm2)
+    Colorbar(fig[3, 5], hm4)
+    
+    # Finish figure
+    display(GLMakie.Screen(), fig)
+end
+
+
+"""
+Plot the eigenvectors of a coupling matrix in real space, as well as their Fourier transform.
 Furthermore, plot the emission pattern of that mode.
 """
-function fig_GnmEigenModes(rs, v, ks, vFT, z_range, x_range, intensity, ρf, array, eigval, κ, titl)
+function fig_GnmEigenModes(zs, eigen_σ, ks, eigen_σ_FT, z_range, x_range, intensity, ρf, array, eigval, κ, titl)
     # Start figure 
     fig = Figure(size=(800, 700))
     
@@ -290,13 +325,13 @@ function fig_GnmEigenModes(rs, v, ks, vFT, z_range, x_range, intensity, ρf, arr
     ax4 = Axis(fig[5, 3], xlabel=L"$ λk_z $")
     ax5 = Axis(fig[6, 2:3], aspect=DataAspect(), xlabel=L"$ z/λ $", ylabel=L"$ x/λ $")
     
-    # Plot the real space function
-    lines!(ax1, rs, abs.(v)  , color=:blue)
-    lines!(ax3, rs, angle.(v), color=:blue)
+    # Plot real space 
+    lines!(ax1, zs, abs.(eigen_σ)  , color=:blue)
+    lines!(ax3, zs, angle.(eigen_σ), color=:blue)
     
-    # Plot the k-space function
-    lines!(ax2, ks, abs.(vFT)  , color=:red)
-    lines!(ax4, ks, angle.(vFT), color=:red)
+    # Plot k-space 
+    lines!(ax2, ks, abs.(eigen_σ_FT)  , color=:red)
+    lines!(ax4, ks, angle.(eigen_σ_FT), color=:red)
     
     # Mark the light cone and position of propagation constant
     vlines!(ax2, [-ωa, ωa], color=:black, linestyle=:dash, linewidth=1, label=L"Light cone$$")
@@ -314,6 +349,66 @@ function fig_GnmEigenModes(rs, v, ks, vFT, z_range, x_range, intensity, ρf, arr
     scatter!(ax5, [site[3] for site in array], [site[1] for site in array], color=:black, marker=:circle, markersize=10)
     
     # Finish figure
+    display(GLMakie.Screen(), fig)
+end
+
+
+"""
+Plot the eigenvectors of a coupling matrix in real space, as well as their Fourier transform.
+Furthermore, plot the emission pattern of that mode.
+
+For the case of including phonons.
+"""
+function fig_GnmEigenModes(zs, eigen_σ, eigen_diagBα, ks, eigen_σ_FT, eigen_diagBα_FT, z_range, x_range, intensity, ρf, array, eigval, κ, titl)
+    # Prepare colors
+    colors = distinguishable_colors(8, [RGB(1,1,1), RGB(0,0,0)], dropseed=true)
+    
+    # Start figure 
+    fig = Figure(size=(800, 700))
+    
+    # Make title and axis
+    Label(fig[1, 1:3], titl, tellwidth=false)
+    Label(fig[2, 2:3], latexstring(L"Eigval. $ = " * format_Complex_to_String(eigval) * L"$"), tellwidth=false)
+    Label(fig[3, 2], L"Real space$$", tellwidth=false)
+    Label(fig[3, 3], L"Momentum space$$", tellwidth=false)
+    Label(fig[4, 1], L"Magnitude$$", rotation = pi/2, tellheight=false)
+    Label(fig[5, 1], L"Phase$$", rotation = pi/2, tellheight=false)
+    ax1 = Axis(fig[4, 2])
+    ax2 = Axis(fig[4, 3])
+    ax3 = Axis(fig[5, 2], xlabel=L"$ z/λ $")
+    ax4 = Axis(fig[5, 3], xlabel=L"$ λk_z $")
+    ax5 = Axis(fig[6, 2:3], aspect=DataAspect(), xlabel=L"$ z/λ $", ylabel=L"$ x/λ $")
+    
+    # Plot real space 
+    lines!(ax1, zs, abs.(eigen_σ), color=colors[1], label=L"$ ⟨σ_{n}⟩ $")
+    for α in 1:3 lines!(ax1, zs, abs.(eigen_diagBα[α]), linestyle=:dash, color=colors[1 + α], label=L"$ ⟨b_{%$(α)n}σ_{n}⟩ $") end
+    lines!(ax3, zs, angle.(eigen_σ), color=colors[1])
+    for α in 1:3 lines!(ax3, zs, angle.(eigen_diagBα[α]), linestyle=:dash, color=colors[1 + α]) end
+    
+    # Plot  k-space 
+    lines!(ax2, ks, abs.(eigen_σ_FT)  , color=colors[5])
+    for α in 1:3 lines!(ax2, ks, abs.(eigen_diagBα_FT[α]), linestyle=:dash, color=colors[5 + α]) end
+    lines!(ax4, ks, angle.(eigen_σ_FT), color=colors[5], label=L"FT$ [⟨σ_{n}⟩](k) $")
+    for α in 1:3 lines!(ax4, ks, angle.(eigen_diagBα_FT[α]), linestyle=:dash, color=colors[5 + α], label=L"FT$ [⟨b_{%$(α)n}σ_{n}⟩](k) $") end
+    
+    # Mark the light cone and position of propagation constant
+    vlines!(ax2, [-ωa, ωa], color=:black, linestyle=:dash, linewidth=1, label=L"Light cone$$")
+    vlines!(ax2, [κ], color=:red, linestyle=:dash, linewidth=1, label=L"$ \kappa $")
+    
+    # Plot the E-field intensity
+    hm = heatmap!(ax5, z_range, x_range, intensity, colormap=:viridis)
+    Colorbar(fig[6, 4], hm)
+    
+    # Plot a representation of the fiber
+    poly!(ax5, [(z_range[1], -ρf), (z_range[end], -ρf), (z_range[end], ρf), (z_range[1], ρf)], color=(:gray, 0.3))
+    
+    # Plot a representation of the atomic array
+    scatter!(ax5, [site[3] for site in array], [site[1] for site in array], color=:black, marker=:circle, markersize=10)
+    
+    # Finish figure
+    axislegend(ax1)
+    axislegend(ax2)
+    axislegend(ax4)
     display(GLMakie.Screen(), fig)
 end
 

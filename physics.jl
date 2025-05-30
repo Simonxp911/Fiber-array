@@ -614,7 +614,7 @@ function EoMs!(dσdt, dBαdt, σ, Bα, Δ, Δvari, tildeΩ, tildeΩα, tildeG, t
                    -tildeΩ - (Δ*I + Δvari + tildeG)*σ - sum(@. di(Bα*transpose(tildeGα1)) + tildeGα2*di(Bα))
                   )
     dBαdt .= -1im*(
-                   -Bα.*transpose.(tildeFα) - Di.(tildeΩα + tildeGα1.*Ref(σ)) - Ref(Di(σ)).*transpose.(tildeGα2)
+                   -Bα.*transpose.(Ref(Δ*I + Δvari) .+ tildeFα) - Di.(tildeΩα + tildeGα1.*Ref(σ)) - Ref(Di(σ)).*transpose.(tildeGα2)
                   )
 end
 
@@ -675,7 +675,7 @@ Implements the analytical solution for the steady state values of the atomic and
 degrees of freedom to first order in the driving and to second order in the Lamb-Dicke parameter.
 """
 function σBα_steadyState(Δ, Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2)
-    tildeFα_inv = inv.(tildeFα)
+    tildeFα_inv = inv.(Ref(Δ*I + Δvari) .+ tildeFα)
     
     # Calculate the coefficient matrices
     Cα = @. (  Diag(tildeGα1*tildeFα_inv)
@@ -696,18 +696,37 @@ end
 Calculate the time evolution of the atomic coherences (in the case of no phonons)
 using the eigenmodes approach
 """
-function timeEvolution_eigenmodes(t, Δ, Δvari, tildeΩ, tildeG, initialState)
-    # Get the eigenenergies and -modes of tildeG, as well as the basis-transformation matrix Q
-    eigenEnergies, eigenModes = eigbasis(Δvari + tildeG)
-    Q = vectorOfCols2Matrix(eigenModes)
-    
+function timeEvolution_eigenmodes_noPh(t, Δ, tildeΩ, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, initialState)
     # Prepare the initial state (in the real space basis and the eigenmode basis)
     σ0 = unpack_σFromx(initialState)
-    tildeσ0 = inv(Q)*σ0
     
-    # Prepare the steady state in the eigenmode basis and put together the final result
-    tildeσSS = -(inv(Q)*tildeΩ)./(Δ .+ eigenEnergies)
-    return Q*( tildeσSS .+ (tildeσ0 - tildeσSS).*exp.(1im*(Δ .+ eigenEnergies)*t) )
+    # Prepare the initial state and the steady state in the eigenmode basis
+    tildeσ0 = eigenModesMatrix_inv*σ0
+    tildeσSS = -(eigenModesMatrix_inv*tildeΩ)./(Δ .+ eigenEnergies)
+    
+    # Put together the final result
+    return eigenModesMatrix*( tildeσSS .+ (tildeσ0 - tildeσSS).*exp.(1im*(Δ .+ eigenEnergies)*t) )
+end
+
+
+"""
+Calculate the time evolution of the atomic coherences and the atom-phonon correlations
+using the eigenmodes approach
+"""
+function timeEvolution_eigenmodes(t, Δ, fullDrive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, initialState)
+    # Prepare the initial state (in terms of the vectorized σBα)
+    σBα0 = unpack_σBαFromx(initialState)
+    σBαVec0 = pack_σBαIntoσBαVec(σBα0)
+    
+    # Prepare the initial state and the steady state in the eigenmode basis
+    tildeσBαVec0  = eigenModesMatrix_inv*σBαVec0
+    tildeσBαVecSS = -(eigenModesMatrix_inv*fullDrive)./(Δ .+ eigenEnergies)
+    
+    # Find the state at time t
+    σBαVec_t = eigenModesMatrix*( tildeσBαVecSS .+ (tildeσBαVec0 - tildeσBαVecSS).*exp.(1im*(Δ .+ eigenEnergies)*t) )
+    
+    # Repack and return in the form of σ, Bα
+    return unpack_σBαFromσBαVec(σBαVec_t)
 end
 
 
@@ -746,22 +765,23 @@ end
 
 """
 Calculate the transmission of light through the guided mode, using the eigenmodes approach 
-(in the case of no phonons)
+(works both with or without including phonons)
 """
-function transmission_eigenmodes(Δ, tildeΩ, eigenEnergies, eigenModes, κ_prime)
-    Q = vectorOfCols2Matrix(eigenModes)
-    return 1 - 3im*π*κ_prime/(2*ωa^2)*sum( [(tildeΩ'*Q)[i]*(inv(Q)*tildeΩ)[i]/(Δ + eigenEnergy) for (i, eigenEnergy) in enumerate(eigenEnergies)] )
+function transmission_eigenmodes(Δ, drive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, κ_prime)
+    driveTimesModes = drive'*eigenModesMatrix
+    modesTimesDrive = eigenModesMatrix_inv*drive
+    return 1 - 3im*π*κ_prime/(2*ωa^2)*sum( [driveTimesModes[i]*modesTimesDrive[i]/(Δ + eigenEnergy) for (i, eigenEnergy) in enumerate(eigenEnergies)] )
 end
 
 
 """
 Calculate the transmission of light through the guided mode, using the eigenmodes approach 
-(in the case of no phonons)
+(works both with or without including phonons)
 """
-function transmission_eigenmodes_weights_resonances(Δ_range, tildeΩ, eigenEnergies, eigenModes, κ_prime)
-    Q = vectorOfCols2Matrix(eigenModes)
-    
-    weights    = [3im*π*κ_prime/(2*ωa^2)*(tildeΩ'*Q)[i]*(inv(Q)*tildeΩ)[i] for i in eachindex(eigenEnergies)]
+function transmission_eigenmodes_weights_resonances(Δ_range, drive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, κ_prime)
+    driveTimesModes = drive'*eigenModesMatrix
+    modesTimesDrive = eigenModesMatrix_inv*drive
+    weights    = [3im*π*κ_prime/(2*ωa^2)*driveTimesModes[i]*modesTimesDrive[i] for i in eachindex(eigenEnergies)]
     resonances = [weights[i]./(Δ_range .+ eigenEnergy) for (i, eigenEnergy) in enumerate(eigenEnergies)]
     return weights, resonances 
 end
@@ -783,4 +803,60 @@ Calculate the radiated E-field, assuming no incoming radiation field
 function radiation_Efield(σ, Bα, tildeGrm_rrn, tildeGα2rm_rrn, d)
     d_mag = sqrt(3π/ωa^3)
     return ωa^2*sum( tildeGrm_rrn.*Ref(d_mag*d).*σ + sum([tildeGα2rm_rrn[α].*Ref(d_mag*d).*di(Bα[α]) for α in 1:3]) )
+end
+
+
+# ================================================
+#   Functions pertaining to the eigenmodes of the atomic array
+# ================================================
+"""
+Find the eigenvalues and -vectors of a coupling matrix (i.e. the collective energies and modes)
+"""
+function spectrum(G)
+    F = eigen(G)
+    return F.values, eachcol(F.vectors)
+end
+
+
+"""
+Find the eigenvalues and -vectors of a coupling matrix (i.e. the collective energies and modes), 
+as well as the dominant k-vector (from a discrete Fourier transform) 
+pertaining to each of those eigenvectors
+"""
+function spectrum_dominant_ks(G, a)
+    eigenEnergies, eigenModes = spectrum(G)
+    eigenModes_FT = discFourierTransform.(eigenModes, a)
+    dominant_ks = [ks[argmax(abs.(eigenMode_FT))] for (ks, eigenMode_FT) in eigenModes_FT]
+    return eigenEnergies, eigenModes, dominant_ks
+end
+
+
+"""
+Find the eigenvalues and the matrices used to change basis to and from the corresponding eigenbasis
+"""
+function spectrum_basisMatrices(G)
+    eigenEnergies, eigenModes = spectrum(G)
+    return eigenEnergies, vectorOfCols2Matrix(eigenModes), inv(vectorOfCols2Matrix(eigenModes))
+end
+
+
+"""
+Find the eigenvalues and the matrices used to change basis to and from the corresponding eigenbasis, 
+as well as the dominant k-vector (from a discrete Fourier transform) 
+pertaining to each of the eigenvectors
+"""
+function spectrum_dominant_ks_basisMatrices(G, a)
+    eigenEnergies, eigenModes, dominant_ks = spectrum_dominant_ks(G, a)
+    return eigenEnergies, dominant_ks, vectorOfCols2Matrix(eigenModes), inv(vectorOfCols2Matrix(eigenModes))
+end
+
+
+
+"""
+Calculate collective energies from eigen energies of a coupling matrix
+
+Shallow function, but allows for a good abstraction
+"""
+function collEnergies_from_eigenEnergies(eigenEnergies)
+    return -real(eigenEnergies), 2*imag(eigenEnergies)
 end

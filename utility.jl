@@ -130,6 +130,16 @@ function pack_σBαIntox(σ, Bα)
 end
 
 
+function pack_σBαIntox!(σBα, x)
+    return pack_σBαIntox!(σBα[1], σBα[2], x)
+end
+
+
+function pack_σBαIntox(σBα)
+    return pack_σBαIntox(σBα[1], σBα[2])
+end
+
+
 """
 Unpack the σ entries from the x vector
 
@@ -167,6 +177,30 @@ function unpack_σBαFromx(x)
     N = Int((sqrt(6*length(x) + 1) - 1)/6) #if length(x) = 2(N + 3N^2), then 6*length(x) + 1 = (6N + 1)^2, and N is equal to the following
     σ, Bα = empty_σVector(N), empty_BαVector(N)
     unpack_σBαFromx!(σ, Bα, x)
+    return σ, Bα
+end
+
+
+"""
+Pack the σ and Bα entries into the vectorized σBα
+"""
+function pack_σBαIntoσBαVec(σ, Bα)
+    return vcat(σ, vec.(Bα)...)
+end
+
+
+function pack_σBαIntoσBαVec(σBα)
+    return vcat(σBα[1], vec.(σBα[2])...)
+end
+
+
+"""
+Unpack the σ and Bα entries from the vectorized σBα
+"""
+function unpack_σBαFromσBαVec(σBαVec)
+    N = Int(round(sqrt(length(σBαVec)/3 + 1/36) - 1/6))
+    σ = σBαVec[1:N]
+    Bα = [reshape(σBαVec[N + (α - 1)*N^2 + 1:N + α*N^2], (N, N)) for α in 1:3]
     return σ, Bα
 end
 
@@ -346,21 +380,12 @@ end
 
 
 """
-Find the eigenvalues and eigenvectors of a matrix. Return these as two sorted vectors.
-"""
-function eigbasis(A)
-    F = eigen(A)
-    return F.values, eachcol(F.vectors)
-end
-
-
-"""
 Calculate the discrete Fourier transform of a function (represented by an N-vector v) 
-on a 1D chain with lattice spacing a and length N = length(v), assumed to be on the form (0:N-1)*a. 
+on a 1D chain with lattice spacing a and length N, assumed to be on the form (0:N-1)*a. 
     
 Returns an N-vector of the relevant k-values and the transformed function as an N-vector.
 """
-function discFourierTransform(v, a, cont_k=false, k_n=300)
+function discFourierTransform(v::Vector, a::Real, cont_k::Bool=false, k_n::Int=300)
     N = length(v)
     if cont_k
         ks = range(0, 2π/a, k_n) .- π/a
@@ -373,12 +398,42 @@ end
 
 
 """
+Calculate the discrete Fourier transform of a function (represented by an (N, N)-matrix M) 
+on a 2D square lattice with lattice spacing a and size (N, N), assumed to be on the form (0:N-1)*a ⊗ (0:N-1)*a. 
+    
+Returns an N-vector of the relevant k-values and the transformed function as an (N, N)-matrix.
+"""
+function discFourierTransform(M::Matrix, a::Real, cont_k::Bool=false, k_n::Int=300)
+    N = size(M)[1]
+    if cont_k
+        ks = range(0, 2π/a, k_n) .- π/a
+    else
+        ks = 2π/(a*N)*(0:N-1) .- π/a
+    end
+    MFT = discFourierTransform.(Ref(M), a, ks, ks')
+    return ks, MFT
+end
+
+
+"""
 Calculate the discrete Fourier transform of a function (represented by an N-vector v) 
-on a 1D chain with lattice spacing a and length N = length(v), assumed to be on the form (0:N-1)*a. 
+on a 1D chain with lattice spacing a and length N, assumed to be on the form (0:N-1)*a. 
     
 Returns the transformed function as an N-vector.
 """
-function discFourierTransform(v, a, k)
+function discFourierTransform(v::Vector, a::Real, k::Real)
     N = length(v)
     return sum( v.*exp.(-1im*k*(0:N-1)*a) )/sqrt(N)
+end
+
+
+"""
+Calculate the discrete Fourier transform of a function (represented by an (N, N)-matrix M) 
+on a 2D square lattice with lattice spacing a and size (N, N), assumed to be on the form (0:N-1)*a ⊗ (0:N-1)*a. 
+    
+Returns the transformed function as an (N, N)-matrix.
+"""
+function discFourierTransform(M::Matrix, a::Real, kx::Real, ky::Real)
+    N = size(M)[1]
+    return sum( M.*(exp.(-1im*kx*(0:N-1)*a)*exp.(-1im*ky*(0:N-1)'*a)) )/N
 end

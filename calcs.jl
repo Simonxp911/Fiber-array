@@ -170,97 +170,101 @@ function get_tildeGs(fiber, d::String, array, save_individual_res, approx_Grm_tr
     if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
     
     if d == "chiral"
-        # Prepare some parameters and quantities
-        κ = fiber.propagation_constant
-        κ_prime = fiber.propagation_constant_derivative
-        N = length(array)
         ρa = array[1][1]
-        eρ_gm, eϕ_gm, ez_gm = guidedModeComps(fiber, ρa)
-        eρ_gm = -1im*eρ_gm #remove overall imaginary unit for ease of expressions
+        d = chiralDipoleMoment(fiber, ρa)
+        return get_tildeGs(fiber, d, array, save_individual_res, approx_Grm_trans)
         
-        # Prepare for the integral
-        abstol = 1e-4
-        domain = (-ωa + eps(1.0), ωa - eps(1.0))
-        function integrand(x, args) 
-            eρ_rm, eϕ_rm, ez_rm = radiationModeComps(fiber, ωa, x, args[1], args[2], ρa)
-            return abs2(-1im*ez_gm*eρ_rm + eρ_gm*ez_rm)/(eρ_gm^2 + ez_gm^2) * exp(1im*x*args[3])
-        end
+        # # Prepare some parameters and quantities
+        # κ = fiber.propagation_constant
+        # κ_prime = fiber.propagation_constant_derivative
+        # N = length(array)
+        # ρa = array[1][1]
+        # eρ_gm, eϕ_gm, ez_gm = guidedModeComps(fiber, ρa)
+        # eρ_gm = -1im*eρ_gm #remove overall imaginary unit for ease of expressions
         
-        # Start calculating
-        Ggm_ = zeros(ComplexF64, N, N)
-        Grm_ = deepcopy(Ggm_)
-        for j in 1:N, i in 1:j
-            z_rel = array[i][3] - array[j][3]
+        # # Prepare for the integral
+        # abstol = 1e-4
+        # domain = (-ωa + eps(1.0), ωa - eps(1.0))
+        # function integrand(x, args) 
+        #     eρ_rm, eϕ_rm, ez_rm = radiationModeComps(fiber, ωa, x, args[1], args[2], ρa)
+        #     return abs2(-1im*ez_gm*eρ_rm + eρ_gm*ez_rm)/(eρ_gm^2 + ez_gm^2) * exp(1im*x*args[3])
+        # end
+        
+        # # Start calculating
+        # Ggm_ = zeros(ComplexF64, N, N)
+        # Grm_ = deepcopy(Ggm_)
+        # for j in 1:N, i in 1:j
+        #     z_rel = array[i][3] - array[j][3]
             
-            # The guided mode GF (exploiting Onsager reciprocity)
-            if z_rel >= 0
-                Ggm_[i, j] += 1im/(2*ωa)*κ_prime*heaviside(z_rel)*
-                            8*eρ_gm^2*ez_gm^2/(eρ_gm^2 + ez_gm^2)*exp(1im*κ*z_rel)
-            else
-                Ggm_[j, i] += 1im/(2*ωa)*κ_prime*heaviside(-z_rel)*
-                            8*eρ_gm^2*ez_gm^2/(eρ_gm^2 + ez_gm^2)*exp(-1im*κ*z_rel)
-            end
+        #     # The guided mode GF (exploiting Onsager reciprocity)
+        #     if z_rel >= 0
+        #         Ggm_[i, j] += 1im/(2*ωa)*κ_prime*heaviside(z_rel)*
+        #                     8*eρ_gm^2*ez_gm^2/(eρ_gm^2 + ez_gm^2)*exp(1im*κ*z_rel)
+        #     else
+        #         Ggm_[j, i] += 1im/(2*ωa)*κ_prime*heaviside(-z_rel)*
+        #                     8*eρ_gm^2*ez_gm^2/(eρ_gm^2 + ez_gm^2)*exp(-1im*κ*z_rel)
+        #     end
             
-            # The radiation mode GF
-            # The real part
-            Re_Grm = 0.0im
-            if approx_Grm_trans[1]
-                if z_rel != 0
-                    r = abs(z_rel)
-                    Re_Grm = -ωa/(4*π)*(2/3*sphericalbessely(0, ωa*r) - 1/3*sphericalbessely(2, ωa*r) + sphericalbessely(2, ωa*r)*eρ_gm^2/(eρ_gm^2 + ez_gm^2))
-                end
-            else
-                throw(ArgumentError("The non-approximate calculation of real part of the transverse part of radiation mode Green's function or its derivatives in get_tildeGs has not been implemented"))
-            end
+        #     # The radiation mode GF
+        #     # The real part
+        #     Re_Grm = 0.0im
+        #     if approx_Grm_trans[1]
+        #         if z_rel != 0
+        #             r = abs(z_rel)
+        #             Re_Grm = -ωa/(4*π)*(2/3*sphericalbessely(0, ωa*r) - 1/3*sphericalbessely(2, ωa*r) + sphericalbessely(2, ωa*r)*eρ_gm^2/(eρ_gm^2 + ez_gm^2))
+        #         end
+        #     else
+        #         throw(ArgumentError("The non-approximate calculation of real part of the transverse part of radiation mode Green's function or its derivatives in get_tildeGs has not been implemented"))
+        #     end
             
-            # The imaginary (transverse) part
-            Im_Grm_tr = 0.0im
-            if approx_Grm_trans[2]
-                if z_rel == 0
-                    Im_Grm_tr = ωa/(6*π)
-                else
-                    r = abs(z_rel)
-                    Im_Grm_tr = ωa/(4*π)*((2/3*sphericalbesselj(0, ωa*r) - 1/3*sphericalbesselj(2, ωa*r)) + sphericalbesselj(2, ωa*r)*eρ_gm^2/(eρ_gm^2 + ez_gm^2))
-                end
-            else
-                # Perform the combined sum and integration
-                summand_m = 2*abstol + 0.0im
-                m = 0
-                while abs(summand_m) > abstol
-                    summand_m = 0.0im
-                    for l in (-1, 1)
-                        args = (m, l, z_rel)
-                        prob = IntegralProblem(integrand, domain, args)
-                        integral = Integrals.solve(prob, HCubatureJL())
-                        summand_m += integral.u/(4*ωa)
-                        if m != 0
-                            args = (-m, l, z_rel)
-                            prob = IntegralProblem(integrand, domain, args)
-                            integral = Integrals.solve(prob, HCubatureJL())
-                            summand_m += integral.u/(4*ωa)
-                        end
-                    end
-                    Im_Grm_tr += summand_m
-                    m += 1
-                end
-            end
-            Grm_[i, j] = Re_Grm + 1im*Im_Grm_tr
-            Grm_[j, i] = Re_Grm + 1im*conj(Im_Grm_tr) # Onsager reciprocity
-        end
+        #     # The imaginary (transverse) part
+        #     Im_Grm_tr = 0.0im
+        #     if approx_Grm_trans[2]
+        #         if z_rel == 0
+        #             Im_Grm_tr = ωa/(6*π)
+        #         else
+        #             r = abs(z_rel)
+        #             Im_Grm_tr = ωa/(4*π)*((2/3*sphericalbesselj(0, ωa*r) - 1/3*sphericalbesselj(2, ωa*r)) + sphericalbesselj(2, ωa*r)*eρ_gm^2/(eρ_gm^2 + ez_gm^2))
+        #         end
+        #     else
+        #         # Perform the combined sum and integration
+        #         summand_m = 2*abstol + 0.0im
+        #         m = 0
+        #         while abs(summand_m) > abstol
+        #             summand_m = 0.0im
+        #             for l in (-1, 1)
+        #                 args = (m, l, z_rel)
+        #                 prob = IntegralProblem(integrand, domain, args)
+        #                 integral = Integrals.solve(prob, HCubatureJL())
+        #                 summand_m += integral.u/(4*ωa)
+        #                 if m != 0
+        #                     args = (-m, l, z_rel)
+        #                     prob = IntegralProblem(integrand, domain, args)
+        #                     integral = Integrals.solve(prob, HCubatureJL())
+        #                     summand_m += integral.u/(4*ωa)
+        #                 end
+        #             end
+        #             Im_Grm_tr += summand_m
+        #             m += 1
+        #         end
+        #     end
+        #     Grm_[i, j] = Re_Grm + 1im*Im_Grm_tr
+        #     Grm_[j, i] = Re_Grm + 1im*conj(Im_Grm_tr) # Onsager reciprocity
+        # end
         
-        # Get the couplings by appropriately multiplying some constants
-        Ggm_ *= 3*π/ωa
-        Grm_ *= 3*π/ωa
+        # # Get the couplings by appropriately multiplying some constants
+        # Ggm_ *= 3*π/ωa
+        # Grm_ *= 3*π/ωa
         
-        # Scale the real part of the radiation GF with the local radiation decay rates (if Re_Grm_trans is being approximated)
-        if approx_Grm_trans[1]
-            gammas = 2*diag(imag(Grm_))
-            scaleFactors = sqrt.(gammas*gammas')
-            Grm_ = real(Grm_).*scaleFactors + 1im*imag(Grm_)
-        end
+        # # Scale the real part of the radiation GF with the local radiation decay rates (if Re_Grm_trans is being approximated)
+        # if approx_Grm_trans[1]
+        #     gammas = 2*diag(imag(Grm_))
+        #     scaleFactors = sqrt.(gammas*gammas')
+        #     Grm_ = real(Grm_).*scaleFactors + 1im*imag(Grm_)
+        # end
         
-        # Put together the full Green's function and return it
-        return Ggm_ + Grm_
+        # # Put together the full Green's function and return it
+        # return Ggm_ + Grm_
     else
         throw(ArgumentError("get_tildeGs(d::String) is only implemented for d = 'chiral'"))
     end
@@ -488,6 +492,55 @@ function get_Δvari(ΔvariDependence, Δvari_args, array)
 end
 
 
+function get_fullDriveVector(tildeΩ, tildeΩα)
+    N = length(tildeΩ)
+    
+    # Construct the phononic drive
+    D = [zeros(ComplexF64, N^2) for α in 1:3]
+    for α in 1:3
+        for i in 1:N
+            D[α][i + (i - 1)*N] = tildeΩα[α][i]
+        end
+    end
+    
+    # Put together the full drive vector
+    return [tildeΩ
+              D[1]
+              D[2]
+              D[3]]
+end
+
+
+function get_fullCouplingMatrix(Δvari, tildeG, tildeFα, tildeGα1, tildeGα2)
+    N = size(Δvari)[1]
+    
+    # Construct the excitation-phonon coupling matrices
+    N1α = [zeros(ComplexF64, N, N^2) for α in 1:3]
+    N2α = deepcopy(N1α)
+    M1α = [zeros(ComplexF64, N^2, N) for α in 1:3]
+    M2α = deepcopy(M1α)
+    for α in 1:3
+        for j in 1:N, i in 1:N
+            N1α[α][i, i + (j - 1)*N] = tildeGα1[α][i, j]
+            N2α[α][i, j + (j - 1)*N] = tildeGα2[α][i, j]
+            M1α[α][i + (i - 1)*N, j] = tildeGα1[α][i, j]
+            M2α[α][j + (i - 1)*N, j] = tildeGα2[α][i, j]
+        end
+    end
+    
+    # Put together the full coupling matrix
+    Nα = N1α + N2α
+    Mα = M1α + M2α
+    tildeG += Δvari
+    Fα = [kron(tildeFα[α] + Δvari, I(N)) for α in 1:3]    
+    O = zeros(N^2, N^2)
+    return [tildeG Nα[1] Nα[2] Nα[3]
+             Mα[1] Fα[1]  O     O
+             Mα[2]  O    Fα[2]  O
+             Mα[3]  O     O    Fα[3]]
+end
+
+
 # ================================================
 #   Functions pertaining to the time evolution of the atomic and phononic degrees of freedom
 # ================================================
@@ -554,7 +607,7 @@ end
 """
 Perform time evolution of the atomic
 """
-function timeEvolution(Δ, Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2, N, initialState, tspan, dtmax, postfix, save_individual_res=true)
+function calc_timeEvolution(Δ, Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2, N, initialState, tspan, dtmax, postfix, save_individual_res=true)
     filename = "TE_" * postfix
     folder = "timeEvol/"
     
@@ -581,7 +634,7 @@ end
 Perform time evolution of the atomic and phononic degrees of freedom
 (for the case of no phonons)
 """
-function timeEvolution(Δ, Δvari, tildeΩ, tildeG, N, initialState, tspan, dtmax, postfix, save_individual_res=true)
+function calc_timeEvolution(Δ, Δvari, tildeΩ, tildeG, N, initialState, tspan, dtmax, postfix, save_individual_res=true)
     filename = "TE_noPh_" * postfix
     folder = "timeEvol/"
     
@@ -607,7 +660,7 @@ end
 """
 Perform time evolution for parameters given by SP
 """
-function timeEvolution(SP, Δ)
+function calc_timeEvolution(SP, Δ)
     postfix = get_postfix(Δ, SP.ΔvariDescription, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax)
     params = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
     return timeEvolution(Δ, params..., SP.N, SP.initialState, SP.tspan, SP.dtmax, postfix, SP.save_individual_res)
@@ -628,15 +681,38 @@ end
 Perform time evolution of the atomic, using the eigenmodes approach
 (for the case of no phonons)
 """
-function timeEvolution_eigenmodes(Δ, Δvari, tildeΩ, tildeG, initialState, tspan, dtmax, postfix, save_individual_res=true)
-    filename = "TE_noPh_ana_" * postfix
+function calc_timeEvolution_eigenmodes_noPh(Δ, tildeΩ, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, initialState, tspan, dtmax, postfix, save_individual_res=true)
+    filename = "TE_noPh_eig_" * postfix
     folder = "timeEvol/"
     
     if isfile(saveDir * folder * filename * ".txt") return load_as_txt(saveDir * folder, filename) end
     
+    # Calculate time evolution
     times = range(tspan..., Int(floor((tspan[2] - tspan[1])/dtmax)))
-    σTrajectories = timeEvolution_eigenmodes.(times, Δ, Ref(Δvari), Ref(tildeΩ), Ref(tildeG), Ref(initialState))
+    σTrajectories = timeEvolution_eigenmodes_noPh.(times, Δ, Ref(tildeΩ), Ref(eigenEnergies), Ref(eigenModesMatrix), Ref(eigenModesMatrix_inv), Ref(initialState))
     xTrajectories = pack_σIntox.(σTrajectories)
+    
+    # Pack and save data
+    formattedResult = vectorOfRows2Matrix([vcat(times[i], xTrajectories[i]) for i in eachindex(times)])
+    if save_individual_res save_as_txt(formattedResult, saveDir * folder, filename) end
+    
+    return formattedResult
+end
+
+
+"""
+Perform time evolution of the atomic, using the eigenmodes approach
+"""
+function calc_timeEvolution_eigenmodes(Δ, fullDrive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, initialState, tspan, dtmax, postfix, save_individual_res=true)
+    filename = "TE_eig_" * postfix
+    folder = "timeEvol/"
+    
+    if isfile(saveDir * folder * filename * ".txt") return load_as_txt(saveDir * folder, filename) end
+    
+    # Calculate time evolution
+    times = range(tspan..., Int(floor((tspan[2] - tspan[1])/dtmax)))
+    σBαTrajectories = timeEvolution_eigenmodes.(times, Δ, Ref(fullDrive), Ref(eigenEnergies), Ref(eigenModesMatrix), Ref(eigenModesMatrix_inv), Ref(initialState))
+    xTrajectories = pack_σBαIntox.(σBαTrajectories)
     
     # Pack and save data
     formattedResult = vectorOfRows2Matrix([vcat(times[i], xTrajectories[i]) for i in eachindex(times)])
@@ -649,24 +725,40 @@ end
 """
 Perform time evolution for parameters given by SP, using the eigenmodes approach
 """
-function timeEvolution_eigenmodes(SP, Δ)
-    if any(SP.ηα .!= 0) throw(ArgumentError("timeEvolution_eigenmodes has only been implemented for the case of no phonons")) end
-    
+function calc_timeEvolution_eigenmodes(SP, Δ)
     postfix = get_postfix(Δ, SP.ΔvariDescription, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax)
-    params = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
-    return timeEvolution_eigenmodes(Δ, params..., SP.initialState, SP.tspan, SP.dtmax, postfix, SP.save_individual_res)
-end
     
+    if all(SP.ηα .== 0) 
+        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+        eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = spectrum_basisMatrices(Δvari + tildeG)
+        return calc_timeEvolution_eigenmodes_noPh(Δ, tildeΩ, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, SP.initialState, SP.tspan, SP.dtmax, postfix, SP.save_individual_res)
+    else 
+        Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+        fullDrive = get_fullDriveVector(tildeΩ, tildeΩα)
+        fullCoupling = get_fullCouplingMatrix(Δvari, tildeG, tildeFα, tildeGα1, tildeGα2)
+        eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = spectrum_basisMatrices(fullCoupling)
+        return calc_timeEvolution_eigenmodes(Δ, fullDrive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, SP.initialState, SP.tspan, SP.dtmax, postfix, SP.save_individual_res)
+    end
+end
+
 
 """
 Scan time evolutions over the detuning, using the eigenmodes approach
 """
 function scan_timeEvolution_eigenmodes(SP)
-    if any(SP.ηα .!= 0) throw(ArgumentError("scan_timeEvolution_eigenmodes has only been implemented for the case of no phonons")) end
-    
     postfixes = get_postfix.(SP.Δ_range, SP.ΔvariDescription, Ref(SP.d), Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, Ref(SP.tspan), SP.dtmax)
-    params = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
-    return timeEvolution_eigenmodes.(SP.Δ_range, Ref.(params)..., Ref(SP.initialState), Ref(SP.tspan), SP.dtmax, postfixes, SP.save_individual_res)
+    
+    if all(SP.ηα .== 0) 
+        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+        eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = spectrum_basisMatrices(Δvari + tildeG)
+        return calc_timeEvolution_eigenmodes_noPh.(SP.Δ_range, Ref(tildeΩ), Ref(eigenEnergies), Ref(eigenModesMatrix), Ref(eigenModesMatrix_inv), Ref(SP.initialState), Ref(SP.tspan), SP.dtmax, postfixes, SP.save_individual_res)
+    else 
+        Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+        fullDrive = get_fullDriveVector(tildeΩ, tildeΩα)
+        fullCoupling = get_fullCouplingMatrix(Δvari, tildeG, tildeFα, tildeGα1, tildeGα2)
+        eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = spectrum_basisMatrices(fullCoupling)
+        return calc_timeEvolution_eigenmodes.(SP.Δ_range, Ref(fullDrive), Ref(eigenEnergies), Ref(eigenModesMatrix), Ref(eigenModesMatrix_inv), Ref(SP.initialState), Ref(SP.tspan), SP.dtmax, postfixes, SP.save_individual_res)
+    end
 end
 
 
@@ -734,9 +826,14 @@ using the eigenmodes approach
 function calc_transmission_eigenmodes(SP, Δ)
     if all(SP.ηα .== 0) 
         Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
-        eigenEnergies, eigenModes = eigbasis(Δvari + tildeG)
-        return transmission_eigenmodes(Δ, tildeΩ, eigenEnergies, eigenModes, SP.fiber.propagation_constant_derivative)
-    else throw(ArgumentError("calc_transmission_eigenmodes has only been implemented for the case of no phonons"))
+        eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = spectrum_basisMatrices(Δvari + tildeG)
+        return transmission_eigenmodes(Δ, tildeΩ, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, SP.fiber.propagation_constant_derivative)
+    else 
+        Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+        fullDrive = get_fullDriveVector(tildeΩ, tildeΩα)
+        fullCoupling = get_fullCouplingMatrix(Δvari, tildeG, tildeFα, tildeGα1, tildeGα2)
+        eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = spectrum_basisMatrices(fullCoupling)
+        return transmission_eigenmodes(Δ, fullDrive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, SP.fiber.propagation_constant_derivative)
     end
 end
 
@@ -746,15 +843,23 @@ Scan the transmission of light through the fiber in the chosen driving mode over
 using the eigenmodes approach
 """
 function scan_transmission_eigenmodes(SP)
-    if all(SP.ηα .== 0) 
+    if all(SP.ηα .== 0)
         Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
-        eigenEnergies, eigenModes = eigbasis(Δvari + tildeG)
-        return transmission_eigenmodes.(SP.Δ_range, Ref(tildeΩ), Ref(eigenEnergies), Ref(eigenModes), SP.fiber.propagation_constant_derivative)
-    else throw(ArgumentError("scan_transmission_eigenmodes has only been implemented for the case of no phonons"))
+        eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = spectrum_basisMatrices(Δvari + tildeG)
+        return transmission_eigenmodes.(SP.Δ_range, Ref(tildeΩ), Ref(eigenEnergies), Ref(eigenModesMatrix), Ref(eigenModesMatrix_inv), SP.fiber.propagation_constant_derivative)
+    else 
+        Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+        fullDrive = get_fullDriveVector(tildeΩ, tildeΩα)
+        fullCoupling = get_fullCouplingMatrix(Δvari, tildeG, tildeFα, tildeGα1, tildeGα2)
+        eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = spectrum_basisMatrices(fullCoupling)
+        return transmission_eigenmodes.(SP.Δ_range, Ref(fullDrive), Ref(eigenEnergies), Ref(eigenModesMatrix), Ref(eigenModesMatrix_inv), SP.fiber.propagation_constant_derivative)
     end
 end
 
 
+# ================================================
+#   Functions pertaining to the radiation E-field around the fiber
+# ================================================
 """
 Calculate the intensity of the radiated light (in the case of no phonons) 
 """
@@ -792,45 +897,5 @@ function calc_radiation_Efield(SP, σBα, r_field, approx_Grm_trans::Tuple=(true
     else
         return calc_radiation_Efield(σBα, SP.fiber, d, SP.ηα, r_field, SP.array, SP.save_individual_res, approx_Grm_trans)
     end
-end
-
-
-# ================================================
-#   Functions pertaining to the eigenmodes of the atomic array
-# ================================================
-"""
-Find the eigenvalues and -vectors of a coupling matrix (i.e. the collective energies and modes), 
-as well as the dominant k-vector (from a discrete Fourier transform) 
-pertaining to each of those eigenvectors
-"""
-function spectrum(Gnm, a)
-    eigvals, eigvecs = eigbasis(Gnm)
-    dFT = discFourierTransform.(eigvecs, a)
-    dominant_ks = [ks[argmax(abs.(evec_k))] for (ks, evec_k) in dFT]
-    return eigvals, eigvecs, dominant_ks
-end
-
-
-"""
-Find the eigenvalues and -vectors of a coupling matrix, as well as the eigenvectors' 
-Fourier transform evaluated at κ.
-
-Returns these sorted according to the absolute value of the FT eigenvectors.
-"""
-function spectrum_ordered(Gnm, a, κ)
-    eigvals, eigvecs = eigbasis(Gnm)
-    dFT_κ = discFourierTransform.(eigvecs, a, κ)
-    sorted_indices = sortperm(abs.(dFT_κ), rev=true)
-    return eigvals[sorted_indices], eigvecs[sorted_indices], dFT_κ[sorted_indices]
-end
-
-
-"""
-Calculate collective energies from eigen energies of a coupling matrix
-
-Shallow function, but allows for a good abstraction
-"""
-function collEnergies_from_eigenEnergies(eigenEnergies)
-    return -real(eigenEnergies), 2*imag(eigenEnergies)
 end
 
