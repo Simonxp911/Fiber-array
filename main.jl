@@ -1,4 +1,5 @@
 
+
 include("preamble.jl")
 
 
@@ -63,6 +64,9 @@ function define_SP_BerlinCS()
     # ηα = [0.01, 0.01, 0.01]
     # ηα = [0., 0., 0.]
     
+    # Whether phonons are excluded or not from the calculations
+    noPhonons = all(ηα .== 0)
+    
     # Set which kind of array to use ("1Dchain", "doubleChain", "randomZ")
     arrayType = "1Dchain"
     
@@ -81,7 +85,7 @@ function define_SP_BerlinCS()
     
     # Prepare initial state for time evolution, as well as description for postfix
     N_eff = Int(floor(N*ff))
-    initialState = groundstate(N_eff, all(ηα .== 0))
+    initialState = groundstate(N_eff, noPhonons)
     initialStateDescription = "gs"
     
     # Atomic dipole moment
@@ -114,7 +118,7 @@ function define_SP_BerlinCS()
                        ΔvariDependence, Δvari_args, ΔvariDescription,
                        tspan, dtmax, initialState, initialStateDescription,
                        arrayType, N, ρa0_ul, a0_ul, ff, pos_unc,
-                       να0_ul, ηα,
+                       να0_ul, ηα, noPhonons,
                        d, incField_wlf, save_individual_res, approx_Grm_trans,
                        z_range, x_range, y_fix) for _ in 1:n_inst]
     else
@@ -123,7 +127,7 @@ function define_SP_BerlinCS()
                       ΔvariDependence, Δvari_args, ΔvariDescription,
                       tspan, dtmax, initialState, initialStateDescription,
                       arrayType, N, ρa0_ul, a0_ul, ff, pos_unc,
-                      να0_ul, ηα,
+                      να0_ul, ηα, noPhonons,
                       d, incField_wlf, save_individual_res, approx_Grm_trans,
                       z_range, x_range, y_fix)
     end
@@ -387,11 +391,11 @@ end
 
 function plot_σBαTrajectories_σBαSS(SP)
     Δ = 0.0
-    σBα_SS = calc_σBα_steadyState(SP, Δ)
+    σBα_SS = calc_steadyState(SP, Δ)
     xTrajectories = calc_timeEvolution(SP, Δ)
     # xTrajectories = calc_timeEvolution_eigenmodes(SP, Δ)
     
-    if all(SP.ηα .== 0)
+    if SP.noPhonons
         times, σTrajectories = prep_times_σTrajectories(xTrajectories, SP.N)
         fig_σTrajectories_σSS(times, σTrajectories, σBα_SS)
     else
@@ -402,7 +406,7 @@ end
 
 
 function plot_transmission_vs_Δ(SP)
-    σBα_scan = scan_σBα_steadyState(SP)
+    σBα_scan = scan_steadyState(SP)
     t = calc_transmission.(Ref(SP), σBα_scan)
     # t = scan_transmission_eigenmodes(SP)
     
@@ -416,7 +420,7 @@ function plot_classDisorder_transmission_vs_Δ(SPs)
     if typeof(SPs) == SysPar throw(ArgumentError("plot_classDisorder_transmission_vs_Δ requires n_inst > 1")) end
     
     n_inst = length(SPs)
-    postfix = get_postfix(SPs[1].Δ_specs, SPs[1].ΔvariDescription, SPs[1].d, SPs[1].να, SPs[1].ηα, SPs[1].incField_wlf, n_inst, SPs[1].arrayDescription, SPs[1].fiber.postfix)
+    postfix = get_postfix_classDisorder_transmission(SPs[1].Δ_specs, SPs[1].ΔvariDescription, SPs[1].d, SPs[1].να, SPs[1].ηα, SPs[1].incField_wlf, n_inst, SPs[1].arrayDescription, SPs[1].fiber.postfix)
     filename = "T_phase" * postfix
     folder = "classDisorder_T_phase/"
     
@@ -425,7 +429,7 @@ function plot_classDisorder_transmission_vs_Δ(SPs)
     else
         ts = []
         for SP in SPs
-            σBα_scan = scan_σBα_steadyState(SP)
+            σBα_scan = scan_steadyState(SP)
             push!(ts, calc_transmission.(Ref(SP), σBα_scan))
         end
             
@@ -443,12 +447,12 @@ end
 function plot_steadyState_radiation_Efield(SP)
     Δ = -0.25
     zs = [site[3] for site in SP.array]
-    if all(SP.ηα .== 0) σBα_SS = calc_σBα_steadyState(SP, Δ); σ_SS = σBα_SS
-    else                σBα_SS = calc_σBα_steadyState(SP, Δ); σ_SS = σBα_SS[1]
+    if SP.noPhonons σBα_SS = calc_steadyState(SP, Δ); σ_SS = σBα_SS
+    else                σBα_SS = calc_steadyState(SP, Δ); σ_SS = σBα_SS[1]
     end
     ks, σ_SS_FT = discFourierTransform(σ_SS, SP.a, true, 1000)
     
-    E = calc_radiation_Efield.(Ref(SP), Ref(σBα_SS), SP.r_field)
+    E = calc_radiation_Efield.(Ref(SP), Ref(σBα_SS))
     intensity = norm.(E).^2
     
     titl = prep_state_title(SP, Δ)
@@ -458,8 +462,8 @@ end
 
 function plot_radiation_Efield(SP)
     Δ = 0.0
-    σ_SS = calc_σBα_steadyState(SP, Δ)
-    E = calc_radiation_Efield.(Ref(SP), Ref(σ_SS), SP.r_field)
+    σ_SS = calc_steadyState(SP, Δ)
+    E = calc_radiation_Efield.(Ref(SP), Ref(σ_SS))
     intensity = norm.(E).^2
     
     fig_radiation_Efield(SP.z_range, SP.x_range, intensity, SP.ρf, SP.array)
@@ -469,7 +473,7 @@ end
 function plot_GnmEigenModes(SP)
     zs = [site[3] for site in SP.array]
     
-    if all(SP.ηα .== 0)
+    if SP.noPhonons
         # Get coupling matrix and its spectrum
         Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
         eigenEnergies, eigen_σs, dominant_ks = spectrum_dominant_ks(Δvari + tildeG, SP.a)
@@ -485,7 +489,7 @@ function plot_GnmEigenModes(SP)
             collΔ, collΓ = collEnergies_from_eigenEnergies(eigenEnergy)
             if collΓ < 10^-2.7
             # if -7 < dom_k < -5
-                E = calc_radiation_Efield.(Ref(SP), Ref(eigen_σ), SP.r_field)
+                E = calc_radiation_Efield.(Ref(SP), Ref(eigen_σ))
                 intensity = norm.(E).^2
                 
                 titl = prep_GnmEigenModes_title(SP)
@@ -515,7 +519,7 @@ function plot_GnmEigenModes(SP)
             # collect(zip(eigen_σBαs, eigen_σs, eigen_σs_FT, eigen_diagBαs, eigen_diagBαs_FT, eigenEnergies))[1:30]
             collΔ, collΓ = collEnergies_from_eigenEnergies(eigenEnergy)
             if collΓ < 10^-2.7
-                E = calc_radiation_Efield.(Ref(SP), Ref(eigen_σBα), SP.r_field)
+                E = calc_radiation_Efield.(Ref(SP), Ref(eigen_σBα))
                 intensity = norm.(E).^2
                 
                 titl = prep_GnmEigenModes_title(SP)
@@ -536,7 +540,7 @@ end
 
 
 function plot_emissionPatternOfGnmeigenModes(SP)
-    if all(SP.ηα .== 0)
+    if SP.noPhonons
         Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
         eigenEnergies, eigen_σs = spectrum(Δvari + tildeG)
         eigen_σBαs = eigenModes
@@ -550,7 +554,7 @@ function plot_emissionPatternOfGnmeigenModes(SP)
     end
     
     for eigen_σBα in eigen_σBαs
-        E = calc_radiation_Efield.(Ref(SP), Ref(eigen_σBα), SP.r_field)
+        E = calc_radiation_Efield.(Ref(SP), Ref(eigen_σBα))
         intensity = norm.(E).^2
         fig_radiation_Efield(SP.z_range, SP.x_range, intensity, SP.ρf, SP.array)
     end
@@ -575,10 +579,10 @@ end
 
 
 function plot_lossWithGnmEigenEnergies(SP)
-    σBα_scan = scan_σBα_steadyState(SP)
+    σBα_scan = scan_steadyState(SP)
     t = calc_transmission.(Ref(SP), σBα_scan)
     
-    if all(SP.ηα .== 0)
+    if SP.noPhonons
         Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
         drive = tildeΩ
         fullCoupling = Δvari + tildeG
@@ -613,15 +617,17 @@ end
 # TODO list:
 
 # Clean up code: naming?, repeated structures, inconsistent structures
+# Clean up before moving to the cluster: comments, naming, split code
 
 
 # Get it to work on the cluster
     # Use MPI
-    # Clean up before moving to the cluster: comments, naming, split code
     # Systematically scan the effect of η and ff
         # Pick a value of Δ with T ~ 1 and phase ~ pi, and plot these things as a function of η and ff
         # ff is most interesting for experiment - could probably just keep the same η or only consider a few values (10 50 100 percent of their present values)
 
+        
+        
 # Implement plot_GnmEigenEnergies for the case of including phonons
     # Figure out how to order the eigenvalues of the fullCouplingMatrix
     # real part vs imag part?
@@ -660,7 +666,7 @@ end
     # Put in a struct and use as input for scan
     # To optimize calculation time when scanning
 
-# Use only zeroth order tildeFα in σBα_steadyState? Reduce to second order in eta in other ways (i.e. calculate for eta=0 and eta≠0 to extract exact dependencies)? Time evolution anyways also finds results that are effectively higher order
+# Use only zeroth order tildeFα in steadyState? Reduce to second order in eta in other ways (i.e. calculate for eta=0 and eta≠0 to extract exact dependencies)? Time evolution anyways also finds results that are effectively higher order
     
 # Update interface comments and make a description of notation/conventions somewhere
 

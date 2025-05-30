@@ -1,7 +1,7 @@
 
 
 """
-Prepare the atomic coherences for plotting (in the case of no phonons)
+Prepare the atomic coherences (in the case of no phonons)
 """
 function prep_times_σTrajectories(xTrajectories, N)
     times = xTrajectories[:, 1]
@@ -14,7 +14,7 @@ end
 
 
 """
-Prepare the atomic coherences and the atom-phonon correlations for plotting
+Prepare the atomic coherences and the atom-phonon correlations 
 """
 function prep_times_σBαTrajectories(xTrajectories, N)
     times = xTrajectories[:, 1]

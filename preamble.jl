@@ -1,4 +1,5 @@
 
+
 # ================================================
 #   Julia libraries
 # ================================================
@@ -59,7 +60,7 @@ struct Fiber
         q  = out_momentum(κ, frequency)
         s  = s_parameter(h, q, radius)
         C  = norm_constant(refractive_index, κ, h, q, s, radius)
-        postfix = get_postfix(radius, refractive_index, frequency)
+        postfix = get_postfix_Fiber(radius, refractive_index, frequency)
     
         return new(radius, refractive_index, frequency, κ, dκ, h, q, s, C, postfix)
     end
@@ -105,6 +106,7 @@ struct SysPar
     
     να::Vector{<:Real}                              # Trap frequencies, i.e. bare energies of phonons
     ηα::Vector{<:Real}                              # Lamb-Dicke parameters
+    noPhonons::Bool                                 # Whether phonons are excluded or not from the calculations
     
     d::Union{Vector{<:Number}, String}              # Dipole moment of atoms
     incField_wlf::Vector{Tuple{<:Number, Int, Int}} # Vector of (weight, l, f) tuples for defining the incoming driving field
@@ -128,7 +130,7 @@ struct SysPar
                     ΔvariDependence::String, Δvari_args::Union{Tuple, Nothing}, ΔvariDescription::String,
                     tspan::Tuple{Real, Real}, dtmax::Real, initialState::Vector, initialStateDescription::String,
                     arrayType::String, N::Int, ρa::Real, a::Real, ff::Real, pos_unc::Union{Real, Vector},
-                    να::Vector, ηα::Vector,
+                    να::Vector, ηα::Vector, noPhonons::Bool,
                     d::Union{Vector, String}, incField_wlf::Vector, save_individual_res::Bool, approx_Grm_trans::Tuple,
                     z_range::AbstractRange, x_range::AbstractRange, y_fix::Real)
 
@@ -143,7 +145,7 @@ struct SysPar
                    ΔvariDependence, Δvari_args, ΔvariDescription,
                    tspan, dtmax, initialState, initialStateDescription,
                    arrayType, N, ρa, a, ff, pos_unc, array, arrayDescription,
-                   να, ηα,
+                   να, ηα, noPhonons,
                    d, incField_wlf, save_individual_res, approx_Grm_trans,
                    z_range, x_range, y_fix, r_field)
     end
@@ -153,7 +155,7 @@ struct SysPar
                     ΔvariDependence::String, Δvari_args::Union{Tuple, Nothing}, ΔvariDescription::String,
                     tspan::Tuple{Real, Real}, dtmax::Real, initialState::Vector, initialStateDescription::String,
                     arrayType::String, N::Int, ρa::Real, a::Real,
-                    να::Vector, ηα::Vector,
+                    να::Vector, ηα::Vector, noPhonons::Bool,
                     d::Union{Vector, String}, incField_wlf::Vector, approx_Grm_trans::Tuple)
         
         fiber = Fiber(ρf, n, ω)
@@ -172,7 +174,7 @@ struct SysPar
                    ΔvariDependence, Δvari_args, ΔvariDescription,
                    tspan, dtmax, initialState, initialStateDescription,
                    arrayType, N, ρa, a, ff, pos_unc, array, arrayDescription,
-                   να, ηα,
+                   να, ηα, noPhonons,
                    d, incField_wlf, save_individual_res, approx_Grm_trans,
                    z_range, x_range, y_fix, r_field)
     end

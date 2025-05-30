@@ -114,6 +114,18 @@ end
 
 
 """
+Calculates the dipole moment which yields a chiral fiber setup
+"""
+function chiralDipoleMoment(fiber, ρa)
+    eρ, _, ez = guidedModeComps(fiber, ρa) 
+    return 1im*[ez, 0, -eρ]/sqrt(abs2(eρ) + abs2(ez))    
+end
+
+
+# ================================================
+#   Functions pertaining to guided modes of the fiber
+# ================================================
+"""
 Calculates the guided mode or its derivatives with
 l: transverse polarization index
 f: forward/backward index
@@ -211,6 +223,9 @@ function Ggm(fiber, r_field, r_source, derivOrder=(0, 0), α=1)
 end
 
 
+# ================================================
+#   Functions pertaining to radiation modes of the fiber
+# ================================================
 """
 Calculates the radiation modes or their derivatives 
 
@@ -345,6 +360,85 @@ end
 
 
 """
+Small wrapper for the calculation of the imaginary part of the transverse part of radiation mode 
+Green's function or its derivatives that exploits the Onsager reciprocity to simpilify calculations
+"""
+function Im_Grm_trans(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_individual_res=true, approx_Im_Grm_trans=false)
+    if approx_Im_Grm_trans return imag(G0(ω, r_field, r_source, derivOrder, α)) end
+    
+    if r_field[3] < r_source[3]
+        return transpose(Im_Grm_trans_(fiber, ω, r_source, r_field, reverse(derivOrder), α, save_individual_res))
+    else
+        return Im_Grm_trans_(fiber, ω, r_field, r_source, derivOrder, α, save_individual_res)
+    end
+end
+
+
+"""
+Calculates the imaginary part of the transverse part of radiation mode Green's function or its derivatives 
+
+Uses the normalization convention of Kien, Rauschenbeutel 2017
+"""
+function Im_Grm_trans_(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_individual_res=true, abstol=1e-4)
+    # The Green's function only depends on the difference in the z-coordinates, 
+    # so we save the calculation according to that value, rather than the individual z-coordinates
+    coords = ro.([r_field[1], r_field[2], r_source[1], r_source[2], r_field[3] - r_source[3]])
+    postfix = get_postfix_Im_Grm_trans(ω, coords, derivOrder, α, fiber.postfix)
+    filename = "IGrmt_" * postfix
+    folder = "Im_Grm_trans/"
+    
+    if isfile(saveDir * folder * filename * ".txt") return load_as_txt(saveDir * folder, filename) end
+    
+    # Set up the integrand and the integral domain
+    integrand(x, args) = Erm(fiber, ω, x, args..., r_field , derivOrder[1], α)*
+                         Erm(fiber, ω, x, args..., r_source, derivOrder[2], α)'
+    domain = (-ω + eps(1.0), ω - eps(1.0))
+    
+    # Perform the combined sum and integration
+    Im_Grm_trans = zeros(3, 3)
+    summand_m = ones(ComplexF64, 3, 3)
+    m = 0
+    while maximum(abs.(summand_m)) > abstol
+        summand_m .= 0
+        for l in (-1, 1)
+            args = (m, l)
+            prob = IntegralProblem(integrand, domain, args)
+            integral = Integrals.solve(prob, HCubatureJL())
+            summand_m += integral.u/(4*ω)
+            if m != 0
+                args = (-m, l)
+                prob = IntegralProblem(integrand, domain, args)
+                integral = Integrals.solve(prob, HCubatureJL())
+                summand_m += integral.u/(4*ω)
+            end
+        end
+        # summand_m is always real (after adding all combinations of l and (m, -m)), even though integral.u is not
+        Im_Grm_trans += real(summand_m)
+        m += 1
+    end
+    
+    if save_individual_res save_as_txt(Im_Grm_trans, saveDir * folder, filename) end
+    return Im_Grm_trans
+end
+
+
+"""
+Calculates the real part of the transverse part of radiation mode Green's function or its derivatives 
+"""
+function Re_Grm_trans(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, approx_Re_Grm_trans=false)
+    if approx_Re_Grm_trans
+        return real(G0_trans(ω, r_field, r_source, derivOrder, α))
+    else
+        # Calculate from imaginary part using Kramers-Kronig relation
+        throw(ArgumentError("The non-approximate calculation of real part of the transverse part of radiation mode Green's function or its derivatives in Re_Grm_trans has not been implemented"))
+    end
+end
+
+
+# ================================================
+#   Functions pertaining to vacuum Green's function
+# ================================================
+"""
 Calculates the vacuum Green's function or its derivatives 
 
 If the function is evaluated at the origin, r_field = r_source, where its real part is not defined,
@@ -438,93 +532,8 @@ function G0_trans(ω, r_field, r_source, derivOrder=(0, 0), α=1)
 end
 
 
-"""
-Small wrapper for the calculation of the imaginary part of the transverse part of radiation mode 
-Green's function or its derivatives that exploits the Onsager reciprocity to simpilify calculations
-"""
-function Im_Grm_trans(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_individual_res=true, approx_Im_Grm_trans=false)
-    if approx_Im_Grm_trans return imag(G0(ω, r_field, r_source, derivOrder, α)) end
-    
-    if r_field[3] < r_source[3]
-        return transpose(Im_Grm_trans_(fiber, ω, r_source, r_field, reverse(derivOrder), α, save_individual_res))
-    else
-        return Im_Grm_trans_(fiber, ω, r_field, r_source, derivOrder, α, save_individual_res)
-    end
-end
-
-
-"""
-Calculates the imaginary part of the transverse part of radiation mode Green's function or its derivatives 
-
-Uses the normalization convention of Kien, Rauschenbeutel 2017
-"""
-function Im_Grm_trans_(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_individual_res=true, abstol=1e-4)
-    # The Green's function only depends on the difference in the z-coordinates, 
-    # so we save the calculation according to that value, rather than the individual z-coordinates
-    coords = ro.([r_field[1], r_field[2], r_source[1], r_source[2], r_field[3] - r_source[3]])
-    postfix = get_postfix(ω, coords, derivOrder, α, fiber.postfix)
-    filename = "IGrmt_" * postfix
-    folder = "Im_Grm_trans/"
-    
-    if isfile(saveDir * folder * filename * ".txt") return load_as_txt(saveDir * folder, filename) end
-    
-    # Set up the integrand and the integral domain
-    integrand(x, args) = Erm(fiber, ω, x, args..., r_field , derivOrder[1], α)*
-                         Erm(fiber, ω, x, args..., r_source, derivOrder[2], α)'
-    domain = (-ω + eps(1.0), ω - eps(1.0))
-    
-    # Perform the combined sum and integration
-    Im_Grm_trans = zeros(3, 3)
-    summand_m = ones(ComplexF64, 3, 3)
-    m = 0
-    while maximum(abs.(summand_m)) > abstol
-        summand_m .= 0
-        for l in (-1, 1)
-            args = (m, l)
-            prob = IntegralProblem(integrand, domain, args)
-            integral = Integrals.solve(prob, HCubatureJL())
-            summand_m += integral.u/(4*ω)
-            if m != 0
-                args = (-m, l)
-                prob = IntegralProblem(integrand, domain, args)
-                integral = Integrals.solve(prob, HCubatureJL())
-                summand_m += integral.u/(4*ω)
-            end
-        end
-        # summand_m is always real (after adding all combinations of l and (m, -m)), even though integral.u is not
-        Im_Grm_trans += real(summand_m)
-        m += 1
-    end
-    
-    if save_individual_res save_as_txt(Im_Grm_trans, saveDir * folder, filename) end
-    return Im_Grm_trans
-end
-
-
-"""
-Calculates the real part of the transverse part of radiation mode Green's function or its derivatives 
-"""
-function Re_Grm_trans(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, approx_Re_Grm_trans=false)
-    if approx_Re_Grm_trans
-        return real(G0_trans(ω, r_field, r_source, derivOrder, α))
-    else
-        # Calculate from imaginary part using Kramers-Kronig relation
-        throw(ArgumentError("The non-approximate calculation of real part of the transverse part of radiation mode Green's function or its derivatives in Re_Grm_trans has not been implemented"))
-    end
-end
-
-
-"""
-Calculates the dipole moment which yields a chiral fiber setup
-"""
-function chiralDipoleMoment(fiber, ρa)
-    eρ, _, ez = guidedModeComps(fiber, ρa) 
-    return 1im*[ez, 0, -eρ]/sqrt(abs2(eρ) + abs2(ez))    
-end
-
-
 # ================================================
-#   Functions pertaining to atomic array
+#   Functions pertaining to atomic array itself
 # ================================================
 """
 Calculate a list of the atomic positions along the fiber,
@@ -665,7 +674,7 @@ end
 Implements the analytical solution for the steady state values of the atomic 
 degrees of freedom to first order in the driving (in the case of no phonons)
 """
-function σ_steadyState(Δ, Δvari, tildeΩ, tildeG)
+function steadyState(Δ, Δvari, tildeΩ, tildeG)
     return -(Δ*I + Δvari + tildeG)\tildeΩ
 end
 
@@ -674,7 +683,7 @@ end
 Implements the analytical solution for the steady state values of the atomic and phononic 
 degrees of freedom to first order in the driving and to second order in the Lamb-Dicke parameter.
 """
-function σBα_steadyState(Δ, Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2)
+function steadyState(Δ, Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2)
     tildeFα_inv = inv.(Ref(Δ*I + Δvari) .+ tildeFα)
     
     # Calculate the coefficient matrices
@@ -787,6 +796,9 @@ function transmission_eigenmodes_weights_resonances(Δ_range, drive, eigenEnergi
 end
 
 
+# ================================================
+#   Functions pertaining to the radiated light
+# ================================================
 """
 Calculate the radiated E-field, assuming no incoming radiation field
 (in the case of no phonons)
@@ -807,7 +819,7 @@ end
 
 
 # ================================================
-#   Functions pertaining to the eigenmodes of the atomic array
+#   Functions pertaining to the eigenmodes of coupling matrix
 # ================================================
 """
 Find the eigenvalues and -vectors of a coupling matrix (i.e. the collective energies and modes)
@@ -849,7 +861,6 @@ function spectrum_dominant_ks_basisMatrices(G, a)
     eigenEnergies, eigenModes, dominant_ks = spectrum_dominant_ks(G, a)
     return eigenEnergies, dominant_ks, vectorOfCols2Matrix(eigenModes), inv(vectorOfCols2Matrix(eigenModes))
 end
-
 
 
 """

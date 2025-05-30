@@ -1,4 +1,5 @@
 
+
 """
 Plot the propagation constant, κ, as a function of frequency, ω, 
 for a specific value of the fiber radius, ρf, and the index of refraction, n.

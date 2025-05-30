@@ -3,7 +3,7 @@
 """
 For calculation of propagation constant
 """
-function get_postfix(ω_specs::Tuple{Number, Number, Number}, ρf_specs::Tuple{Number, Number, Number}, n_specs::Tuple{Number, Number, Number})
+function get_postfix_scan_propConst(ω_specs, ρf_specs, n_specs)
     postfix_components = [
         "omega_$(join((ro(ω_specs[1]), ro(ω_specs[2]), ω_specs[3]), ","))",
         "rhof_$(join((ro(ρf_specs[1]), ro(ρf_specs[2]), ρf_specs[3]), ","))",
@@ -16,7 +16,7 @@ end
 """
 For Fiber struct postfix
 """
-function get_postfix(ρf::Number, n::Number, ω::Number)
+function get_postfix_Fiber(ρf, n, ω)
     postfix_components = [
         "rhof_$(ro(ρf))",
         "n_$(ro(n))",
@@ -29,7 +29,7 @@ end
 """
 For calculation of steady state σ and Bα
 """
-function get_postfix(Δ, ΔvariDescription, d, να, ηα, incField_wlf, arrayDescription, fiberPostfix)
+function get_postfix_steadyState(Δ, ΔvariDescription, d, να, ηα, incField_wlf, arrayDescription, fiberPostfix)
     if typeof(d) == String
         dipole_moment_string = "d_$d"
     else
@@ -53,7 +53,7 @@ end
 """
 For calculation of transmission over classically disordered arrays
 """
-function get_postfix(Δ_specs, ΔvariDescription, d, να, ηα, incField_wlf, n_inst, arrayDescription, fiberPostfix)
+function get_postfix_classDisorder_transmission(Δ_specs, ΔvariDescription, d, να, ηα, incField_wlf, n_inst, arrayDescription, fiberPostfix)
     if typeof(d) == String
         dipole_moment_string = "d_$d"
     else
@@ -78,7 +78,7 @@ end
 """
 For time evolution
 """
-function get_postfix(Δ, ΔvariDescription, d, να, ηα, incField_wlf, arrayDescription, fiberPostfix, initialStateDescription, tspan, dtmax)
+function get_postfix_timeEvolution(Δ, ΔvariDescription, d, να, ηα, incField_wlf, arrayDescription, fiberPostfix, initialStateDescription, tspan, dtmax)
     if typeof(d) == String
         dipole_moment_string = "d_$d"
     else
@@ -105,7 +105,7 @@ end
 """
 For calculation of the imaginary part of the transverse part of radiation mode Green's function or its derivatives 
 """
-function get_postfix(ω, coords, derivOrder, α, fiberPostfix)
+function get_postfixIm_Grm_trans(ω, coords, derivOrder, α, fiberPostfix)
     postfix_components = [
         "omega_$(ro(ω))",
         "coords_$(join(ro.(coords), ","))",

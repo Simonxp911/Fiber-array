@@ -1,4 +1,8 @@
 
+
+# ================================================
+#   Mathematical functions
+# ================================================
 """
 Calculate the polylogarithm of order s evaluated at z.
 
@@ -31,6 +35,98 @@ end
 
 
 """
+Derivative of the Bessel functions of the first kind, J, of order n evaluated at x
+"""
+function dbesselj(derivOrder, n, x)
+    return sum([(-1)^i*binomial(derivOrder, i)*besselj(n - (derivOrder - 2*i), x) for i in 0:derivOrder])/2^derivOrder
+end
+
+
+"""
+Derivative of the modified Bessel functions of the second kind, K, of order n evaluated at x
+"""
+function dbesselk(derivOrder, n, x)
+    return (-1)^derivOrder*sum([binomial(derivOrder, i)*besselk(n - (derivOrder - 2*i), x) for i in 0:derivOrder])/2^derivOrder
+end
+
+
+"""
+Derivative of the Hankel functions H of the j'th kind of order n evaluated at x
+"""
+function dbesselh(derivOrder, n, j, x)
+    return sum([(-1)^i*binomial(derivOrder, i)*besselh(n - (derivOrder - 2*i), j, x) for i in 0:derivOrder])/2^derivOrder
+end
+
+
+"""
+Derivative of the spherical Hankel functions h of the j'th kind of order n evaluated at x
+"""
+function dbesselsphh(derivOrder, n, j, x)
+    if !(derivOrder isa Integer && derivOrder >= 0)
+        throw(ArgumentError("The order of differentiation derivOrder (= $derivOrder) take a non-negative integer value in dbesselsphh"))
+    end
+    
+    if derivOrder == 0
+        if j == 1
+            return sphericalbesselj(n, x) + 1im*sphericalbessely(n, x)
+        elseif j == 2
+            return sphericalbesselj(n, x) - 1im*sphericalbessely(n, x)
+        else
+            throw(ArgumentError("The 'kind'-index j (= $j) must take values 1 or 2 in dbesselsphh"))
+        end
+    else
+        return (n*dbesselsphh(derivOrder - 1, n - 1, j, x) - (n + 1)*dbesselsphh(derivOrder - 1, n + 1, j, x))/(2*n + 1)
+    end
+end
+
+
+"""
+Take a vector in Cartesian coordinates (x, y, z) and return it in cylindrical coordinates (ρ, ϕ, z)
+"""
+function cylCoordinates(r)
+    return sqrt(r[1]^2 + r[2]^2), atan(r[2], r[1]), r[3]
+end
+
+
+"""
+Take a position vector in Cartesian coordinates (x, y, z) and return the cylindrical unit vectors at that point (ρ_unit, ϕ_unit, z_unit)
+"""
+function cylUnitVectors(r)
+    ρ_unit = [r[1], r[2], 0]/sqrt(r[1]^2 + r[2]^2)
+    ϕ_unit = [-r[2], r[1], 0]/sqrt(r[1]^2 + r[2]^2)
+    z_unit = [0, 0, 1]
+    # ρ_unit = SVector{3}([r[1], r[2], 0]/sqrt(r[1]^2 + r[2]^2))
+    # ϕ_unit = SVector{3}([-r[2], r[1], 0]/sqrt(r[1]^2 + r[2]^2))
+    # z_unit = SVector{3}([0, 0, 1])
+    return ρ_unit, ϕ_unit, z_unit
+end
+
+
+"""
+Derivatives of the dyad rhat*rhat'
+"""
+function drhatrhat(rvec, derivOrder, α)
+    # Set up length and direction of rvec, as well as the coordinate with respect to which we are deriving and its corresponding unit vector
+    r     = norm(rvec)
+    rhat  = rvec/r
+    αcoor = rvec[α]
+    αhat  = zeros(3); αhat[α] = 1
+    
+    # Calculate derivatives of rhat (starting with the zeroth order derivative)
+    drhat = [rhat]
+    if derivOrder >= 1 push!(drhat, (αhat - αcoor/r*rhat)/r) end
+    if derivOrder >= 2 push!(drhat, ((3*αcoor^2/r^2 - 1)*rhat - 2*αcoor/r*αhat)/r^2) end
+    if derivOrder >= 3 throw(ArgumentError("drr is not implemented for derivOrder > 2")) end
+    
+    # Put together the derivative of rhat*rhat'
+    return sum([binomial(derivOrder, i)*drhat[i+1]*drhat[derivOrder - i + 1]' for i in 0:derivOrder])
+end
+
+
+# ================================================
+#   Functions pertaining to array manipulation
+# ================================================
+"""
 Take a matrix M and return its diagonal as a vector
 """
 function di(M)
@@ -54,6 +150,42 @@ function Diag(M)
 end
 
 
+"""
+Return a vector that consists of the concatenated columns of A
+"""
+function flatten(A)
+    return reduce(vcat, A)
+end
+
+
+"""
+Remove singleton dimensions from an array
+"""
+function squeeze(A::AbstractArray)
+    singleton_dims = tuple((d for d in 1:ndims(A) if size(A, d) == 1)...)
+    return dropdims(A, dims=singleton_dims)
+end
+
+
+"""
+Returns a matrix whose rows are given by the entries of the given vector
+"""
+function vectorOfRows2Matrix(x)
+    return Matrix(transpose(reduce(hcat, x)))
+end
+
+
+"""
+Returns a matrix whose columns are given by the entries of the given vector
+"""
+function vectorOfCols2Matrix(x)
+    return reduce(hcat, x)
+end
+
+
+# ================================================
+#   Functions pertaining to how the dynamical variables are stored
+# ================================================
 """
 Prepare an empty x-vector (i.e. all entries are zero), for the case of no phonons
 """
@@ -205,109 +337,24 @@ function unpack_σBαFromσBαVec(σBαVec)
 end
 
 
+# ================================================
+#   Functions pertaining to string labels and descriptions
+# ================================================
 """
-Return a vector that consists of the concatenated columns of A
+A nice way to format complex numbers in strings
 """
-function flatten(A)
-    return reduce(vcat, A)
-end
-
-
-"""
-Remove singleton dimensions from an array
-"""
-function squeeze(A::AbstractArray)
-    singleton_dims = tuple((d for d in 1:ndims(A) if size(A, d) == 1)...)
-    return dropdims(A, dims=singleton_dims)
-end
-
-
-"""
-Take a vector in Cartesian coordinates (x, y, z) and return it in cylindrical coordinates (ρ, ϕ, z)
-"""
-function cylCoordinates(r)
-    return sqrt(r[1]^2 + r[2]^2), atan(r[2], r[1]), r[3]
-end
-
-
-"""
-Take a position vector in Cartesian coordinates (x, y, z) and return the cylindrical unit vectors at that point (ρ_unit, ϕ_unit, z_unit)
-"""
-function cylUnitVectors(r)
-    ρ_unit = [r[1], r[2], 0]/sqrt(r[1]^2 + r[2]^2)
-    ϕ_unit = [-r[2], r[1], 0]/sqrt(r[1]^2 + r[2]^2)
-    z_unit = [0, 0, 1]
-    # ρ_unit = SVector{3}([r[1], r[2], 0]/sqrt(r[1]^2 + r[2]^2))
-    # ϕ_unit = SVector{3}([-r[2], r[1], 0]/sqrt(r[1]^2 + r[2]^2))
-    # z_unit = SVector{3}([0, 0, 1])
-    return ρ_unit, ϕ_unit, z_unit
-end
-
-
-"""
-Derivative of the Bessel functions of the first kind, J, of order n evaluated at x
-"""
-function dbesselj(derivOrder, n, x)
-    return sum([(-1)^i*binomial(derivOrder, i)*besselj(n - (derivOrder - 2*i), x) for i in 0:derivOrder])/2^derivOrder
-end
-
-
-"""
-Derivative of the modified Bessel functions of the second kind, K, of order n evaluated at x
-"""
-function dbesselk(derivOrder, n, x)
-    return (-1)^derivOrder*sum([binomial(derivOrder, i)*besselk(n - (derivOrder - 2*i), x) for i in 0:derivOrder])/2^derivOrder
-end
-
-
-"""
-Derivative of the Hankel functions H of the j'th kind of order n evaluated at x
-"""
-function dbesselh(derivOrder, n, j, x)
-    return sum([(-1)^i*binomial(derivOrder, i)*besselh(n - (derivOrder - 2*i), j, x) for i in 0:derivOrder])/2^derivOrder
-end
-
-
-"""
-Derivative of the spherical Hankel functions h of the j'th kind of order n evaluated at x
-"""
-function dbesselsphh(derivOrder, n, j, x)
-    if !(derivOrder isa Integer && derivOrder >= 0)
-        throw(ArgumentError("The order of differentiation derivOrder (= $derivOrder) take a non-negative integer value in dbesselsphh"))
-    end
+function format_Complex_to_String(z)
+    # Return a zero if z = 0
+    if z == 0 return "0" end
     
-    if derivOrder == 0
-        if j == 1
-            return sphericalbesselj(n, x) + 1im*sphericalbessely(n, x)
-        elseif j == 2
-            return sphericalbesselj(n, x) - 1im*sphericalbessely(n, x)
-        else
-            throw(ArgumentError("The 'kind'-index j (= $j) must take values 1 or 2 in dbesselsphh"))
-        end
-    else
-        return (n*dbesselsphh(derivOrder - 1, n - 1, j, x) - (n + 1)*dbesselsphh(derivOrder - 1, n + 1, j, x))/(2*n + 1)
-    end
-end
-
-
-"""
-Derivatives of the dyad rhat*rhat'
-"""
-function drhatrhat(rvec, derivOrder, α)
-    # Set up length and direction of rvec, as well as the coordinate with respect to which we are deriving and its corresponding unit vector
-    r     = norm(rvec)
-    rhat  = rvec/r
-    αcoor = rvec[α]
-    αhat  = zeros(3); αhat[α] = 1
+    # Format the real and imaginary part
+    r_string = real(z) != 0 ? @sprintf("%.3f", real(z))        : ""
+    i_string = imag(z) != 0 ? @sprintf("%.3f", imag(z)) * "im" : ""
     
-    # Calculate derivatives of rhat (starting with the zeroth order derivative)
-    drhat = [rhat]
-    if derivOrder >= 1 push!(drhat, (αhat - αcoor/r*rhat)/r) end
-    if derivOrder >= 2 push!(drhat, ((3*αcoor^2/r^2 - 1)*rhat - 2*αcoor/r*αhat)/r^2) end
-    if derivOrder >= 3 throw(ArgumentError("drr is not implemented for derivOrder > 2")) end
+    # If the imaginary part is negative is has a sign, otherwise we add a plus, but only if the real part is nonzero
+    if real(z) != 0 && imag(z) > 0 i_string = "+" * i_string end
     
-    # Put together the derivative of rhat*rhat'
-    return sum([binomial(derivOrder, i)*drhat[i+1]*drhat[derivOrder - i + 1]' for i in 0:derivOrder])
+    return r_string * i_string
 end
 
 
@@ -345,40 +392,9 @@ function ΔvariDescript(ΔvariDependence, Δvari_args)
 end
 
 
-"""
-A nice way to format complex numbers in strings
-"""
-function format_Complex_to_String(z)
-    # Return a zero if z = 0
-    if z == 0 return "0" end
-    
-    # Format the real and imaginary part
-    r_string = real(z) != 0 ? @sprintf("%.3f", real(z))        : ""
-    i_string = imag(z) != 0 ? @sprintf("%.3f", imag(z)) * "im" : ""
-    
-    # If the imaginary part is negative is has a sign, otherwise we add a plus, but only if the real part is nonzero
-    if real(z) != 0 && imag(z) > 0 i_string = "+" * i_string end
-    
-    return r_string * i_string
-end
-
-
-"""
-Returns a matrix whose rows are given by the entries of the given vector
-"""
-function vectorOfRows2Matrix(x)
-    return Matrix(transpose(reduce(hcat, x)))
-end
-
-
-"""
-Returns a matrix whose columns are given by the entries of the given vector
-"""
-function vectorOfCols2Matrix(x)
-    return reduce(hcat, x)
-end
-
-
+# ================================================
+#   Functions pertaining to Fourier transformation
+# ================================================
 """
 Calculate the discrete Fourier transform of a function (represented by an N-vector v) 
 on a 1D chain with lattice spacing a and length N, assumed to be on the form (0:N-1)*a. 
@@ -437,3 +453,4 @@ function discFourierTransform(M::Matrix, a::Real, kx::Real, ky::Real)
     N = size(M)[1]
     return sum( M.*(exp.(-1im*kx*(0:N-1)*a)*exp.(-1im*ky*(0:N-1)'*a)) )/N
 end
+
