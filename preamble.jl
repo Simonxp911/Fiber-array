@@ -96,19 +96,22 @@ struct SysPar
     initialStateDescription::String                 # Description of initial state for postfix
     
     arrayType::String                               # String defining the type of array used
-    N::Int                                          # Number of atoms in array
+    N_sites::Int                                    # Number of sites in array (which may or may not hold an atom)
     ρa::Union{Real, Nothing}                        # Radial coordinate of regular array of atoms (set to nothing if array is not regular)
     a::Union{Real, Nothing}                         # Lattice spacing of regular array of atoms (set to nothing if array is not regular)
     ff::Union{Real, Nothing}                        # Filling fraction of the array
     pos_unc::Union{Real, Vector, Nothing}           # Classical positional uncertainty
-    array::Vector{Vector{<:Real}}                   # Atomic array (by default initialized using the above specifications)
+    n_inst::Int                                     # Number of instantiations of the array, for calculations involving random instantiations
+    array::Vector{Vector}                           # Atomic array or list of different atomic array instantiations (by default initialized using the above specifications)
     arrayDescription::String                        # Description of the atomic array for postfix
+    N::Int                                          # Number of atoms in array
     
     να::Vector{<:Real}                              # Trap frequencies, i.e. bare energies of phonons
     ηα::Vector{<:Real}                              # Lamb-Dicke parameters
     noPhonons::Bool                                 # Whether phonons are excluded or not from the calculations
     
-    d::Union{Vector{<:Number}, String}              # Dipole moment of atoms
+    d::Union{Vector, String}                # Dipole moment of atoms (one for each atom)
+    dDescription::String                            # Description of the dipole moment for postfix
     incField_wlf::Vector{Tuple{<:Number, Int, Int}} # Vector of (weight, l, f) tuples for defining the incoming driving field
     
     save_individual_res::Bool                       # Whether to save individual results (Im_Grm_trans, steady states, time evolutions)
@@ -122,32 +125,30 @@ struct SysPar
     z_range::Union{AbstractRange, Nothing}          # Range of z values for calculating the radiation E-field
     x_range::Union{AbstractRange, Nothing}          # Range of x values for calculating the radiation E-field
     y_fix::Union{Real, Nothing}                                     # Fixed value of y for calculating the radiation E-field
-    r_field::Union{Matrix{Vector{<:Real}}, Nothing} # Range of positions for calculating the radiation E-field
+    r_fields::Union{Matrix{Vector{<:Real}}, Nothing} # Range of positions for calculating the radiation E-field
     
     
     function SysPar(ρf::Real, n::Real, ω::Real,
                     Δ_specs::Tuple{Real, Real, Int},
                     ΔvariDependence::String, Δvari_args::Union{Tuple, Nothing}, ΔvariDescription::String,
                     tspan::Tuple{Real, Real}, dtmax::Real, initialState::Vector, initialStateDescription::String,
-                    arrayType::String, N::Int, ρa::Real, a::Real, ff::Real, pos_unc::Union{Real, Vector},
+                    arrayType::String, N_sites::Int, ρa::Real, a::Real, ff::Real, pos_unc::Union{Real, Vector}, n_inst::Int, array::Vector, arrayDescription::String, N::Int,
                     να::Vector, ηα::Vector, noPhonons::Bool,
-                    d::Union{Vector, String}, incField_wlf::Vector, save_individual_res::Bool, approx_Grm_trans::Tuple,
+                    d::Union{Vector, String}, dDescription::String, incField_wlf::Vector, save_individual_res::Bool, approx_Grm_trans::Tuple,
                     z_range::AbstractRange, x_range::AbstractRange, y_fix::Real)
 
         fiber = Fiber(ρf, n, ω)
         Δ_range = range(Δ_specs...)
-        array, arrayDescription = get_array(arrayType, N, ρa, a, ff, pos_unc)
-        if ff != 1 N = length(array) end
-        r_field = [[x, y_fix, z] for z in z_range, x in x_range]
+        r_fields = [[x, y_fix, z] for z in z_range, x in x_range]
         
         return new(ρf, n, ω, fiber,
                    Δ_specs, Δ_range,
                    ΔvariDependence, Δvari_args, ΔvariDescription,
                    tspan, dtmax, initialState, initialStateDescription,
-                   arrayType, N, ρa, a, ff, pos_unc, array, arrayDescription,
+                   arrayType, N_sites, ρa, a, ff, n_inst, pos_unc, array, arrayDescription, N,
                    να, ηα, noPhonons,
-                   d, incField_wlf, save_individual_res, approx_Grm_trans,
-                   z_range, x_range, y_fix, r_field)
+                   d, dDescription, incField_wlf, save_individual_res, approx_Grm_trans,
+                   z_range, x_range, y_fix, r_fields)
     end
     
     function SysPar(ρf::Real, n::Real, ω::Real,
@@ -156,27 +157,29 @@ struct SysPar
                     tspan::Tuple{Real, Real}, dtmax::Real, initialState::Vector, initialStateDescription::String,
                     arrayType::String, N::Int, ρa::Real, a::Real,
                     να::Vector, ηα::Vector, noPhonons::Bool,
-                    d::Union{Vector, String}, incField_wlf::Vector, approx_Grm_trans::Tuple)
+                    d::Union{Vector, String}, dDescription::String, incField_wlf::Vector, approx_Grm_trans::Tuple)
         
         fiber = Fiber(ρf, n, ω)
         Δ_range = range(Δ_specs...)
         ff = 1.0
         pos_unc = 0.0
-        array, arrayDescription = get_array(arrayType, N, ρa, a, ff, pos_unc)
+        n_inst = 1
+        array = get_array(arrayType, N, ρa, a, ff, pos_unc)
+        arrayDescription = arrayDescript(arrayType, N_sites, ρa, a, ff, pos_unc)
         save_individual_res = true
         z_range = nothing
         x_range = nothing
         y_fix   = nothing
-        r_field = nothing
+        r_fields = nothing
 
         return new(ρf, n, ω, fiber,
                    Δ_specs, Δ_range,
                    ΔvariDependence, Δvari_args, ΔvariDescription,
                    tspan, dtmax, initialState, initialStateDescription,
-                   arrayType, N, ρa, a, ff, pos_unc, array, arrayDescription,
+                   arrayType, N, ρa, a, ff, pos_unc, n_inst, array, arrayDescription, N,
                    να, ηα, noPhonons,
-                   d, incField_wlf, save_individual_res, approx_Grm_trans,
-                   z_range, x_range, y_fix, r_field)
+                   d, dDescription, incField_wlf, save_individual_res, approx_Grm_trans,
+                   z_range, x_range, y_fix, r_fields)
     end
 end
 
@@ -212,8 +215,7 @@ function Base.show(io::IO, SP::SysPar)
     println(io, "Trap frequencies, Lamb-Dicke parameters, and atomic dipole moment")
     println(io, "να: ", SP.να)
     println(io, "ηα: ", SP.ηα)
-    if typeof(SP.d) == String println(io, "d: ", SP.d)
-    else println(io, "d:  [", join(format_Complex_to_String.(SP.d), ", "), "]") end
+    println(io, "d: ", dDescription)
     println(io, "")
     
     println(io, "Incoming field described in terms of weights, polarization indices, and direction indices")

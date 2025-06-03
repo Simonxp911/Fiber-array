@@ -29,17 +29,11 @@ end
 """
 For calculation of steady state σ and Bα
 """
-function get_postfix_steadyState(Δ, ΔvariDescription, d, να, ηα, incField_wlf, arrayDescription, fiberPostfix)
-    if typeof(d) == String
-        dipole_moment_string = "d_$d"
-    else
-        dipole_moment_string = "d_$(join(format_Complex_to_String.(d), ","))"
-    end
-    
+function get_postfix_steadyState(Δ, ΔvariDescription, dDescription, να, ηα, incField_wlf, arrayDescription, fiberPostfix)
     postfix_components = [
         "Delta_$(ro(Δ))",
         ΔvariDescription,
-        dipole_moment_string,
+        dDescription,
         "trapFreqs_$(join(ro.(να), ","))",
         "LamDic_$(join(ro.(ηα), ","))",
         "wlf_$("[" * join(["(" * join([format_Complex_to_String(wlf[1]), wlf[2], wlf[3]], ",") * ")" for wlf in incField_wlf], ",") * "]")",
@@ -53,17 +47,11 @@ end
 """
 For calculation of transmission over classically disordered arrays
 """
-function get_postfix_classDisorder_transmission(Δ_specs, ΔvariDescription, d, να, ηα, incField_wlf, n_inst, arrayDescription, fiberPostfix)
-    if typeof(d) == String
-        dipole_moment_string = "d_$d"
-    else
-        dipole_moment_string = "d_$(join(format_Complex_to_String.(d), ","))"
-    end
-    
+function get_postfix_classDisorder_transmission(Δ_specs, ΔvariDescription, dDescription, να, ηα, incField_wlf, n_inst, arrayDescription, fiberPostfix)
     postfix_components = [
         "Delta_$(join((ro(Δ_specs[1]), ro(Δ_specs[2]), Δ_specs[3]), ","))",
         ΔvariDescription,
-        dipole_moment_string,
+        dDescription,
         "trapFreqs_$(join(ro.(να), ","))",
         "LamDic_$(join(ro.(ηα), ","))",
         "wlf_$("[" * join(["(" * join([format_Complex_to_String(wlf[1]), wlf[2], wlf[3]], ",") * ")" for wlf in incField_wlf], ",") * "]")",
@@ -78,17 +66,11 @@ end
 """
 For time evolution
 """
-function get_postfix_timeEvolution(Δ, ΔvariDescription, d, να, ηα, incField_wlf, arrayDescription, fiberPostfix, initialStateDescription, tspan, dtmax)
-    if typeof(d) == String
-        dipole_moment_string = "d_$d"
-    else
-        dipole_moment_string = "d_$(join(format_Complex_to_String.(d), ","))"
-    end
-    
+function get_postfix_timeEvolution(Δ, ΔvariDescription, dDescription, να, ηα, incField_wlf, arrayDescription, fiberPostfix, initialStateDescription, tspan, dtmax)
     postfix_components = [
         "Delta_$(ro(Δ))",
         ΔvariDescription,
-        dipole_moment_string,
+        dDescription,
         "trapFreqs_$(join(ro.(να), ","))",
         "LamDic_$(join(ro.(ηα), ","))",
         "wlf_$("[" * join(["(" * join([format_Complex_to_String(wlf[1]), wlf[2], wlf[3]], ",") * ")" for wlf in incField_wlf], ",") * "]")",
@@ -105,7 +87,7 @@ end
 """
 For calculation of the imaginary part of the transverse part of radiation mode Green's function or its derivatives 
 """
-function get_postfixIm_Grm_trans(ω, coords, derivOrder, α, fiberPostfix)
+function get_postfix_Im_Grm_trans(ω, coords, derivOrder, α, fiberPostfix)
     postfix_components = [
         "omega_$(ro(ω))",
         "coords_$(join(ro.(coords), ","))",

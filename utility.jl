@@ -369,11 +369,11 @@ end
 """
 arrayDescription for the arrays given by get_array()
 """
-function arrayDescript(N, ρa, a, ff, pos_unc)
+function arrayDescript(arrayType, N, ρa, a, ff, pos_unc)
     if pos_unc isa Number
-        return "N_$(N)_rhoa_$(ro(ρa))_a_$(ro(a))_ff_$(ro(ff))_pu_$(ro(pos_unc))"
+        return arrayType * "_N_$(N)_rhoa_$(ro(ρa))_a_$(ro(a))_ff_$(ro(ff))_pu_$(ro(pos_unc))"
     else
-        return "N_$(N)_rhoa_$(ro(ρa))_a_$(ro(a))_ff_$(ro(ff))_pu_$(join(ro.(pos_unc), ","))"
+        return arrayType * "_N_$(N)_rhoa_$(ro(ρa))_a_$(ro(a))_ff_$(ro(ff))_pu_$(join(ro.(pos_unc), ","))"
     end
 end
 

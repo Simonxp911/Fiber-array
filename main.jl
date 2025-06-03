@@ -50,28 +50,28 @@ function define_SP_BerlinCS()
     να0_ul = να0/γ0 #unitless version of να0
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-0.5, 0.5, 300)
+    Δ_specs = (-0.5, 0.5, 100)
     
     # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
-    ΔvariDependence = "flat"
+    ΔvariDependence = "Gaussian"
     Δvari_args = -3, 2*a0_ul
     ΔvariDescription = ΔvariDescript(ΔvariDependence, Δvari_args)
     
     # Lamb-Dicke parameters
     # ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
     # ηα = ηα0 .* [0.1, 0.2, 0.1]
-    ηα = ηα0 * 0.1
+    ηα = ηα0 * 0.4
     # ηα = [0.01, 0.01, 0.01]
-    # ηα = [0., 0., 0.]
+    ηα = [0., 0., 0.]
     
     # Whether phonons are excluded or not from the calculations
     noPhonons = all(ηα .== 0)
     
     # Set which kind of array to use ("1Dchain", "doubleChain", "randomZ")
-    arrayType = "1Dchain"
+    arrayType = "doubleChain"
     
-    # Set array specs and generate array, as well as description for postfix
-    N = 20
+    # Set number of atomic sites 
+    N_sites = 25
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
@@ -79,22 +79,25 @@ function define_SP_BerlinCS()
     # pos_unc = any(ηα .!= 0) ? 0.0 : ηα0/ωa * 0.4
     n_inst  = any(ηα .!= 0) ?   1 : 1
     
+    # Generate the array, its description, and the number of atoms
+    array, arrayDescription, N = get_array(arrayType, N_sites, ρa0_ul, a0_ul, ff, pos_unc, n_inst)
+    
     # Time spand and maximum time step allowed in time evolution
-    tspan = (0, 10)
+    tspan = (0, 100)
     dtmax = 0.01
     
     # Prepare initial state for time evolution, as well as description for postfix
-    N_eff = Int(floor(N*ff))
-    initialState = groundstate(N_eff, noPhonons)
+    initialState = groundstate(N, noPhonons)
     initialStateDescription = "gs"
     
     # Atomic dipole moment
-    # d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul)
-    d = "chiral"
+    d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul, array)
+    # d = "chiral"
+    dDescription = "chiral"
     
     # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
-    # incField_wlf = [(1, 1, 1), (1, -1, 1)]
-    incField_wlf = []
+    incField_wlf = [(1, 1, 1), (1, -1, 1)]
+    # incField_wlf = []
     
     # Whether to approximate transverse part of radiation GF (real part and imaginary part respectively, usually (true, false))
     approx_Grm_trans = (true, false)
@@ -103,8 +106,8 @@ function define_SP_BerlinCS()
     save_individual_res = n_inst == 1 && ff == 1 && pos_unc == 0
     # save_individual_res = pos_unc == 0
     
-    # Ranges of z and x values to define r_field for calculating the radiated E-field
-    arrayL = (N - 1)*a0_ul
+    # Ranges of z and x values to define r_fields for calculating the radiated E-field
+    arrayL = (N_sites - 1)*a0_ul
     # z_range = range(-0.5*arrayL, 1.5*arrayL, 60)
     # x_range = range(ρa0_ul - 0.3*arrayL, ρa0_ul + 0.3*arrayL, 60)
     z_range = range(-10, arrayL + 10, 60)
@@ -112,25 +115,14 @@ function define_SP_BerlinCS()
     y_fix   = ρa0_ul
     
     
-    if n_inst != 1
-        return [SysPar(ρf0_ul, n0, ωa,
-                       Δ_specs,
-                       ΔvariDependence, Δvari_args, ΔvariDescription,
-                       tspan, dtmax, initialState, initialStateDescription,
-                       arrayType, N, ρa0_ul, a0_ul, ff, pos_unc,
-                       να0_ul, ηα, noPhonons,
-                       d, incField_wlf, save_individual_res, approx_Grm_trans,
-                       z_range, x_range, y_fix) for _ in 1:n_inst]
-    else
-        return SysPar(ρf0_ul, n0, ωa,
-                      Δ_specs,
-                      ΔvariDependence, Δvari_args, ΔvariDescription,
-                      tspan, dtmax, initialState, initialStateDescription,
-                      arrayType, N, ρa0_ul, a0_ul, ff, pos_unc,
-                      να0_ul, ηα, noPhonons,
-                      d, incField_wlf, save_individual_res, approx_Grm_trans,
-                      z_range, x_range, y_fix)
-    end
+    return SysPar(ρf0_ul, n0, ωa,
+                  Δ_specs,
+                  ΔvariDependence, Δvari_args, ΔvariDescription,
+                  tspan, dtmax, initialState, initialStateDescription,
+                  arrayType, N_sites, ρa0_ul, a0_ul, ff, pos_unc, n_inst, array, arrayDescription, N,
+                  να0_ul, ηα, noPhonons,
+                  d, dDescription, incField_wlf, save_individual_res, approx_Grm_trans,
+                  z_range, x_range, y_fix)
 end
 
 
@@ -169,11 +161,12 @@ function define_SP_Olmos()
     ηα = [0, 0, 0]
     
     # Prepare initial state for time evolution, as well as description for postfix
-    initialState = groundstate(N, all(ηα .== 0))
+    initialState = groundstate(N, true)
     initialStateDescription = "gs"
      
     # Atomic dipole moment
-    d = [1, 0, 0]
+    d = fill([1, 0, 0], N)
+    dDescription = "xPol"
     
     # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
     incField_wlf = [(1, 1, 1), (1, -1, 1)]
@@ -186,8 +179,8 @@ function define_SP_Olmos()
                   ΔvariDependence, Δvari_args, ΔvariDescription,
                   tspan, dtmax, initialState, initialStateDescription,
                   arrayType, N, ρa, a,
-                  να, ηα,
-                  d, incField_wlf, approx_Grm_trans)
+                  να, ηα, true,
+                  d, dDescription, incField_wlf, approx_Grm_trans)
 end
 
 
@@ -225,11 +218,12 @@ function define_SP_Rauschenbeutel()
     ηα = [0, 0, 0]
     
     # Prepare initial state for time evolution, as well as description for postfix
-    initialState = groundstate(N, all(ηα .== 0))
+    initialState = groundstate(N, true)
     initialStateDescription = "gs"
      
     # Atomic dipole moment
-    d = conj([1im, 0, -1]/sqrt(2))
+    d = fill(conj([1im, 0, -1]/sqrt(2)), N)
+    dDescription = "rightCirc"
     
     # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
     incField_wlf = [(1, 1, 1), (1, -1, 1)]
@@ -242,8 +236,8 @@ function define_SP_Rauschenbeutel()
                   ΔvariDependence, Δvari_args, ΔvariDescription,
                   tspan, dtmax, initialState, initialStateDescription,
                   arrayType, N, ρa, a,
-                  να, ηα,
-                  d, incField_wlf, approx_Grm_trans)
+                  να, ηα, true,
+                  d, dDescription, incField_wlf, approx_Grm_trans)
 end
 
 
@@ -277,11 +271,12 @@ function define_SP_Chang()
     ηα = [0, 0, 0]
     
     # Prepare initial state for time evolution, as well as description for postfix
-    initialState = groundstate(N, all(ηα .== 0))
+    initialState = groundstate(N, true)
     initialStateDescription = "gs"
      
     # Atomic dipole moment
-    d = [1, 0, 0]
+    d = fill([1, 0, 0], N)
+    dDescription = "xPol"
     
     # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
     incField_wlf = [(1, 1, 1), (1, -1, 1)]
@@ -294,8 +289,8 @@ function define_SP_Chang()
                   ΔvariDependence, Δvari_args, ΔvariDescription,
                   tspan, dtmax, initialState, initialStateDescription,
                   arrayType, N, ρa, a,
-                  να, ηα,
-                  d, incField_wlf, approx_Grm_trans)
+                  να, ηα, true,
+                  d, dDescription, incField_wlf, approx_Grm_trans)
 end
 
 
@@ -308,17 +303,22 @@ function main()
     # SP = define_SP_Chang()
     # show(SP)
     
+    # tildeΩ1, tildeΩα1 = get_tildeΩs(SP.fiber, "chiral", SP.ηα, SP.incField_wlf, SP.array)
+    # tildeΩ2, tildeΩα2 = get_tildeΩs(SP.fiber, SP.d, SP.ηα, SP.incField_wlf, SP.array)
+    # display(maximum(abs.(tildeΩ1 - tildeΩ2)))
+    # display(maximum(abs.(tildeΩα1[1] - tildeΩα2[1])))
+    # display(maximum(abs.(tildeΩα1[3] - tildeΩα2[3])))
     
     
     
     # plot_propConst_inOutMom(ωρfn_ranges)
     # plot_coupling_strengths(SP)
     # plot_σBαTrajectories_σBαSS(SP)
-    # plot_transmission_vs_Δ(SP)
+    plot_transmission_vs_Δ(SP)
     # plot_classDisorder_transmission_vs_Δ(SP)
     # plot_steadyState_radiation_Efield(SP)
     # plot_radiation_Efield(SP)
-    plot_GnmEigenModes(SP)
+    # plot_GnmEigenModes(SP)
     # plot_emissionPatternOfGnmeigenModes(SP)
     # plot_GnmEigenEnergies(SP)
     # plot_lossWithGnmEigenEnergies(SP)
@@ -353,7 +353,7 @@ function plot_coupling_strengths(SP)
     # Guided mode local decay as a function of distance to fiber
     ρ_range = range(SP.ρf, SP.ρf + 1000/852, 100)
     r_range = [[ρ, 0, 0] for ρ in ρ_range]
-    Γgm = get_Γgm.(Ref(SP.fiber), Ref(SP.d), r_range, r_range)
+    Γgm = get_Γgm.(Ref(SP.fiber), Ref(SP.d[1]), r_range, r_range)
     x_label = L"$ \rho - \rho_f $"
     y_label = L"$ \Gamma_{gm, nn} $"
     x_range = ρ_range .- SP.ρf
@@ -362,7 +362,7 @@ function plot_coupling_strengths(SP)
     # Guided mode dissipative interaction as a function of radial distance
     ρ_range = range(SP.ρf, SP.ρf + 1000/852, 100)
     r_range = [[ρ, 0, 0] for ρ in ρ_range]
-    Γgm = get_Γgm.(Ref(SP.fiber), Ref(SP.d), Ref(r_range[1]), r_range)
+    Γgm = get_Γgm.(Ref(SP.fiber), Ref(SP.d[1]), Ref(r_range[1]), r_range)
     x_label = L"$ \rho_2 - \rho_f $"
     y_label = L"$ \Gamma_{gm, 12} $"
     x_range = ρ_range .- SP.ρf
@@ -371,7 +371,7 @@ function plot_coupling_strengths(SP)
     # Radiation mode local decay as a function of distance to fiber
     ρ_range = range(SP.ρf, SP.ρf + 1000/852, 100)
     r_range = [[ρ, 0, 0] for ρ in ρ_range]
-    Γrm = get_Γrm.(Ref(SP.fiber), Ref(SP.d), r_range, r_range, SP.approx_Grm_trans)
+    Γrm = get_Γrm.(Ref(SP.fiber), Ref(SP.d[1]), r_range, r_range, SP.approx_Grm_trans)
     x_label = L"$ \rho - \rho_f $"
     y_label = L"$ \Gamma_{rm, nn} $"
     x_range = ρ_range .- SP.ρf
@@ -380,7 +380,7 @@ function plot_coupling_strengths(SP)
     # Radation mode dissipative interaction as a function of radial distance
     ρ_range = range(SP.ρf, SP.ρf + 1000/852, 100)
     r_range = [[ρ, 0, 0] for ρ in ρ_range]
-    Γrm = get_Γrm.(Ref(SP.fiber), Ref(SP.d), Ref(r_range[1]), r_range, SP.approx_Grm_trans)
+    Γrm = get_Γrm.(Ref(SP.fiber), Ref(SP.d[1]), Ref(r_range[1]), r_range, SP.approx_Grm_trans)
     x_label = L"$ \rho_2 - \rho_f $"
     y_label = L"$ \Gamma_{rm, 12} $"
     x_range = ρ_range .- SP.ρf
@@ -416,11 +416,11 @@ function plot_transmission_vs_Δ(SP)
 end
 
 
-function plot_classDisorder_transmission_vs_Δ(SPs)
-    if typeof(SPs) == SysPar throw(ArgumentError("plot_classDisorder_transmission_vs_Δ requires n_inst > 1")) end
+function plot_classDisorder_transmission_vs_Δ(SP)
+    if SP.n_inst != 1 throw(ArgumentError("plot_classDisorder_transmission_vs_Δ requires n_inst > 1")) end
     
-    n_inst = length(SPs)
-    postfix = get_postfix_classDisorder_transmission(SPs[1].Δ_specs, SPs[1].ΔvariDescription, SPs[1].d, SPs[1].να, SPs[1].ηα, SPs[1].incField_wlf, n_inst, SPs[1].arrayDescription, SPs[1].fiber.postfix)
+    n_inst = length(SP.array)
+    postfix = get_postfix_classDisorder_transmission(SP.Δ_specs, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.incField_wlf, n_inst, SP.arrayDescription, SP.fiber.postfix)
     filename = "T_phase" * postfix
     folder = "classDisorder_T_phase/"
     
@@ -429,30 +429,34 @@ function plot_classDisorder_transmission_vs_Δ(SPs)
     else
         ts = []
         for SP in SPs
-            σBα_scan = scan_steadyState(SP)
-            push!(ts, calc_transmission.(Ref(SP), σBα_scan))
+            # Specific functions for this case must be implemented, 
+                # where the parameters are calculated for each array instantiation,
+                # or the present functions must distinguish between SP.n_inst == 1 and SP.n_inst != 1
+            # The rest of this function must be updated to match
+            
+            # σBα_scan = scan_steadyState(SP)
+            # push!(ts, calc_transmission.(Ref(SP), σBα_scan))
         end
             
-        # Prepare means and standard deviations of (squared) magnitudes and phases
-        T_means, T_stds, phase_means, phase_stds = prep_classDisorder_transmission(ts)
-        formattedResult = vectorOfRows2Matrix([T_means, T_stds, phase_means, phase_stds])
-        save_as_txt(formattedResult, saveDir * folder, filename)
+        # # Prepare means and standard deviations of (squared) magnitudes and phases
+        # T_means, T_stds, phase_means, phase_stds = prep_classDisorder_transmission(ts)
+        # formattedResult = vectorOfRows2Matrix([T_means, T_stds, phase_means, phase_stds])
+        # save_as_txt(formattedResult, saveDir * folder, filename)
     end
     
-    titl = prep_classDisorder_transmission_title(SPs[1])
-    fig_classDisorder_transmission_vs_Δ(SPs[1].Δ_range, T_means, T_stds, phase_means, phase_stds, titl)
+    # titl = prep_classDisorder_transmission_title(SPs[1])
+    # fig_classDisorder_transmission_vs_Δ(SPs[1].Δ_range, T_means, T_stds, phase_means, phase_stds, titl)
 end
 
 
 function plot_steadyState_radiation_Efield(SP)
     Δ = -0.25
     zs = [site[3] for site in SP.array]
-    if SP.noPhonons σBα_SS = calc_steadyState(SP, Δ); σ_SS = σBα_SS
-    else                σBα_SS = calc_steadyState(SP, Δ); σ_SS = σBα_SS[1]
-    end
+    σBα_SS = calc_steadyState(SP, Δ)
+    if SP.noPhonons σ_SS = σBα_SS else σ_SS = σBα_SS[1] end
     ks, σ_SS_FT = discFourierTransform(σ_SS, SP.a, true, 1000)
     
-    E = calc_radiation_Efield.(Ref(SP), Ref(σBα_SS))
+    E = scan_radiation_Efield(SP, σBα_SS)
     intensity = norm.(E).^2
     
     titl = prep_state_title(SP, Δ)
@@ -609,15 +613,22 @@ end
     println("\n -- Running main() -- \n")
     main() 
     println(" -- -- ")
-    println("Runtime etc. of main():")
+    println("@time of main():")
 end
 
 
 
 # TODO list:
 
-# Clean up code: naming?, repeated structures, inconsistent structures
-# Clean up before moving to the cluster: comments, naming, split code
+# Implement figure titles properly
+
+# Write notes regarding the conclusions so far (with figures)
+    # Conclusion regarding the idealized case without phonons
+        # Modes
+        # \Delta variation
+        # High transmission with non-zero phase
+        # Band structure - disturbed by fiber
+        # Try to include all details regarding setup (atomic configuration, fixed dipole moment, driving mode, detection mode, input parameter values, )
 
 
 # Get it to work on the cluster

@@ -1,7 +1,90 @@
 
 
 # ================================================
-#   Functions pertaining to physics of the fiber and its modes
+#   Functions pertaining to atomic array itself
+# ================================================
+"""
+Calculate a list of the atomic positions along the fiber,
+possibly including imperfect filling fraction and (classical) positional uncertainty
+
+Implemented arrayType's are\n
+1Dchain: Standard 1D chain along fiber\n
+doubleChain: Double 1D chain, positioned on opposite sides of the fiber\n
+randomZ: Standard 1D chain along fiber, but with random position in z\n
+
+For random arrays, the lattice spacing, a, defines the length along z of the array via L = (N - 1)a
+"""
+function get_array(arrayType, N_sites, ρa, a, ff=1, pos_unc=0)
+    # Get the perfect array (no missing atoms, no position uncertainty)
+    if arrayType == "1Dchain"
+        array = [[ρa, 0, a*n] for n in 0:N_sites-1]
+        
+    elseif arrayType == "doubleChain"
+        if !iseven(N_sites) throw(ArgumentError("The number of sites, N_sites = $N_sites, must be even for arrayType = doubleChain")) end
+        array = [[ρa, 0, a*n] for n in 0:N_sites/2-1]
+        push!(array, array.*[-1, 1, 1])
+        
+    elseif arrayType == "randomZ"
+        array = [[ρa, 0, zn] for zn in a*(N_sites - 1)*rand(N_sites)]
+        
+    else throw(ArgumentError("The arrayType = $arrayType has not been implemented in get_array")) 
+    end
+    
+    if      ff != 1 array = remove_atoms_from_array(array, ff) end
+    if pos_unc != 0 array = introduce_position_uncertainty_to_array_sites(array, pos_unc) end
+    
+    return array
+end
+
+
+"""
+Returns the atomic array, or a list of different atomic array instantiations,
+as well as the arrayDescription and the number of atoms 
+"""
+function get_array(arrayType, N_sites, ρa, a, ff, pos_unc, n_inst)
+    arrayDescription = arrayDescript(arrayType, N_sites, ρa, a, ff, pos_unc)
+    
+    if n_inst == 1 
+        array = get_array(arrayType, N_sites, ρa, a, ff, pos_unc)
+        N = length(array)
+        return array, arrayDescription, N
+    else 
+        array = [get_array(arrayType, N_sites, ρa, a, ff, pos_unc) for i in 1:n_inst] 
+        N = length(array[1])
+        return array, arrayDescription, N
+    end
+end
+
+
+"""
+Create imperfectly filled array according to the filling fraction ff
+"""
+function remove_atoms_from_array(array, ff)
+    # Find total number of atoms and the number of atoms to be kept to match the desired filling fraction
+    N = length(array)
+    N_to_be_kept = Int(floor(N*ff))
+    
+    # Return N_to_be_kept of the original array sites
+    return array[sort(randperm(N)[1:N_to_be_kept])]
+end
+
+
+"""
+Create a (classically) disordered array according to a Gaussian distribution with width pos_unc
+"""
+function introduce_position_uncertainty_to_array_sites(array, pos_unc)
+    # Generate normally-distributed random numbers for each coordinate of each atom
+    N = length(array)
+    # random_shift = pos_unc*randn.(fill(3, N))
+    random_shift = broadcast(.*, [pos_unc], randn.(fill(3, N))) # works both for the cases of pos_unc=scalar and pos_unc=triplet
+    
+    # Return the randomly shifted array sites
+    return array + random_shift
+end
+
+
+# ================================================
+#   Functions pertaining to parameters of the fiber
 # ================================================
 """
 The momentum h related to the inside of the fiber, used in several fiber-related equations
@@ -119,6 +202,16 @@ Calculates the dipole moment which yields a chiral fiber setup
 function chiralDipoleMoment(fiber, ρa)
     eρ, _, ez = guidedModeComps(fiber, ρa) 
     return 1im*[ez, 0, -eρ]/sqrt(abs2(eρ) + abs2(ez))    
+end
+
+
+"""
+Returns a list of the dipole moments of each atom which yields a chiral fiber setup
+for the case of 1Dchain or doubleChain arrays
+"""
+function chiralDipoleMoment(fiber, ρa, array)
+    if any([abs(site[1]) != ρa for site in array]) || any([site[2] != 0 for site in array]) throw(ArgumentError("chiralDipoleMoment assumes the atomic array to of the form [±ρa, 0, z]")) end
+    return [chiralDipoleMoment(fiber, ρa).*[sign(site[1]), 1, 1] for site in array]
 end
 
 
@@ -533,74 +626,6 @@ end
 
 
 # ================================================
-#   Functions pertaining to atomic array itself
-# ================================================
-"""
-Calculate a list of the atomic positions along the fiber,
-possibly including imperfect filling fraction and (classical) positional uncertainty
-
-Implemented arrayType's are\n
-1Dchain: Standard 1D chain along fiber\n
-doubleChain: Double 1D chain, positioned on opposite sides of the fiber\n
-randomZ: Standard 1D chain along fiber, but with random position in z\n
-
-For random arrays, the lattice spacing, a, defines the length along z of the array via L = (N - 1)a
-"""
-function get_array(arrayType, N, ρa, a, ff=1, pos_unc=0)
-    # Get the perfect array (no missing atoms, no position uncertainty)
-    if arrayType == "1Dchain"
-        array = [[ρa, 0, a*n] for n in 0:N-1]
-        arrayName = "singCh_"
-        
-    elseif arrayType == "doubleChain"
-        if !iseven(N) throw(ArgumentError("The number of atoms, N = $N, must be even for arrayType = doubleChain")) end
-        array = [[ρa, 0, a*n] for n in 0:N/2-1]
-        push!(array, array.*[-1, 1, 1])
-        arrayName = "doubCh_"
-        
-    elseif arrayType == "randomZ"
-        array = [[ρa, 0, zn] for zn in a*(N - 1)*rand(N)]
-        arrayName = "randZCh_"
-        
-    else throw(ArgumentError("The arrayType = $arrayType has not been implemented in get_array")) 
-    end
-    
-    if      ff != 1 array = remove_atoms_from_array(array, ff) end
-    if pos_unc != 0 array = introduce_position_uncertainty_to_array_sites(array, pos_unc) end
-    
-    arrayDescription = arrayName * arrayDescript(N, ρa, a, ff, pos_unc)
-    return array, arrayDescription
-end
-
-
-"""
-Create imperfectly filled array according to the filling fraction ff
-"""
-function remove_atoms_from_array(array, ff)
-    # Find total number of atoms and the number of atoms to be kept to match the desired filling fraction
-    N = length(array)
-    N_to_be_kept = Int(floor(N*ff))
-    
-    # Return N_to_be_kept of the original array sites
-    return array[sort(randperm(N)[1:N_to_be_kept])]
-end
-
-
-"""
-Create a (classically) disordered array according to a Gaussian distribution with width pos_unc
-"""
-function introduce_position_uncertainty_to_array_sites(array, pos_unc)
-    # Generate normally-distributed random numbers for each coordinate of each atom
-    N = length(array)
-    # random_shift = pos_unc*randn.(fill(3, N))
-    random_shift = broadcast(.*, [pos_unc], randn.(fill(3, N))) # works both for the cases of pos_unc=scalar and pos_unc=triplet
-    
-    # Return the randomly shifted array sites
-    return array + random_shift
-end
-
-
-# ================================================
 #   Functions pertaining to the time evolution of the atomic and phononic degrees of freedom
 # ================================================
 """
@@ -805,7 +830,7 @@ Calculate the radiated E-field, assuming no incoming radiation field
 """
 function radiation_Efield(σ, Grm_rrn, d)
     d_mag = sqrt(3π/ωa^3)
-    return ωa^2*sum( Grm_rrn.*Ref(d_mag*d).*σ )
+    return ωa^2*d_mag*sum( Grm_rrn.*d.*σ )
 end
 
 
@@ -814,7 +839,7 @@ Calculate the radiated E-field, assuming no incoming radiation field
 """
 function radiation_Efield(σ, Bα, tildeGrm_rrn, tildeGα2rm_rrn, d)
     d_mag = sqrt(3π/ωa^3)
-    return ωa^2*sum( tildeGrm_rrn.*Ref(d_mag*d).*σ + sum([tildeGα2rm_rrn[α].*Ref(d_mag*d).*di(Bα[α]) for α in 1:3]) )
+    return ωa^2*d_mag*sum( tildeGrm_rrn.*d.*σ + sum([tildeGα2rm_rrn[α].*d.*di(Bα[α]) for α in 1:3]) )
 end
 
 
