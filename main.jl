@@ -50,17 +50,17 @@ function define_SP_BerlinCS()
     να0_ul = να0/γ0 #unitless version of να0
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-0.5, 0.5, 100)
+    Δ_specs = (-0.5, 0.5, 300)
     
     # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
-    ΔvariDependence = "Gaussian"
+    ΔvariDependence = "flat"
     Δvari_args = -3, 2*a0_ul
     ΔvariDescription = ΔvariDescript(ΔvariDependence, Δvari_args)
     
     # Lamb-Dicke parameters
     # ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
     # ηα = ηα0 .* [0.1, 0.2, 0.1]
-    ηα = ηα0 * 0.4
+    # ηα = ηα0 * 0.4
     # ηα = [0.01, 0.01, 0.01]
     ηα = [0., 0., 0.]
     
@@ -68,10 +68,10 @@ function define_SP_BerlinCS()
     noPhonons = all(ηα .== 0)
     
     # Set which kind of array to use ("1Dchain", "doubleChain", "randomZ")
-    arrayType = "doubleChain"
+    arrayType = "1Dchain"
     
     # Set number of atomic sites 
-    N_sites = 25
+    N_sites = 200
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
@@ -97,7 +97,10 @@ function define_SP_BerlinCS()
     
     # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
     incField_wlf = [(1, 1, 1), (1, -1, 1)]
-    # incField_wlf = []
+    if typeof(d) == String incField_wlf = [] end
+    
+    # Absolute tolerance in the calculations of Im_Grm_trans
+    abstol_Im_Grm_trans = 1e-5
     
     # Whether to approximate transverse part of radiation GF (real part and imaginary part respectively, usually (true, false))
     approx_Grm_trans = (true, false)
@@ -121,7 +124,7 @@ function define_SP_BerlinCS()
                   tspan, dtmax, initialState, initialStateDescription,
                   arrayType, N_sites, ρa0_ul, a0_ul, ff, pos_unc, n_inst, array, arrayDescription, N,
                   να0_ul, ηα, noPhonons,
-                  d, dDescription, incField_wlf, save_individual_res, approx_Grm_trans,
+                  d, dDescription, incField_wlf, save_individual_res, abstol_Im_Grm_trans, approx_Grm_trans,
                   z_range, x_range, y_fix)
 end
 
@@ -303,11 +306,6 @@ function main()
     # SP = define_SP_Chang()
     # show(SP)
     
-    # tildeΩ1, tildeΩα1 = get_tildeΩs(SP.fiber, "chiral", SP.ηα, SP.incField_wlf, SP.array)
-    # tildeΩ2, tildeΩα2 = get_tildeΩs(SP.fiber, SP.d, SP.ηα, SP.incField_wlf, SP.array)
-    # display(maximum(abs.(tildeΩ1 - tildeΩ2)))
-    # display(maximum(abs.(tildeΩα1[1] - tildeΩα2[1])))
-    # display(maximum(abs.(tildeΩα1[3] - tildeΩα2[3])))
     
     
     
@@ -322,7 +320,6 @@ function main()
     # plot_emissionPatternOfGnmeigenModes(SP)
     # plot_GnmEigenEnergies(SP)
     # plot_lossWithGnmEigenEnergies(SP)
-    
     
     return nothing
 end
@@ -620,7 +617,8 @@ end
 
 # TODO list:
 
-# Implement figure titles properly
+# Figure out T>1 error for doubleChain and 1Dchain N_sites = 200
+    # Something with the coupling..?
 
 # Write notes regarding the conclusions so far (with figures)
     # Conclusion regarding the idealized case without phonons

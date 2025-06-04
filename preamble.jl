@@ -86,9 +86,9 @@ struct SysPar
     Δ_specs::Tuple{Real, Real, Int}                 # Specs for detuning for scanning time evolution, steady states, etc.
     Δ_range::AbstractRange                          # Range of detuning for scanning time evolution, steady states, etc.
     
-    ΔvariDependence::String                        # String identifier for the site-dependent detuning variation
+    ΔvariDependence::String                         # String identifier for the site-dependent detuning variation
     Δvari_args::Union{Tuple, Nothing}               # Arguments for the calculation of the site-dependent detuning variation
-    ΔvariDescription::String                       # Description of the above for postfix
+    ΔvariDescription::String                        # Description of the above for postfix
     
     tspan::Tuple{Real, Real}                        # Time span (min and max value) for time evolution
     dtmax::Real                                     # Maximum allowed time step for time evolution
@@ -110,12 +110,13 @@ struct SysPar
     ηα::Vector{<:Real}                              # Lamb-Dicke parameters
     noPhonons::Bool                                 # Whether phonons are excluded or not from the calculations
     
-    d::Union{Vector, String}                # Dipole moment of atoms (one for each atom)
+    d::Union{Vector, String}                        # Dipole moment of atoms (one for each atom)
     dDescription::String                            # Description of the dipole moment for postfix
     incField_wlf::Vector{Tuple{<:Number, Int, Int}} # Vector of (weight, l, f) tuples for defining the incoming driving field
     
     save_individual_res::Bool                       # Whether to save individual results (Im_Grm_trans, steady states, time evolutions)
-        
+    abstol_Im_Grm_trans::Real                       # Absolute tolerance in the calculations of Im_Grm_trans
+    
     # Whether to approximate the transverse part of the radiation Green's function 
     # using the corresponding part of the vacuum GF, as well as whether to scale the real part of the rad. GF
     # with the local radiation decay rates
@@ -134,7 +135,7 @@ struct SysPar
                     tspan::Tuple{Real, Real}, dtmax::Real, initialState::Vector, initialStateDescription::String,
                     arrayType::String, N_sites::Int, ρa::Real, a::Real, ff::Real, pos_unc::Union{Real, Vector}, n_inst::Int, array::Vector, arrayDescription::String, N::Int,
                     να::Vector, ηα::Vector, noPhonons::Bool,
-                    d::Union{Vector, String}, dDescription::String, incField_wlf::Vector, save_individual_res::Bool, approx_Grm_trans::Tuple,
+                    d::Union{Vector, String}, dDescription::String, incField_wlf::Vector, save_individual_res::Bool, abstol_Im_Grm_trans::Real, approx_Grm_trans::Tuple,
                     z_range::AbstractRange, x_range::AbstractRange, y_fix::Real)
 
         fiber = Fiber(ρf, n, ω)
@@ -145,9 +146,9 @@ struct SysPar
                    Δ_specs, Δ_range,
                    ΔvariDependence, Δvari_args, ΔvariDescription,
                    tspan, dtmax, initialState, initialStateDescription,
-                   arrayType, N_sites, ρa, a, ff, n_inst, pos_unc, array, arrayDescription, N,
+                   arrayType, N_sites, ρa, a, ff, pos_unc, n_inst, array, arrayDescription, N,
                    να, ηα, noPhonons,
-                   d, dDescription, incField_wlf, save_individual_res, approx_Grm_trans,
+                   d, dDescription, incField_wlf, save_individual_res, abstol_Im_Grm_trans, approx_Grm_trans,
                    z_range, x_range, y_fix, r_fields)
     end
     
@@ -166,6 +167,7 @@ struct SysPar
         n_inst = 1
         array = get_array(arrayType, N, ρa, a, ff, pos_unc)
         arrayDescription = arrayDescript(arrayType, N_sites, ρa, a, ff, pos_unc)
+        abstol_Im_Grm_trans = 1e-4
         save_individual_res = true
         z_range = nothing
         x_range = nothing
@@ -178,7 +180,7 @@ struct SysPar
                    tspan, dtmax, initialState, initialStateDescription,
                    arrayType, N, ρa, a, ff, pos_unc, n_inst, array, arrayDescription, N,
                    να, ηα, noPhonons,
-                   d, dDescription, incField_wlf, save_individual_res, approx_Grm_trans,
+                   d, dDescription, incField_wlf, save_individual_res, abstol_Im_Grm_trans, approx_Grm_trans,
                    z_range, x_range, y_fix, r_fields)
     end
 end

@@ -21,8 +21,9 @@ function get_array(arrayType, N_sites, ρa, a, ff=1, pos_unc=0)
         
     elseif arrayType == "doubleChain"
         if !iseven(N_sites) throw(ArgumentError("The number of sites, N_sites = $N_sites, must be even for arrayType = doubleChain")) end
-        array = [[ρa, 0, a*n] for n in 0:N_sites/2-1]
-        push!(array, array.*[-1, 1, 1])
+        arrayAbove = [[ ρa, 0, a*n] for n in 0:N_sites/2-1]
+        arrayBelow = [[-ρa, 0, a*n] for n in 0:N_sites/2-1]
+        array = vcat(arrayAbove, arrayBelow)
         
     elseif arrayType == "randomZ"
         array = [[ρa, 0, zn] for zn in a*(N_sites - 1)*rand(N_sites)]
@@ -436,17 +437,17 @@ end
 """
 Calculates the radiation mode Green's function or its derivatives 
 """
-function Grm(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_individual_res=true, approx_Grm_trans=(false, false))
+function Grm(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_individual_res=true, abstol=1e-5, approx_Grm_trans=(false, false))
     # The Green's function is calculated in terms of the contributions: the longitudinal part, the imaginary transverse part, and the real transverse part
     
     # First, we calculate the longitudinal part
-    G0_lo = G0_long(ω, r_field, r_source, derivOrder, α)
+    G0_lo     = G0_long(ω, r_field, r_source, derivOrder, α)
     
     # Second, the real transverse part
     Re_Grm_tr = Re_Grm_trans(fiber, ω, r_field, r_source, derivOrder, α, approx_Grm_trans[1])
     
     # Finally, the imaginary transverse part
-    Im_Grm_tr = Im_Grm_trans(fiber, ω, r_field, r_source, derivOrder, α, save_individual_res, approx_Grm_trans[2])
+    Im_Grm_tr = Im_Grm_trans(fiber, ω, r_field, r_source, derivOrder, α, save_individual_res, abstol, approx_Grm_trans[2])
     
     return G0_lo + Re_Grm_tr + 1im*Im_Grm_tr
 end
@@ -456,13 +457,13 @@ end
 Small wrapper for the calculation of the imaginary part of the transverse part of radiation mode 
 Green's function or its derivatives that exploits the Onsager reciprocity to simpilify calculations
 """
-function Im_Grm_trans(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_individual_res=true, approx_Im_Grm_trans=false)
+function Im_Grm_trans(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_individual_res=true, abstol=1e-5, approx_Im_Grm_trans=false)
     if approx_Im_Grm_trans return imag(G0(ω, r_field, r_source, derivOrder, α)) end
     
     if r_field[3] < r_source[3]
-        return transpose(Im_Grm_trans_(fiber, ω, r_source, r_field, reverse(derivOrder), α, save_individual_res))
+        return transpose(Im_Grm_trans_(fiber, ω, r_source, r_field, reverse(derivOrder), α, save_individual_res, abstol))
     else
-        return Im_Grm_trans_(fiber, ω, r_field, r_source, derivOrder, α, save_individual_res)
+        return Im_Grm_trans_(fiber, ω, r_field, r_source, derivOrder, α, save_individual_res, abstol)
     end
 end
 
@@ -472,46 +473,52 @@ Calculates the imaginary part of the transverse part of radiation mode Green's f
 
 Uses the normalization convention of Kien, Rauschenbeutel 2017
 """
-function Im_Grm_trans_(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_individual_res=true, abstol=1e-4)
-    # The Green's function only depends on the difference in the z-coordinates, 
-    # so we save the calculation according to that value, rather than the individual z-coordinates
-    coords = ro.([r_field[1], r_field[2], r_source[1], r_source[2], r_field[3] - r_source[3]])
-    postfix = get_postfix_Im_Grm_trans(ω, coords, derivOrder, α, fiber.postfix)
-    filename = "IGrmt_" * postfix
-    folder = "Im_Grm_trans/"
-    
-    if isfile(saveDir * folder * filename * ".txt") return load_as_txt(saveDir * folder, filename) end
-    
-    # Set up the integrand and the integral domain
-    integrand(x, args) = Erm(fiber, ω, x, args..., r_field , derivOrder[1], α)*
-                         Erm(fiber, ω, x, args..., r_source, derivOrder[2], α)'
-    domain = (-ω + eps(1.0), ω - eps(1.0))
-    
-    # Perform the combined sum and integration
-    Im_Grm_trans = zeros(3, 3)
-    summand_m = ones(ComplexF64, 3, 3)
-    m = 0
-    while maximum(abs.(summand_m)) > abstol
-        summand_m .= 0
-        for l in (-1, 1)
-            args = (m, l)
-            prob = IntegralProblem(integrand, domain, args)
-            integral = Integrals.solve(prob, HCubatureJL())
-            summand_m += integral.u/(4*ω)
-            if m != 0
-                args = (-m, l)
+function Im_Grm_trans_(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_individual_res=true, abstol=1e-5)
+    # For distances greater than 100 times the wavelength, the coupling is effectively zero (the calculation below just yields random small values)
+    # We should be careful with this cut-off if we ever do calculations that truly depend on long-distance interactions
+    if norm(r_field - r_source) > 100
+        return zeros(ComplexF64, 3, 3)
+    else
+        # The Green's function only depends on the difference in the z-coordinates, 
+        # so we save the calculation according to that value, rather than the individual z-coordinates
+        coords = ro.([r_field[1], r_field[2], r_source[1], r_source[2], r_field[3] - r_source[3]])
+        postfix = get_postfix_Im_Grm_trans(ω, coords, derivOrder, α, abstol, fiber.postfix)
+        filename = "IGrmt_" * postfix
+        folder = "Im_Grm_trans/"
+        
+        if isfile(saveDir * folder * filename * ".txt") return load_as_txt(saveDir * folder, filename) end
+        
+        # Set up the integrand and the integral domain
+        integrand(x, args) = Erm(fiber, ω, x, args..., r_field , derivOrder[1], α)*
+                            Erm(fiber, ω, x, args..., r_source, derivOrder[2], α)'
+        domain = (-ω + eps(1.0), ω - eps(1.0))
+        
+        # Perform the combined sum and integration
+        Im_Grm_trans = zeros(3, 3)
+        summand_m = ones(ComplexF64, 3, 3)
+        m = 0
+        while maximum(abs.(summand_m)) > abstol
+            summand_m .= 0
+            for l in (-1, 1)
+                args = (m, l)
                 prob = IntegralProblem(integrand, domain, args)
                 integral = Integrals.solve(prob, HCubatureJL())
                 summand_m += integral.u/(4*ω)
+                if m != 0
+                    args = (-m, l)
+                    prob = IntegralProblem(integrand, domain, args)
+                    integral = Integrals.solve(prob, HCubatureJL())
+                    summand_m += integral.u/(4*ω)
+                end
             end
+            # summand_m is always real (after adding all combinations of l and (m, -m)), even though integral.u is not
+            Im_Grm_trans += real(summand_m)
+            m += 1
         end
-        # summand_m is always real (after adding all combinations of l and (m, -m)), even though integral.u is not
-        Im_Grm_trans += real(summand_m)
-        m += 1
+        
+        if save_individual_res save_as_txt(Im_Grm_trans, saveDir * folder, filename) end
+        return Im_Grm_trans
     end
-    
-    if save_individual_res save_as_txt(Im_Grm_trans, saveDir * folder, filename) end
-    return Im_Grm_trans
 end
 
 
@@ -601,15 +608,16 @@ function G0_long(ω, r_field, r_source, derivOrder=(0, 0), α=1)
     
     # Calculate derivatives (including zeroth order)
     if sum(derivOrder) == 0
-        G0_long = (3*rr - I)/(4*π*ω^2*r^3)
+        G0_long = (3*rr - I)/r^3
     elseif sum(derivOrder) == 1
-        G0_long = (3*drr/r^3 - (3*rr - I)*3*αcoor/r^5)/(4*π*ω^2)
+        G0_long = (3*drr/r^3 - (3*rr - I)*3*αcoor/r^5)
     elseif sum(derivOrder) == 2
-        G0_long = (3*d2rr/r^3 - 3*drr*6*αcoor/r^5 - (3*rr - I)*(3/r^5 - 15*αcoor^2/r^7))/(4*π*ω^2)
+        G0_long = (3*d2rr/r^3 - 3*drr*6*αcoor/r^5 - (3*rr - I)*(3/r^5 - 15*αcoor^2/r^7))
     end
     
     # Return result after appending a sign acoording to how many times the derivative was taken with respect to r_source
-    return (-1)^derivOrder[2]*G0_long
+    # and multiplying by some global constants
+    return (-1)^derivOrder[2]*G0_long/(4*π*ω^2)
 end
 
 
@@ -851,7 +859,7 @@ Find the eigenvalues and -vectors of a coupling matrix (i.e. the collective ener
 """
 function spectrum(G)
     F = eigen(G)
-    return F.values, eachcol(F.vectors)
+    return F.values, collect.(eachcol(F.vectors))
 end
 
 

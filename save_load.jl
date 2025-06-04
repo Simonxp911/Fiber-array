@@ -87,12 +87,13 @@ end
 """
 For calculation of the imaginary part of the transverse part of radiation mode Green's function or its derivatives 
 """
-function get_postfix_Im_Grm_trans(ω, coords, derivOrder, α, fiberPostfix)
+function get_postfix_Im_Grm_trans(ω, coords, derivOrder, α, abstol, fiberPostfix)
     postfix_components = [
         "omega_$(ro(ω))",
         "coords_$(join(ro.(coords), ","))",
         "derivOrder_$(join(derivOrder, ","))",
         "alpha_$α",
+        "abstol_$abstol",
         fiberPostfix
     ]
     return join(postfix_components, "_")
