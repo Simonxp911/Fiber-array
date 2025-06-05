@@ -597,7 +597,17 @@ Scan the steady state values of atomic coherences σ and the atom-phonon correla
 function scan_steadyState(SP)
     postfixes = get_postfix_steadyState.(SP.Δ_range, SP.ΔvariDescription, SP.dDescription, Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), SP.arrayDescription, SP.fiber.postfix)
     params = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
-    calc_steadyState.(SP.Δ_range, Ref(params), postfixes, SP.noPhonons, SP.save_individual_res)
+    return calc_steadyState.(SP.Δ_range, Ref(params), postfixes, SP.noPhonons, SP.save_individual_res)
+end
+
+
+"""
+Scan the steady state values of atomic coherences σ and the atom-phonon correlations Bα over the detuning
+for a given array (and dipole moments)
+"""
+function scan_steadyState(SP, d, array)
+    params = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, d, SP.να, SP.ηα, SP.incField_wlf, array, SP.save_individual_res, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
+    return calc_steadyState.(SP.Δ_range, Ref(params), "", SP.noPhonons, false)
 end
 
 
@@ -715,7 +725,7 @@ end
 # ================================================
 """
 Calculate the transmission of light through the fiber in the chosen driving mode for parameters given by SP
-    
+
 The function assumes that σBα contains only σ if the Lamb-Dicke parameters are zero
 """
 function calc_transmission(SP, σBα)
@@ -724,6 +734,23 @@ function calc_transmission(SP, σBα)
         return transmission(σBα, tildeΩ, SP.fiber)
     else
         tildeΩ, tildeΩα = get_tildeΩs(SP.fiber, SP.d, SP.ηα, SP.incField_wlf, SP.array)
+        return transmission(σBα..., tildeΩ, tildeΩα, SP.fiber)
+    end
+end
+
+
+"""
+Calculate the transmission of light through the fiber in the chosen driving mode for parameters given by SP
+for a given array (and dipole moments)
+
+The function assumes that σBα contains only σ if the Lamb-Dicke parameters are zero
+"""
+function calc_transmission(SP, σBα, d, array)
+    if SP.noPhonons
+        tildeΩ = get_tildeΩs(SP.fiber, d, SP.incField_wlf, array)
+        return transmission(σBα, tildeΩ, SP.fiber)
+    else
+        tildeΩ, tildeΩα = get_tildeΩs(SP.fiber, d, SP.ηα, SP.incField_wlf, array)
         return transmission(σBα..., tildeΩ, tildeΩα, SP.fiber)
     end
 end

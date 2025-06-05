@@ -50,7 +50,7 @@ function define_SP_BerlinCS()
     να0_ul = να0/γ0 #unitless version of να0
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-0.5, 0.5, 300)
+    Δ_specs = (-0.5, 0.5, 30)
     
     # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
     ΔvariDependence = "flat"
@@ -60,9 +60,9 @@ function define_SP_BerlinCS()
     # Lamb-Dicke parameters
     # ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
     # ηα = ηα0 .* [0.1, 0.2, 0.1]
-    # ηα = ηα0 * 0.4
+    ηα = ηα0 * 0.4
     # ηα = [0.01, 0.01, 0.01]
-    ηα = [0., 0., 0.]
+    # ηα = [0., 0., 0.]
     
     # Whether phonons are excluded or not from the calculations
     noPhonons = all(ηα .== 0)
@@ -71,18 +71,17 @@ function define_SP_BerlinCS()
     arrayType = "1Dchain"
     
     # Set number of atomic sites 
-    N_sites = 200
+    N_sites = 5
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
-    ff = 1.0
-    pos_unc = any(ηα .!= 0) ? 0.0 : 0.0
-    # pos_unc = any(ηα .!= 0) ? 0.0 : ηα0/ωa * 0.4
-    n_inst  = any(ηα .!= 0) ?   1 : 1
+    ff = 0.8
+    pos_unc = 0.0 #ηα0/ωa * 0.4
+    n_inst = 10
     
     # Generate the array, its description, and the number of atoms
     array, arrayDescription, N = get_array(arrayType, N_sites, ρa0_ul, a0_ul, ff, pos_unc, n_inst)
     
-    # Time spand and maximum time step allowed in time evolution
+    # Time span and maximum time step allowed in time evolution
     tspan = (0, 100)
     dtmax = 0.01
     
@@ -107,8 +106,8 @@ function define_SP_BerlinCS()
     
     # Whether to save individual results (Im_Grm_trans, steady states, time evolutions)
     # save_individual_res = n_inst == 1 && ff == 1 && pos_unc == 0
-    save_individual_res = n_inst == 1
-    # save_individual_res = pos_unc == 0
+    # save_individual_res = n_inst == 1
+    save_individual_res = pos_unc == 0 && arrayType != "randomZ"
     
     # Ranges of z and x values to define r_fields for calculating the radiated E-field
     arrayL = (N_sites - 1)*a0_ul
@@ -312,8 +311,8 @@ function main()
     # plot_propConst_inOutMom(ωρfn_ranges)
     # plot_coupling_strengths(SP)
     # plot_σBαTrajectories_σBαSS(SP)
-    plot_transmission_vs_Δ(SP)
-    # plot_classDisorder_transmission_vs_Δ(SP)
+    # plot_transmission_vs_Δ(SP)
+    plot_imperfectArray_transmission_vs_Δ(SP)
     # plot_steadyState_radiation_Efield(SP)
     # plot_radiation_Efield(SP)
     # plot_GnmEigenModes(SP)
@@ -414,36 +413,38 @@ function plot_transmission_vs_Δ(SP)
 end
 
 
-function plot_classDisorder_transmission_vs_Δ(SP)
-    if SP.n_inst != 1 throw(ArgumentError("plot_classDisorder_transmission_vs_Δ requires n_inst > 1")) end
+function plot_imperfectArray_transmission_vs_Δ(SP)
+    if SP.n_inst == 1 throw(ArgumentError("plot_imperfectArray_transmission_vs_Δ requires n_inst > 1")) end
     
     n_inst = length(SP.array)
-    postfix = get_postfix_classDisorder_transmission(SP.Δ_specs, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.incField_wlf, n_inst, SP.arrayDescription, SP.fiber.postfix)
+    postfix = get_postfix_imperfectArray_transmission(SP.Δ_specs, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.incField_wlf, n_inst, SP.arrayDescription, SP.fiber.postfix)
     filename = "T_phase" * postfix
-    folder = "classDisorder_T_phase/"
+    folder = "imperfectArray_T_phase/"
     
     if isfile(saveDir * folder * filename * ".txt") 
         T_means, T_stds, phase_means, phase_stds = eachrow(load_as_txt(saveDir * folder, filename))
     else
         ts = []
-        for SP in SPs
-            # Specific functions for this case must be implemented, 
-                # where the parameters are calculated for each array instantiation,
-                # or the present functions must distinguish between SP.n_inst == 1 and SP.n_inst != 1
-            # The rest of this function must be updated to match
-            
-            # σBα_scan = scan_steadyState(SP)
-            # push!(ts, calc_transmission.(Ref(SP), σBα_scan))
+        if typeof(SP.d) == String
+            for array in SP.array
+                σBα_scan = scan_steadyState(SP, SP.d, array)
+                push!(ts, calc_transmission.(Ref(SP), σBα_scan, Ref(SP.d), Ref(array)))
+            end
+        else
+            for (d, array) in zip(SP.d, SP.array)
+                σBα_scan = scan_steadyState(SP, d, array)
+                push!(ts, calc_transmission.(Ref(SP), σBα_scan, Ref(d), Ref(array)))
+            end
         end
-            
-        # # Prepare means and standard deviations of (squared) magnitudes and phases
-        # T_means, T_stds, phase_means, phase_stds = prep_classDisorder_transmission(ts)
-        # formattedResult = vectorOfRows2Matrix([T_means, T_stds, phase_means, phase_stds])
-        # save_as_txt(formattedResult, saveDir * folder, filename)
+        
+        # Prepare means and standard deviations of (squared) magnitudes and phases
+        T_means, T_stds, phase_means, phase_stds = prep_imperfectArray_transmission(ts)
+        formattedResult = vectorOfRows2Matrix([T_means, T_stds, phase_means, phase_stds])
+        save_as_txt(formattedResult, saveDir * folder, filename)
     end
     
-    # titl = prep_classDisorder_transmission_title(SPs[1])
-    # fig_classDisorder_transmission_vs_Δ(SPs[1].Δ_range, T_means, T_stds, phase_means, phase_stds, titl)
+    titl = prep_imperfectArray_transmission_title(SP)
+    fig_imperfectArray_transmission_vs_Δ(SP.Δ_range, T_means, T_stds, phase_means, phase_stds, titl)
 end
 
 
@@ -653,16 +654,17 @@ end
 # Figure out T>1 error for doubleChain 
     # Something with the coupling..?
 
-# Update chiralDipoleMoment to simply calculate the chiral dipole moment at whichever position the atoms are in
 
 # Get it to work on the cluster
     # Use MPI
     # Systematically scan the effect of η and ff
         # Pick a value of Δ with T ~ 1 and phase ~ pi, and plot these things as a function of η and ff
         # ff is most interesting for experiment - could probably just keep the same η or only consider a few values (10 50 100 percent of their present values)
+        # check which of the ηα's is the most important to minimize?
+        # compare classical disorder with phonon calculation?
 
 
-# Introduce code to get means over ff != 1 but still using phonon calculation
+
 
 # Argue which of the ηα is the most significant by looking at the paramter matrices
     # If certain derivatives of tildeΩ or tildeG are large, the corresponding ηα would have a greater effect
@@ -683,10 +685,6 @@ end
     # Possibly only implement optimized calculation of integral
         # Less work, and this is obviously the slow part of the overall calculation
 
-# Make chiral dipole moment work for atoms on the opposite side of the array
-
-# Implement titles for figures that show parameters etc.
-    
 # Calculate reflection and loss
 
 # Implement n_inst in a better way? That is, dont have a list of SPs, but include the many instantiations in the same SP?
@@ -707,7 +705,7 @@ end
     # To optimize calculation time when scanning
 
 # Use only zeroth order tildeFα in steadyState? Reduce to second order in eta in other ways (i.e. calculate for eta=0 and eta≠0 to extract exact dependencies)? Time evolution anyways also finds results that are effectively higher order
-    
+
 # Update interface comments and make a description of notation/conventions somewhere
 
 # Make small ω version of fiber_equation work? Implement HomotopyContinuation solution?
@@ -718,6 +716,7 @@ end
     # Invent some packing/unpacking scheme to put any kind of data into real matrices
 
 # Consider using StaticArrays in some places?
+    # make structs for 3-vectors and 3,3-matrices
 
 # Consider writing tests...
     # Test/check validity of SP (d is normalized, some parameters are non-negative), which could also serve as a reminder of the implicit assumptions regarding parameters

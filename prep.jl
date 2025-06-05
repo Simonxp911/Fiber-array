@@ -38,9 +38,9 @@ end
 
 """
 Prepare the means and standard deviations of the transmission as calculated over
-a set of classically disordered atomic arrays
+a set of imperfect atomic arrays
 """
-function prep_classDisorder_transmission(ts)
+function prep_imperfectArray_transmission(ts)
     ts_mat = vectorOfRows2Matrix(ts)
     
     T_mat     = abs2.(ts_mat)
@@ -79,9 +79,9 @@ end
 
 
 """
-Prepare title for the transmission plot with classical disorder
+Prepare title for the transmission plot with imperfect arrays
 """
-function prep_classDisorder_transmission_title(SP)
+function prep_imperfectArray_transmission_title(SP)
     title_components = [
         "Δvari: " * SP.ΔvariDescription,
         "Array: " * SP.arrayDescription,

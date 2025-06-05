@@ -210,9 +210,17 @@ end
 Returns a list of the dipole moments of each atom which yields a chiral fiber setup
 for the case of 1Dchain or doubleChain arrays
 """
-function chiralDipoleMoment(fiber, ρa, array)
-    if any([abs(site[1]) != ρa for site in array]) || any([site[2] != 0 for site in array]) throw(ArgumentError("chiralDipoleMoment assumes the atomic array to of the form [±ρa, 0, z]")) end
-    return [chiralDipoleMoment(fiber, ρa).*[sign(site[1]), 1, 1] for site in array]
+function chiralDipoleMoment(fiber, ρa, array::Vector{<:Vector{<:Real}})
+    return [chiralDipoleMoment(fiber, ρa).*[sign(site[1]), 1, 1] for site in array]    
+end
+
+
+"""
+Returns a list of the dipole moments of each atom which yields a chiral fiber setup
+for the case of 1Dchain or doubleChain arrays, for the case of n_inst != 1
+"""
+function chiralDipoleMoment(fiber, ρa, array::Vector{<:Vector{<:Vector{<:Real}}})
+    return [chiralDipoleMoment(fiber, ρa, array_inst) for array_inst in array]
 end
 
 

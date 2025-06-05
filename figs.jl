@@ -181,7 +181,7 @@ Plot mean magnitude and phase of transmission amplitude as a function of detunin
 
 with bands given by the standard deviation
 """
-function fig_classDisorder_transmission_vs_Δ(Δ_range, T_means, T_stds, phase_means, phase_stds, titl)
+function fig_imperfectArray_transmission_vs_Δ(Δ_range, T_means, T_stds, phase_means, phase_stds, titl)
     # Start figure 
     fig = Figure(size=(800, 600))
     
