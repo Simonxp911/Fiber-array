@@ -95,9 +95,6 @@ function cylUnitVectors(r)
     ρ_unit = [r[1], r[2], 0]/sqrt(r[1]^2 + r[2]^2)
     ϕ_unit = [-r[2], r[1], 0]/sqrt(r[1]^2 + r[2]^2)
     z_unit = [0, 0, 1]
-    # ρ_unit = SVector{3}([r[1], r[2], 0]/sqrt(r[1]^2 + r[2]^2))
-    # ϕ_unit = SVector{3}([-r[2], r[1], 0]/sqrt(r[1]^2 + r[2]^2))
-    # z_unit = SVector{3}([0, 0, 1])
     return ρ_unit, ϕ_unit, z_unit
 end
 

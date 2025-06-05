@@ -62,7 +62,7 @@ function fig_coupling_vs_x(x_range, coupling, x_label, y_label)
     # Start figure 
     fig = Figure(size=(800, 600))
     
-    # Make title and axis
+    # Make axes
     ax1 = Axis(fig[1, 1], limits=(extrema(x_range), nothing), 
                xlabel=x_label, 
                ylabel=latexstring(y_label * ", magnitude"))
@@ -76,6 +76,46 @@ function fig_coupling_vs_x(x_range, coupling, x_label, y_label)
     
     # Finish figure
     axislegend.([ax1, ax2])
+    display(GLMakie.Screen(), fig)
+end
+
+
+"""
+Plot the atomic array and the fiber in 3D
+"""
+function fig_arrayIn3D(array, x_range, z_range, ρf)
+    # Start figure 
+    fig = Figure(size=(800, 600))
+    
+    # Make title and axis
+    Label(fig[1, 1], L"The atomic array and fiber$$", tellwidth=false)
+    zWidth  = maximum(z_range) - minimum(z_range)
+    xHeight = maximum(x_range) - minimum(x_range)
+    Axis3(fig[2, 1], limits=(extrema(z_range), extrema(x_range), extrema(x_range)), 
+                     yreversed = true,
+                     xlabel=L"$ z/\lambda $", 
+                     ylabel=L"$ y/\lambda $", 
+                     zlabel=L"$ x/\lambda $", 
+                     aspect=(zWidth, xHeight, xHeight)./maximum((zWidth, xHeight)))
+    
+    # Plot the atoms
+    radius = 0.1
+    θs = range(0, π, 20)
+    φs = range(0, 2π, 20)
+    xSph = radius.*[cos(φ)*sin(θ) for θ in θs, φ in φs]
+    ySph = radius.*[sin(φ)*sin(θ) for θ in θs, φ in φs]
+    zSph = radius.*[cos(θ) for θ in θs, φ in φs]
+    for site in array
+        surface!(zSph .+ site[3], ySph .+ site[2], xSph .+ site[1], colormap=:grays)
+    end
+    
+    # Plot the fiber
+    xCyl = ρf.*[cos(φ) for z in z_range, φ in φs]
+    yCyl = ρf.*[sin(φ) for z in z_range, φ in φs]
+    zCyl = [z for z in z_range, φ in φs]
+    surface!(zCyl, yCyl, xCyl, colormap=(:grays, 0.3))
+    
+    # Finish figure
     display(GLMakie.Screen(), fig)
 end
 
@@ -212,10 +252,9 @@ Plot the intensity (norm-squared) of the radiated E-field around the fiber
 """
 function fig_radiation_Efield(z_range, x_range, intensity, ρf, array)
     # Start figure 
-    zWidth = maximum(z_range) - minimum(z_range)
+    zWidth  = maximum(z_range) - minimum(z_range)
     xHeight = maximum(x_range) - minimum(x_range)
     fig = Figure(size=(zWidth/xHeight*300, 300))
-    # fig = Figure(size=(800, 200))
     
     # Make title and axis
     Label(fig[1, 1], L"$ I/(\gamma/\lambda^3) $", tellwidth=false)
@@ -239,7 +278,6 @@ function fig_radiation_Efield(z_range, x_range, intensity, ρf, array)
     
     # Finish figure
     display(GLMakie.Screen(), fig)
-    save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Notes\\figures\\radiationEFieldN200D0.png", fig)
 end
 
 
@@ -590,3 +628,5 @@ end
 
 
 
+
+# save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Notes\\figures\\radiationEFieldN200D0.png", fig)
