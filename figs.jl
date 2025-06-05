@@ -212,7 +212,10 @@ Plot the intensity (norm-squared) of the radiated E-field around the fiber
 """
 function fig_radiation_Efield(z_range, x_range, intensity, ρf, array)
     # Start figure 
-    fig = Figure(size=(800, 600))
+    zWidth = maximum(z_range) - minimum(z_range)
+    xHeight = maximum(x_range) - minimum(x_range)
+    fig = Figure(size=(zWidth/xHeight*300, 300))
+    # fig = Figure(size=(800, 200))
     
     # Make title and axis
     Label(fig[1, 1], L"$ I/(\gamma/\lambda^3) $", tellwidth=false)
@@ -236,6 +239,7 @@ function fig_radiation_Efield(z_range, x_range, intensity, ρf, array)
     
     # Finish figure
     display(GLMakie.Screen(), fig)
+    save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Notes\\figures\\radiationEFieldN200D0.png", fig)
 end
 
 
@@ -433,7 +437,7 @@ function fig_eigenEnergies_vs_k(dominant_ks, collΔ, collΓ, weights_abs, κ, ti
                xlabel=L"$ λk_z $",
                yscale=log10)
     
-    # Plot the real space function
+    # Plot
     scatter!(ax1, dominant_ks, collΔ, color=:blue)
     scatter!(ax2, dominant_ks, collΓ, color=:red)
     scatter!(ax3, dominant_ks, weights_abs, color=:black)
@@ -446,6 +450,47 @@ function fig_eigenEnergies_vs_k(dominant_ks, collΔ, collΓ, weights_abs, κ, ti
     
     # Finish figure
     axislegend(ax1)
+    display(GLMakie.Screen(), fig)
+end
+
+
+"""
+Plot and compare the collective energies of a number of coupling matrices as a function of the dominant k
+in their discrete Fourier transform (i.e. plot the band structure of the coupling matrices)
+"""
+function fig_compareEigenEnergies_vs_k(dominant_kss, collΔs, collΓs, kz_range, collΔ_inf, collΓ_inf, Ns, κ, titl)
+    # Prepare colors
+    colors = distinguishable_colors(length(Ns), [RGB(1, 1, 1), RGB(0, 0, 0)], dropseed=true)
+    
+    # Start figure 
+    fig = Figure(size=(800, 900))
+    
+    # Make title and axis
+    Label(fig[1, 1], titl, tellwidth=false)
+    Label(fig[end+1, 1], L"Collective energies, $ Δ_\text{coll}/γ $", tellwidth=false)
+    ax1 = Axis(fig[end+1, 1])
+    Label(fig[end+1, 1], L"Collective decay rates, $ Γ_\text{coll}/γ $", tellwidth=false)
+    ax2 = Axis(fig[end+1, 1],
+               xlabel=L"$ λk_z $")
+    
+    # Plot the infinite case energies
+    lines!(ax1, kz_range, collΔ_inf, color=:black)
+    lines!(ax2, kz_range, collΓ_inf, color=:black)
+    
+    # Plot the finite case energies
+    for (i, (dominant_ks, collΔ, collΓ, N)) in enumerate(zip(dominant_kss, collΔs, collΓs, Ns))
+        scatter!(ax1, dominant_ks, collΔ, color=colors[i], label=L"N = %$(N)")
+        scatter!(ax2, dominant_ks, collΓ, color=colors[i])
+    end
+    
+    # Mark the light cone and position of propagation constant
+    vlines!(ax1, [-ωa, ωa], color=:black, linestyle=:dash, linewidth=1)
+    vlines!(ax1, [κ], color=:red, linestyle=:dash, linewidth=1)
+    vlines!(ax2, [-ωa, ωa], color=:black, linestyle=:dash, linewidth=1, label=L"Light cone$$")
+    vlines!(ax2, [κ], color=:red, linestyle=:dash, linewidth=1, label=L"$ \kappa $")
+    
+    # Finish figure
+    axislegend.([ax1, ax2], position=:lt)
     display(GLMakie.Screen(), fig)
 end
 

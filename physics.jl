@@ -634,6 +634,76 @@ end
 
 
 # ================================================
+#   Functions pertaining to 1D Fourier transform of the vacuum Green's function (along z)
+# ================================================
+"""
+Calculates the 1D Fourier transform of the vacuum Green's function (along z)
+"""
+function G0_1DFT(ω, a, kz)
+    # Get the parallel and perpendicular components of the energy shifts and decay rates
+    Re_G0_1DFT_para, Re_G0_1DFT_perp = Re_G0_1DFT(ω, a, kz)
+    Im_G0_1DFT_para, Im_G0_1DFT_perp = Im_G0_1DFT(ω, a, kz)
+    
+    # Put together the result (note the sign on the real part, due to the defintion of the energy shift)
+    return Diagonal([Re_G0_1DFT_perp + 1im*Im_G0_1DFT_perp, Re_G0_1DFT_perp + 1im*Im_G0_1DFT_perp, Re_G0_1DFT_para + 1im*Im_G0_1DFT_para])
+end
+
+
+"""
+Calculates the parallel component and the perpendicular components of the real part 
+of the 1D Fourier transform of the vacuum Green's function (along z)
+"""
+function Re_G0_1DFT(ω, a, kz)
+    Re_G0_1DFT_para = real( 
+                                      ( polylogarithm(3, exp(1im*(ω + kz)*a)) + polylogarithm(3, exp(1im*(ω - kz)*a)) )
+                            - 1im*ω*a*( polylogarithm(2, exp(1im*(ω + kz)*a)) + polylogarithm(2, exp(1im*(ω - kz)*a)) )
+                          )
+    
+    Re_G0_1DFT_perp = real( 
+                            -         (  polylogarithm(3, exp(1im*(ω + kz)*a)) + polylogarithm(3, exp(1im*(ω - kz)*a)))
+                            + 1im*ω*a*( polylogarithm(2, exp(1im*(ω + kz)*a)) + polylogarithm(2, exp(1im*(ω - kz)*a)) )
+                            + ω^2*a^2*( polylogarithm(1, exp(1im*(ω + kz)*a)) + polylogarithm(1, exp(1im*(ω - kz)*a)) )
+                          )
+    
+    Re_G0_1DFT_para *= 3/(2*ω^3*a^3)
+    Re_G0_1DFT_perp *= 3/(4*ω^3*a^3)
+    return Re_G0_1DFT_para, Re_G0_1DFT_perp
+end
+
+
+"""
+Calculates the parallel component and the perpendicular components of the imaginary part 
+of the 1D Fourier transform of the vacuum Green's function (along z)
+"""
+function Im_G0_1DFT(ω, a, kz)
+    Im_G0_1DFT_para = 0.0
+    Im_G0_1DFT_perp = 0.0
+    q0 = 2*π/a
+    
+    if abs(kz) ≤ ω        
+        Im_G0_1DFT_para += 1 - kz^2/ω^2
+        Im_G0_1DFT_perp += 1 + kz^2/ω^2
+    end
+    m = 1
+    while abs(kz + q0*m) ≤ ω        
+        Im_G0_1DFT_para += 1 - (kz + q0*m)^2/ω^2
+        Im_G0_1DFT_perp += 1 + (kz + q0*m)^2/ω^2
+        m += 1
+    end
+    m = -1
+    while abs(kz + q0*m) ≤ ω        
+        Im_G0_1DFT_para += 1 - (kz + q0*m)^2/ω^2
+        Im_G0_1DFT_perp += 1 + (kz + q0*m)^2/ω^2
+        m -= 1
+    end
+    
+    Im_G0_1DFT_para *= 3*π/(4*ω*a)
+    Im_G0_1DFT_perp *= 3*π/(8*ω*a)
+    return Im_G0_1DFT_para, Im_G0_1DFT_perp
+end
+
+
+# ================================================
 #   Functions pertaining to the time evolution of the atomic and phononic degrees of freedom
 # ================================================
 """

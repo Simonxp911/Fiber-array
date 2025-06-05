@@ -8,7 +8,7 @@ Calculate the polylogarithm of order s evaluated at z.
 
 The precision of the calculation is determined by abstol.
 """
-function polylogarithm(z, s, abstol=1e-3)
+function polylogarithm(s, z, abstol=1e-4)
     sum = 0.0 + 0.0im
     n = 1
     summand = 10.0*abstol + 0.0im

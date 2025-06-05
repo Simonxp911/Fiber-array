@@ -54,7 +54,7 @@ function define_SP_BerlinCS()
     
     # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
     ΔvariDependence = "flat"
-    Δvari_args = -3, 2*a0_ul
+    Δvari_args = -3, 50*a0_ul
     ΔvariDescription = ΔvariDescript(ΔvariDependence, Δvari_args)
     
     # Lamb-Dicke parameters
@@ -91,8 +91,8 @@ function define_SP_BerlinCS()
     initialStateDescription = "gs"
     
     # Atomic dipole moment
-    d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul, array)
-    # d = "chiral"
+    # d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul, array)
+    d = "chiral"
     dDescription = "chiral"
     
     # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
@@ -106,7 +106,8 @@ function define_SP_BerlinCS()
     approx_Grm_trans = (true, false)
     
     # Whether to save individual results (Im_Grm_trans, steady states, time evolutions)
-    save_individual_res = n_inst == 1 && ff == 1 && pos_unc == 0
+    # save_individual_res = n_inst == 1 && ff == 1 && pos_unc == 0
+    save_individual_res = n_inst == 1
     # save_individual_res = pos_unc == 0
     
     # Ranges of z and x values to define r_fields for calculating the radiated E-field
@@ -308,7 +309,6 @@ function main()
     
     
     
-    
     # plot_propConst_inOutMom(ωρfn_ranges)
     # plot_coupling_strengths(SP)
     # plot_σBαTrajectories_σBαSS(SP)
@@ -319,6 +319,7 @@ function main()
     # plot_GnmEigenModes(SP)
     # plot_emissionPatternOfGnmeigenModes(SP)
     # plot_GnmEigenEnergies(SP)
+    # plot_compareGnmEigenEnergies(SP)
     # plot_lossWithGnmEigenEnergies(SP)
     
     return nothing
@@ -447,7 +448,7 @@ end
 
 
 function plot_steadyState_radiation_Efield(SP)
-    Δ = -0.25
+    Δ = 0.0
     zs = [site[3] for site in SP.array]
     σBα_SS = calc_steadyState(SP, Δ)
     if SP.noPhonons σ_SS = σBα_SS else σ_SS = σBα_SS[1] end
@@ -464,7 +465,7 @@ end
 function plot_radiation_Efield(SP)
     Δ = 0.0
     σ_SS = calc_steadyState(SP, Δ)
-    E = calc_radiation_Efield.(Ref(SP), Ref(σ_SS))
+    E = scan_radiation_Efield(SP, σ_SS)
     intensity = norm.(E).^2
     
     fig_radiation_Efield(SP.z_range, SP.x_range, intensity, SP.ρf, SP.array)
@@ -476,7 +477,7 @@ function plot_GnmEigenModes(SP)
     
     if SP.noPhonons
         # Get coupling matrix and its spectrum
-        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
         eigenEnergies, eigen_σs, dominant_ks = spectrum_dominant_ks(Δvari + tildeG, SP.a)
         
         # Pack the eigenmodes
@@ -500,7 +501,7 @@ function plot_GnmEigenModes(SP)
         
     else
         # Get coupling matrix and its spectrum
-        Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+        Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
         fullCoupling = get_fullCouplingMatrix(Δvari, tildeG, tildeFα, tildeGα1, tildeGα2)
         eigenEnergies, eigenModes = spectrum(fullCoupling)
         
@@ -542,11 +543,11 @@ end
 
 function plot_emissionPatternOfGnmeigenModes(SP)
     if SP.noPhonons
-        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
         eigenEnergies, eigen_σs = spectrum(Δvari + tildeG)
         eigen_σBαs = eigenModes
     else
-        Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+        Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
         fullCoupling = get_fullCouplingMatrix(Δvari, tildeG, tildeFα, tildeGα1, tildeGα2)
         eigenEnergies, eigenModes = spectrum(fullCoupling)
         eigen_σBαs = unpack_σBαFromσBαVec.(eigenModes)
@@ -566,7 +567,7 @@ function plot_GnmEigenEnergies(SP)
     # The eigenmodes when including phonons do not have a clear band structure
     if any(SP.ηα .!= 0) throw(ArgumentError("plot_GnmEigenEnergies is not implemented for the case of including phonons")) end
     
-    Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+    Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
     # tildeG = get_tildeG0(SP.fiber, SP.d, SP.array)
     
     eigenEnergies, dominant_ks, eigenModesMatrix, eigenModesMatrix_inv = spectrum_dominant_ks_basisMatrices(Δvari + tildeG, SP.a)
@@ -579,16 +580,48 @@ function plot_GnmEigenEnergies(SP)
 end
 
 
+function plot_compareGnmEigenEnergies(SP)
+    # The eigenmodes when including phonons do not have a clear band structure
+    if any(SP.ηα .!= 0) throw(ArgumentError("plot_compareGnmEigenEnergies is not implemented for the case of including phonons")) end
+    
+    # Prepare finite array spectra
+    Ns = [1000, 200, 50]
+    collΔs = []
+    collΓs = []
+    dominant_kss = []
+    for N in Ns
+        array, _, _ = get_array(SP.arrayType, N, SP.ρa, SP.a, SP.ff, SP.pos_unc, 1)
+        d = chiralDipoleMoment(SP.fiber, SP.ρa, array)
+        tildeG = get_tildeGs(SP.fiber, d, array, SP.save_individual_res, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
+    
+        eigenEnergies, eigenModes, dominant_ks = spectrum_dominant_ks(tildeG, SP.a)
+        collΔ, collΓ = collEnergies_from_eigenEnergies(eigenEnergies)
+        push!(collΔs, collΔ)
+        push!(collΓs, collΓ)
+        push!(dominant_kss, dominant_ks)
+    end
+    
+    # Prepare infinite case spectrum
+    kz_range = range(-π/SP.a, π/SP.a, 300)
+    d = chiralDipoleMoment(SP.fiber, SP.ρa)
+    spectrum_infArray = Ref(d').*G0_1DFT.(ωa, SP.a, kz_range).*Ref(d)
+    collΔ_inf, collΓ_inf = collEnergies_from_eigenEnergies(spectrum_infArray)
+    
+    titl = prep_GnmEigenEnergies_title(SP)
+    fig_compareEigenEnergies_vs_k(dominant_kss, collΔs, collΓs, kz_range, collΔ_inf, collΓ_inf, Ns, SP.fiber.propagation_constant, titl) 
+end
+
+
 function plot_lossWithGnmEigenEnergies(SP)
     σBα_scan = scan_steadyState(SP)
     t = calc_transmission.(Ref(SP), σBα_scan)
     
     if SP.noPhonons
-        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
         drive = tildeΩ
         fullCoupling = Δvari + tildeG
     else
-        Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.approx_Grm_trans)
+        Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
         drive = get_fullDriveVector(tildeΩ, tildeΩα)
         fullCoupling = get_fullCouplingMatrix(Δvari, tildeG, tildeFα, tildeGα1, tildeGα2)
     end
@@ -617,17 +650,10 @@ end
 
 # TODO list:
 
-# Figure out T>1 error for doubleChain and 1Dchain N_sites = 200
+# Figure out T>1 error for doubleChain 
     # Something with the coupling..?
 
-# Write notes regarding the conclusions so far (with figures)
-    # Conclusion regarding the idealized case without phonons
-        # Modes
-        # \Delta variation
-        # High transmission with non-zero phase
-        # Band structure - disturbed by fiber
-        # Try to include all details regarding setup (atomic configuration, fixed dipole moment, driving mode, detection mode, input parameter values, )
-
+# Update chiralDipoleMoment to simply calculate the chiral dipole moment at whichever position the atoms are in
 
 # Get it to work on the cluster
     # Use MPI
@@ -635,8 +661,13 @@ end
         # Pick a value of Δ with T ~ 1 and phase ~ pi, and plot these things as a function of η and ff
         # ff is most interesting for experiment - could probably just keep the same η or only consider a few values (10 50 100 percent of their present values)
 
-        
-        
+
+# Introduce code to get means over ff != 1 but still using phonon calculation
+
+# Argue which of the ηα is the most significant by looking at the paramter matrices
+    # If certain derivatives of tildeΩ or tildeG are large, the corresponding ηα would have a greater effect
+    # With this we can say which aspect of the atomic trap is the most important (radial, azimuthal, or axial trapping)
+
 # Implement plot_GnmEigenEnergies for the case of including phonons
     # Figure out how to order the eigenvalues of the fullCouplingMatrix
     # real part vs imag part?

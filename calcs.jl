@@ -79,10 +79,8 @@ end
 
 function get_tildeΩs(fiber, d::String, incField_wlf, array)
     if d == "chiral"
-        ρa = abs(array[1][1])
-        if any([abs(site[1]) != ρa for site in array]) || any([site[2] != 0 for site in array]) throw(ArgumentError("get_tildeΩs with d = 'chiral' assumes the atomic array to of the form [±ρa, 0, z]")) end
-        
         # Set up coordinates and guided mode components (including their first and second order derivatives)
+        ρa = abs(array[1][1])
         xn = [site[1] for site in array]
         zn = [site[3] for site in array]
         κ = fiber.propagation_constant
@@ -103,10 +101,8 @@ end
 
 function get_tildeΩs(fiber, d::String, ηα, incField_wlf, array)
     if d == "chiral"
-        ρa = abs(array[1][1])
-        if any([abs(site[1]) != ρa for site in array]) || any([site[2] != 0 for site in array]) throw(ArgumentError("get_tildeΩs with d = 'chiral' assumes the atomic array to of the form [±ρa, 0, z]")) end
-        
         # Set up coordinates and guided mode components (including their first and second order derivatives)
+        ρa = abs(array[1][1])
         xn = [site[1] for site in array]
         zn = [site[3] for site in array]
         κ = fiber.propagation_constant
@@ -175,14 +171,13 @@ function get_tildeGs(fiber, d::String, array, save_individual_res, abstol_Im_Grm
     if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
     
     if d == "chiral"
-        ρa = abs(array[1][1])
-        if any([abs(site[1]) != ρa for site in array]) || any([site[2] != 0 for site in array]) throw(ArgumentError("get_tildeGs with d = 'chiral' assumes the atomic array to of the form [±ρa, 0, z]")) end
-        
         if save_individual_res
+            ρa = abs(array[1][1])
             d = chiralDipoleMoment(fiber, ρa, array)
             return get_tildeGs(fiber, d, array, save_individual_res, abstol_Im_Grm_trans, approx_Grm_trans)
         else
             # Prepare some parameters and quantities
+            ρa = abs(array[1][1])
             κ = fiber.propagation_constant
             κ_prime = fiber.propagation_constant_derivative
             N = length(array)
@@ -281,8 +276,6 @@ end
 function get_tildeGs(fiber, d::String, ηα, array, save_individual_res, abstol_Im_Grm_trans, approx_Grm_trans)
     if d == "chiral"
         ρa = abs(array[1][1])
-        if any([abs(site[1]) != ρa for site in array]) || any([site[2] != 0 for site in array]) throw(ArgumentError("get_tildeGs with d = 'chiral' assumes the atomic array to of the form [±ρa, 0, z]")) end
-        
         d = chiralDipoleMoment(fiber, ρa, array)
         return get_tildeGs(fiber, d, ηα, array, save_individual_res, abstol_Im_Grm_trans, approx_Grm_trans)
     else
@@ -406,8 +399,6 @@ end
 function get_tildeG0(fiber, d::String, array)
     if d == "chiral"
         ρa = abs(array[1][1])
-        if any([abs(site[1]) != ρa for site in array]) || any([site[2] != 0 for site in array]) throw(ArgumentError("get_tildeG0 with d = 'chiral' assumes the atomic array to of the form [±ρa, 0, z]")) end
-        
         d = chiralDipoleMoment(fiber, ρa, array)
         return get_tildeG0(fiber, d, array)
     else
@@ -433,15 +424,15 @@ function get_tildeG0(fiber, d, array)
 end
 
 
-function get_Grm_rrns(fiber, r_field, array, save_individual_res, approx_Grm_trans)
-    return Grm.(Ref(fiber), ωa, Ref(r_field), array, Ref((0, 0)), 1, save_individual_res, Ref(approx_Grm_trans))
+function get_Grm_rrns(fiber, r_field, array, save_individual_res, abstol_Im_Grm_trans, approx_Grm_trans)
+    return Grm.(Ref(fiber), ωa, Ref(r_field), array, Ref((0, 0)), 1, save_individual_res, abstol_Im_Grm_trans, Ref(approx_Grm_trans))
 end
 
 
-function get_Grm_rrns(fiber, ηα, r_field, array, save_individual_res, approx_Grm_trans)
-    Grm_rrn     =  Grm.(Ref(fiber), ωa, Ref(r_field), array, Ref((0, 0)), 1, save_individual_res, Ref(approx_Grm_trans))
-    Grm_rrnα2   = [Grm.(Ref(fiber), ωa, Ref(r_field), array, Ref((0, 1)), α, save_individual_res, Ref(approx_Grm_trans)) for α in 1:3]
-    Grm_rrnαα22 = [Grm.(Ref(fiber), ωa, Ref(r_field), array, Ref((0, 2)), α, save_individual_res, Ref(approx_Grm_trans)) for α in 1:3]
+function get_Grm_rrns(fiber, ηα, r_field, array, save_individual_res, abstol_Im_Grm_trans, approx_Grm_trans)
+    Grm_rrn     =  Grm.(Ref(fiber), ωa, Ref(r_field), array, Ref((0, 0)), 1, save_individual_res, abstol_Im_Grm_trans, Ref(approx_Grm_trans))
+    Grm_rrnα2   = [Grm.(Ref(fiber), ωa, Ref(r_field), array, Ref((0, 1)), α, save_individual_res, abstol_Im_Grm_trans, Ref(approx_Grm_trans)) for α in 1:3]
+    Grm_rrnαα22 = [Grm.(Ref(fiber), ωa, Ref(r_field), array, Ref((0, 2)), α, save_individual_res, abstol_Im_Grm_trans, Ref(approx_Grm_trans)) for α in 1:3]
     return Grm_rrn + sum(@. ηα^2*Grm_rrnαα22)/(2*ωa^2), ηα.*Grm_rrnα2/ωa
 end
 
@@ -458,16 +449,16 @@ function get_Γgm(fiber, d, r1, r2)
 end
 
 
-function get_Jrm(fiber, d, r1, r2, save_individual_res, approx_Grm_trans)
+function get_Jrm(fiber, d, r1, r2, save_individual_res, abstol_Im_Grm_trans, approx_Grm_trans)
     if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
     
     # Calculate the radiation mode Green's function
-    Grm_ = Grm(fiber, ωa, r1, r2, (0, 0), 1, save_individual_res, approx_Grm_trans)
+    Grm_ = Grm(fiber, ωa, r1, r2, (0, 0), 1, save_individual_res, abstol_Im_Grm_trans, approx_Grm_trans)
 
     # Scale the real part of the radiation GF with the local radiation decay rates (if Re_Grm_trans is being approximated)
     if approx_Grm_trans[1]
-        gamma1 = 2*3*π/ωa*d'*imag(Grm(fiber, ωa, r1, r1, (0, 0), 1, save_individual_res, approx_Grm_trans))*d
-        gamma2 = 2*3*π/ωa*d'*imag(Grm(fiber, ωa, r2, r2, (0, 0), 1, save_individual_res, approx_Grm_trans))*d
+        gamma1 = 2*3*π/ωa*d'*imag(Grm(fiber, ωa, r1, r1, (0, 0), 1, save_individual_res, abstol_Im_Grm_trans, approx_Grm_trans))*d
+        gamma2 = 2*3*π/ωa*d'*imag(Grm(fiber, ωa, r2, r2, (0, 0), 1, save_individual_res, abstol_Im_Grm_trans, approx_Grm_trans))*d
         return 3*π/ωa*d'*real(Grm_)*d * sqrt(gamma1*gamma2)
     else
         return 3*π/ωa*d'*real(Grm_)*d
@@ -475,9 +466,9 @@ function get_Jrm(fiber, d, r1, r2, save_individual_res, approx_Grm_trans)
 end
 
 
-function get_Γrm(fiber, d, r1, r2, save_individual_res, approx_Grm_trans)
+function get_Γrm(fiber, d, r1, r2, save_individual_res, abstol_Im_Grm_trans, approx_Grm_trans)
     if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
-    return 2*3*π/ωa*d'*imag(Grm(fiber, ωa, r1, r2, (0, 0), 1, save_individual_res, approx_Grm_trans))*d
+    return 2*3*π/ωa*d'*imag(Grm(fiber, ωa, r1, r2, (0, 0), 1, save_individual_res, abstol_Im_Grm_trans, approx_Grm_trans))*d
 end
 
 
@@ -766,8 +757,8 @@ Calculate the intensity of the radiated light for parameters given by SP
 
 The function assumes that σBα contains only σ if the Lamb-Dicke parameters are zero
 """
-function calc_radiation_Efield(σBα, fiber, d, r_field, array, save_individual_res, approx_Grm_trans::Tuple=(true, true))
-    Grm_rrn = get_Grm_rrns(fiber, r_field, array, save_individual_res, approx_Grm_trans)
+function calc_radiation_Efield(σBα, fiber, d, r_field, array, save_individual_res, abstol_Im_Grm_trans, approx_Grm_trans::Tuple=(true, true))
+    Grm_rrn = get_Grm_rrns(fiber, r_field, array, save_individual_res, abstol_Im_Grm_trans, approx_Grm_trans)
     return radiation_Efield(σBα, Grm_rrn, d)
 end
 
@@ -776,8 +767,8 @@ Calculate the intensity of the radiated light for parameters given by SP
 
 The function assumes that σBα contains only σ if the Lamb-Dicke parameters are zero
 """
-function calc_radiation_Efield(σBα, fiber, d, ηα, r_field, array, save_individual_res, approx_Grm_trans::Tuple=(true, true))
-    tildeGrm_rrn, tildeGα2rm_rrn = get_Grm_rrns(fiber, ηα, r_field, array, save_individual_res, approx_Grm_trans)
+function calc_radiation_Efield(σBα, fiber, d, ηα, r_field, array, save_individual_res, abstol_Im_Grm_trans, approx_Grm_trans::Tuple=(true, true))
+    tildeGrm_rrn, tildeGα2rm_rrn = get_Grm_rrns(fiber, ηα, r_field, array, save_individual_res, abstol_Im_Grm_trans, approx_Grm_trans)
     return radiation_Efield(σBα..., tildeGrm_rrn, tildeGα2rm_rrn, d)
 end
 
@@ -788,12 +779,12 @@ Calculate the intensity of the radiated light for parameters given by SP
 The function assumes that σBα contains only σ if the Lamb-Dicke parameters are zero
 """
 function scan_radiation_Efield(SP, σBα, approx_Grm_trans::Tuple=(true, true))
-    if SP.d == "chiral" d = chiralDipoleMoment(SP.fiber, SP.ρa) else d = SP.d end
+    if SP.d == "chiral" d = chiralDipoleMoment(SP.fiber, SP.ρa, SP.array) else d = SP.d end
     
     if SP.noPhonons
-        return calc_radiation_Efield.(Ref(σBα), Ref(SP.fiber), Ref(d), SP.r_fields, Ref(SP.array), SP.save_individual_res, Ref(approx_Grm_trans))
+        return calc_radiation_Efield.(Ref(σBα), Ref(SP.fiber), Ref(d), SP.r_fields, Ref(SP.array), SP.save_individual_res, SP.abstol_Im_Grm_trans, Ref(approx_Grm_trans))
     else
-        return calc_radiation_Efield.(Ref(σBα), Ref(SP.fiber), Ref(d), Ref(SP.ηα), SP.r_fields, Ref(SP.array), SP.save_individual_res, Ref(approx_Grm_trans))
+        return calc_radiation_Efield.(Ref(σBα), Ref(SP.fiber), Ref(d), Ref(SP.ηα), SP.r_fields, Ref(SP.array), SP.save_individual_res, SP.abstol_Im_Grm_trans, Ref(approx_Grm_trans))
     end
 end
 
