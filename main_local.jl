@@ -1,6 +1,7 @@
 
 
 include("preamble.jl")
+const saveDir = "C:/Users/Simon/Forskning/Data/fiber_array_data/"
 
 
 # ================================================
@@ -422,7 +423,6 @@ end
 function plot_imperfectArray_transmission_vs_Δ(SP)
     if SP.n_inst == 1 throw(ArgumentError("plot_imperfectArray_transmission_vs_Δ requires n_inst > 1")) end
     
-    n_inst = length(SP.array)
     postfix = get_postfix_imperfectArray_transmission(SP.Δ_specs, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.incField_wlf, n_inst, SP.arrayDescription, SP.fiber.postfix)
     filename = "T_phase" * postfix
     folder = "imperfectArray_T_phase/"

@@ -254,7 +254,6 @@ end
 
 
 const ωa = 2π
-const saveDir = "C:/Users/Simon/Forskning/Data/fiber_array_data/"
 
 
 # ================================================
