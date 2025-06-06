@@ -67,12 +67,12 @@ function define_SP_BerlinCS()
     arrayType = "1Dchain"
     
     # Set number of atomic sites 
-    N_sites = 5
+    N_sites = 10
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
-    ff = 0.8
+    ff      = 1.0
     pos_unc = 0.0 #ηα0/ωa * 0.4
-    n_inst = 10
+    n_inst  = 1
     
     # Generate the array, its description, and the number of atoms
     array, arrayDescription, N = get_array(arrayType, N_sites, ρa0_ul, a0_ul, ff, pos_unc, n_inst)
@@ -133,7 +133,7 @@ function main()
     
     
     
-    # prepare_Im_Grm_trans(SP)
+    prepare_Im_Grm_trans(SP)
     # plot_imperfectArray_transmission_vs_Δ(SP)
     
     return nothing
