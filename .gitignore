@@ -1,3 +1,5 @@
 sbatch_script.sh
 *.out
 Fiber array.code-workspace
+README.md
+LICENSE
