@@ -47,7 +47,7 @@ end
 """
 For calculation of transmission over classically disordered arrays
 """
-function get_postfix_classDisorder_transmission(Δ_specs, ΔvariDescription, dDescription, να, ηα, incField_wlf, n_inst, arrayDescription, fiberPostfix)
+function get_postfix_imperfectArray_transmission(Δ_specs, ΔvariDescription, dDescription, να, ηα, incField_wlf, n_inst, arrayDescription, fiberPostfix)
     postfix_components = [
         "Delta_$(join((ro(Δ_specs[1]), ro(Δ_specs[2]), Δ_specs[3]), ","))",
         ΔvariDescription,
