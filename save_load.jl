@@ -118,3 +118,4 @@ end
 function load_as_txt(saveDir, filename)
     return readdlm(saveDir * filename * ".txt", ' ', Float64, '\n')
 end
+

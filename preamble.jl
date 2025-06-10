@@ -11,7 +11,6 @@ using JLD2 #saving and loading
 using DelimitedFiles #read/write simple text data files
 # using Plots; pythonplot() #plot using Python-Matplotlib as backend
 # using CairoMakie #plotting, specialized for making png/pdf output
-using GLMakie #plotting, specialized interactive plots
 using Colors #for generating distinguishable colors
 using LaTeXStrings #LaTeX formatting in string in plots
 # using Polylogarithms #for calculating the linear array FT GF [POSSIBLY FATALLY BUGGED/DEPRECATED]
@@ -217,7 +216,7 @@ function Base.show(io::IO, SP::SysPar)
     println(io, "Trap frequencies, Lamb-Dicke parameters, and atomic dipole moment")
     println(io, "να: ", SP.να)
     println(io, "ηα: ", SP.ηα)
-    println(io, "d: ", dDescription)
+    println(io, "d: ", SP.dDescription)
     println(io, "")
     
     println(io, "Incoming field described in terms of weights, polarization indices, and direction indices")

@@ -3,6 +3,8 @@
 include("preamble.jl")
 const saveDir = "C:/Users/Simon/Forskning/Data/fiber_array_data/"
 
+using GLMakie #plotting, specialized interactive plots
+
 
 # ================================================
 #   Main functions
@@ -311,7 +313,7 @@ function main()
     
     # plot_propConst_inOutMom(ωρfn_ranges)
     # plot_coupling_strengths(SP)
-    plot_arrayIn3D(SP)
+    # plot_arrayIn3D(SP)
     # plot_σBαTrajectories_σBαSS(SP)
     # plot_transmission_vs_Δ(SP)
     # plot_imperfectArray_transmission_vs_Δ(SP)
