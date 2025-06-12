@@ -113,7 +113,7 @@ struct SysPar
     dDescription::String                            # Description of the dipole moment for postfix
     incField_wlf::Vector{Tuple{<:Number, Int, Int}} # Vector of (weight, l, f) tuples for defining the incoming driving field
     
-    save_individual_res::Bool                       # Whether to save individual results (Im_Grm_trans, steady states, time evolutions)
+    save_Im_Grm_trans::Bool                         # Whether to save calculated Im_Grm_trans
     abstol_Im_Grm_trans::Real                       # Absolute tolerance in the calculations of Im_Grm_trans
     
     # Whether to approximate the transverse part of the radiation Green's function 
@@ -121,6 +121,9 @@ struct SysPar
     # with the local radiation decay rates
     # The the two booleans determine whether to approximate the real and imaginary part respectively.
     approx_Grm_trans::Tuple{Bool, Bool}
+    
+    save_steadyState::Bool                          # Whether to save calculated steady states
+    save_timeEvol::Bool                             # Whether to save calculated time evolutions
     
     z_range::Union{AbstractRange, Nothing}          # Range of z values for calculating the radiation E-field
     x_range::Union{AbstractRange, Nothing}          # Range of x values for calculating the radiation E-field
@@ -134,7 +137,8 @@ struct SysPar
                     tspan::Tuple{Real, Real}, dtmax::Real, initialState::Vector, initialStateDescription::String,
                     arrayType::String, N_sites::Int, ρa::Real, a::Real, ff::Real, pos_unc::Union{Real, Vector}, n_inst::Int, array::Vector, arrayDescription::String, N::Int,
                     να::Vector, ηα::Vector, noPhonons::Bool,
-                    d::Union{Vector, String}, dDescription::String, incField_wlf::Vector, save_individual_res::Bool, abstol_Im_Grm_trans::Real, approx_Grm_trans::Tuple,
+                    d::Union{Vector, String}, dDescription::String, incField_wlf::Vector, save_Im_Grm_trans::Bool, abstol_Im_Grm_trans::Real, approx_Grm_trans::Tuple,
+                    save_steadyState::Bool, save_timeEvol::Bool, 
                     z_range::AbstractRange, x_range::AbstractRange, y_fix::Real)
 
         fiber = Fiber(ρf, n, ω)
@@ -147,7 +151,8 @@ struct SysPar
                    tspan, dtmax, initialState, initialStateDescription,
                    arrayType, N_sites, ρa, a, ff, pos_unc, n_inst, array, arrayDescription, N,
                    να, ηα, noPhonons,
-                   d, dDescription, incField_wlf, save_individual_res, abstol_Im_Grm_trans, approx_Grm_trans,
+                   d, dDescription, incField_wlf, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans,
+                   save_steadyState, save_timeEvol, 
                    z_range, x_range, y_fix, r_fields)
     end
     
@@ -167,7 +172,9 @@ struct SysPar
         array = get_array(arrayType, N, ρa, a, ff, pos_unc)
         arrayDescription = arrayDescript(arrayType, N_sites, ρa, a, ff, pos_unc)
         abstol_Im_Grm_trans = 1e-4
-        save_individual_res = true
+        save_Im_Grm_trans = true
+        save_steadyState = true
+        save_timeEvol = true
         z_range = nothing
         x_range = nothing
         y_fix   = nothing
@@ -179,7 +186,8 @@ struct SysPar
                    tspan, dtmax, initialState, initialStateDescription,
                    arrayType, N, ρa, a, ff, pos_unc, n_inst, array, arrayDescription, N,
                    να, ηα, noPhonons,
-                   d, dDescription, incField_wlf, save_individual_res, abstol_Im_Grm_trans, approx_Grm_trans,
+                   d, dDescription, incField_wlf, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans,
+                   save_steadyState, save_timeEvol, 
                    z_range, x_range, y_fix, r_fields)
     end
 end
@@ -224,7 +232,7 @@ function Base.show(io::IO, SP::SysPar)
     println(io, "")
     
     println(io, "Whether to save the imaginary transverse part of the radiation Green's function")
-    println(io, "save_individual_res: ", SP.save_individual_res)
+    println(io, "save_Im_Grm_trans: ", SP.save_Im_Grm_trans)
     println(io, "")
     
     println(io, "Whether the real part, transverse part of the radiation GF has been approximated with corresponding part of the vacuum GF")

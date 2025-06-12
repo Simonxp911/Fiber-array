@@ -85,6 +85,7 @@ function prep_imperfectArray_transmission_title(SP)
     title_components = [
         "Δvari: " * SP.ΔvariDescription,
         "Array: " * SP.arrayDescription,
+        "n_inst: $(SP.n_inst)",
         "να = $(ro.(SP.να)), ηα = $(ro.(SP.ηα)),",
         "Dipole moments: " * SP.dDescription
     ]

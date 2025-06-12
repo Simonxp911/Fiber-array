@@ -53,11 +53,11 @@ function define_SP_BerlinCS()
     να0_ul = να0/γ0 #unitless version of να0
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-0.5, 0.5, 30)
+    Δ_specs = (-1.0, 0.5, 300)
     
     # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
-    ΔvariDependence = "flat"
-    Δvari_args = -3, 50*a0_ul
+    ΔvariDependence = "Gaussian"
+    Δvari_args = -3, 25*a0_ul
     ΔvariDescription = ΔvariDescript(ΔvariDependence, Δvari_args)
     
     # Lamb-Dicke parameters
@@ -74,12 +74,12 @@ function define_SP_BerlinCS()
     arrayType = "1Dchain"
     
     # Set number of atomic sites 
-    N_sites = 50
+    N_sites = 100
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
     pos_unc = 0.0 #ηα0/ωa * 0.4
-    n_inst = 1
+    n_inst = 2
     
     # Generate the array, its description, and the number of atoms
     array, arrayDescription, N = get_array(arrayType, N_sites, ρa0_ul, a0_ul, ff, pos_unc, n_inst)
@@ -108,9 +108,9 @@ function define_SP_BerlinCS()
     approx_Grm_trans = (true, false)
     
     # Whether to save individual results (Im_Grm_trans, steady states, time evolutions)
-    # save_individual_res = n_inst == 1 && ff == 1 && pos_unc == 0
-    # save_individual_res = n_inst == 1
-    save_individual_res = pos_unc == 0 && arrayType != "randomZ"
+    save_Im_Grm_trans = pos_unc == 0 && arrayType != "randomZ"
+    save_steadyState  = n_inst == 1 && ff == 1 && pos_unc == 0 && arrayType != "randomZ"
+    save_timeEvol     = n_inst == 1 && ff == 1 && pos_unc == 0 && arrayType != "randomZ"
     
     # Ranges of z and x values to define r_fields for calculating the radiated E-field
     arrayL = (N_sites - 1)*a0_ul
@@ -127,7 +127,8 @@ function define_SP_BerlinCS()
                   tspan, dtmax, initialState, initialStateDescription,
                   arrayType, N_sites, ρa0_ul, a0_ul, ff, pos_unc, n_inst, array, arrayDescription, N,
                   να0_ul, ηα, noPhonons,
-                  d, dDescription, incField_wlf, save_individual_res, abstol_Im_Grm_trans, approx_Grm_trans,
+                  d, dDescription, incField_wlf, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans,
+                  save_steadyState, save_timeEvol,
                   z_range, x_range, y_fix)
 end
 
@@ -307,8 +308,7 @@ function main()
     # SP = define_SP_Olmos()
     # SP = define_SP_Rauschenbeutel()
     # SP = define_SP_Chang()
-    # show(SP)
-    
+    show(SP)
     
     
     # plot_propConst_inOutMom(ωρfn_ranges)
@@ -317,6 +317,7 @@ function main()
     # plot_σBαTrajectories_σBαSS(SP)
     # plot_transmission_vs_Δ(SP)
     # plot_imperfectArray_transmission_vs_Δ(SP)
+    # plot_compareImperfectArray_transmission_vs_Δ(SP)
     # plot_steadyState_radiation_Efield(SP)
     # plot_radiation_Efield(SP)
     # plot_GnmEigenModes(SP)
@@ -425,7 +426,7 @@ end
 function plot_imperfectArray_transmission_vs_Δ(SP)
     if SP.n_inst == 1 throw(ArgumentError("plot_imperfectArray_transmission_vs_Δ requires n_inst > 1")) end
     
-    postfix = get_postfix_imperfectArray_transmission(SP.Δ_specs, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.incField_wlf, n_inst, SP.arrayDescription, SP.fiber.postfix)
+    postfix = get_postfix_imperfectArray_transmission(SP.Δ_specs, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.incField_wlf, SP.n_inst, SP.arrayDescription, SP.fiber.postfix)
     filename = "T_phase" * postfix
     folder = "imperfectArray_T_phase/"
     
@@ -448,7 +449,7 @@ function plot_imperfectArray_transmission_vs_Δ(SP)
         # Prepare means and standard deviations of (squared) magnitudes and phases
         T_means, T_stds, phase_means, phase_stds = prep_imperfectArray_transmission(ts)
         formattedResult = vectorOfRows2Matrix([T_means, T_stds, phase_means, phase_stds])
-        save_as_txt(formattedResult, saveDir * folder, filename)
+        # save_as_txt(formattedResult, saveDir * folder, filename)
     end
     
     titl = prep_imperfectArray_transmission_title(SP)
@@ -456,8 +457,38 @@ function plot_imperfectArray_transmission_vs_Δ(SP)
 end
 
 
+function plot_compareImperfectArray_transmission_vs_Δ(SP)
+    if SP.n_inst == 1 throw(ArgumentError("plot_imperfectArray_transmission_vs_Δ requires n_inst > 1")) end
+    
+    ff_list = (0.8, 0.85, 0.9, 0.95)
+    ηαFactor_list = (0.1, 0.4, 0.7, 1.0)
+    for ηαFactor in ηαFactor_list
+        T_meanss, T_stdss, phase_meanss, phase_stdss = [], [], [], []
+        labels = []
+        for ff in ff_list
+        # for ff in ff_list, ηαFactor in ηαFactor_list
+            ηα = SP.ηα * ηαFactor
+            arrayDescription = arrayDescript(SP.arrayType, SP.N_sites, SP.ρa, SP.a, ff, SP.pos_unc)
+            postfix = get_postfix_imperfectArray_transmission(SP.Δ_specs, SP.ΔvariDescription, SP.dDescription, SP.να, ηα, SP.incField_wlf, SP.n_inst, arrayDescription, SP.fiber.postfix)
+            filename = "T_phase" * postfix
+            folder = "imperfectArray_T_phase/"
+        
+            if isfile(saveDir * folder * filename * ".txt") 
+                push!.([T_meanss, T_stdss, phase_meanss, phase_stdss], eachrow(load_as_txt(saveDir * folder, filename)))
+                push!(labels, L"$ ff = %$(ff) $, $ ηα = %$(ηαFactor) \cdot ηα0 $")
+            else
+                throw(ArgumentError("The following file has seemingly not been prepared: " * filename))
+            end
+        end
+        
+        titl = prep_imperfectArray_transmission_title(SP)
+        fig_compareImperfectArray_transmission_vs_Δ(SP.Δ_range, T_meanss, T_stdss, phase_meanss, phase_stdss, labels, titl)
+    end
+end
+
+
 function plot_steadyState_radiation_Efield(SP)
-    Δ = 0.0
+    Δ = -0.5
     zs = [site[3] for site in SP.array]
     σBα_SS = calc_steadyState(SP, Δ)
     if SP.noPhonons σ_SS = σBα_SS else σ_SS = σBα_SS[1] end
@@ -486,7 +517,7 @@ function plot_GnmEigenModes(SP)
     
     if SP.noPhonons
         # Get coupling matrix and its spectrum
-        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
+        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
         eigenEnergies, eigen_σs, dominant_ks = spectrum_dominant_ks(Δvari + tildeG, SP.a)
         
         # Pack the eigenmodes
@@ -510,7 +541,7 @@ function plot_GnmEigenModes(SP)
         
     else
         # Get coupling matrix and its spectrum
-        Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
+        Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
         fullCoupling = get_fullCouplingMatrix(Δvari, tildeG, tildeFα, tildeGα1, tildeGα2)
         eigenEnergies, eigenModes = spectrum(fullCoupling)
         
@@ -552,11 +583,11 @@ end
 
 function plot_emissionPatternOfGnmeigenModes(SP)
     if SP.noPhonons
-        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
+        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
         eigenEnergies, eigen_σs = spectrum(Δvari + tildeG)
         eigen_σBαs = eigenModes
     else
-        Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
+        Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
         fullCoupling = get_fullCouplingMatrix(Δvari, tildeG, tildeFα, tildeGα1, tildeGα2)
         eigenEnergies, eigenModes = spectrum(fullCoupling)
         eigen_σBαs = unpack_σBαFromσBαVec.(eigenModes)
@@ -576,7 +607,7 @@ function plot_GnmEigenEnergies(SP)
     # The eigenmodes when including phonons do not have a clear band structure
     if any(SP.ηα .!= 0) throw(ArgumentError("plot_GnmEigenEnergies is not implemented for the case of including phonons")) end
     
-    Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
+    Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
     # tildeG = get_tildeG0(SP.fiber, SP.d, SP.array)
     
     eigenEnergies, dominant_ks, eigenModesMatrix, eigenModesMatrix_inv = spectrum_dominant_ks_basisMatrices(Δvari + tildeG, SP.a)
@@ -601,7 +632,7 @@ function plot_compareGnmEigenEnergies(SP)
     for N in Ns
         array, _, _ = get_array(SP.arrayType, N, SP.ρa, SP.a, SP.ff, SP.pos_unc, 1)
         d = chiralDipoleMoment(SP.fiber, SP.ρa, array)
-        tildeG = get_tildeGs(SP.fiber, d, array, SP.save_individual_res, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
+        tildeG = get_tildeGs(SP.fiber, d, array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
     
         eigenEnergies, eigenModes, dominant_ks = spectrum_dominant_ks(tildeG, SP.a)
         collΔ, collΓ = collEnergies_from_eigenEnergies(eigenEnergies)
@@ -626,11 +657,11 @@ function plot_lossWithGnmEigenEnergies(SP)
     t = calc_transmission.(Ref(SP), σBα_scan)
     
     if SP.noPhonons
-        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
+        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
         drive = tildeΩ
         fullCoupling = Δvari + tildeG
     else
-        Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_individual_res, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
+        Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
         drive = get_fullDriveVector(tildeΩ, tildeΩα)
         fullCoupling = get_fullCouplingMatrix(Δvari, tildeG, tildeFα, tildeGα1, tildeGα2)
     end
@@ -663,18 +694,10 @@ end
     # Something with the coupling..?
 
 
-# Get it to work on the cluster
-    # Use MPI
-    # Systematically scan the effect of η and ff
-        # Pick a value of Δ with T ~ 1 and phase ~ pi, and plot these things as a function of η and ff
-        # ff is most interesting for experiment - could probably just keep the same η or only consider a few values (10 50 100 percent of their present values)
-        # check which of the ηα's is the most important to minimize?
-        # compare classical disorder with phonon calculation?
+# What filling fraction is needed to see any (?) sign of collective behaviour?
+    # Compare with randomZ arrays
 
-
-
-
-# Argue which of the ηα is the most significant by looking at the paramter matrices
+# Argue which of the ηα is the most significant by looking at the parameter matrices
     # If certain derivatives of tildeΩ or tildeG are large, the corresponding ηα would have a greater effect
     # With this we can say which aspect of the atomic trap is the most important (radial, azimuthal, or axial trapping)
 
@@ -684,9 +707,6 @@ end
     # separate into dominated by σ or Bα? 
     # 2D momentum?
 
-# Implement that Im_Grm_trans_ simply returns zero for a certain size of relative_z/fiber_radius or so? (Will go to zero for large inter-atom distance)
-    # Check how it decays as a function of z for different parameters... find some distance at which it can safely be neglected
-
 # Implement non-lazy version of get_tildeGs(fiber, d::String... for the case of including phonons? 
     # Presumably significantly faster when exploiting knowledge of which components etc. are actually needed, but also very messy...
     # Not needed for classical disorder calculations, so the need is not so great, since the calculations without classical disorder can exploit the z-translational invariance to reduce number of calculations
@@ -694,8 +714,6 @@ end
         # Less work, and this is obviously the slow part of the overall calculation
 
 # Calculate reflection and loss
-
-# Implement n_inst in a better way? That is, dont have a list of SPs, but include the many instantiations in the same SP?
 
 # Implement saving and loading of the parameter matrices?
 

@@ -26,7 +26,7 @@ function get_array(arrayType, N_sites, ρa, a, ff=1, pos_unc=0)
         array = vcat(arrayAbove, arrayBelow)
         
     elseif arrayType == "randomZ"
-        array = [[ρa, 0, zn] for zn in a*(N_sites - 1)*rand(N_sites)]
+        array = [[ρa, 0, zn] for zn in a*(N_sites - 1)*sort(rand(N_sites))]
         
     else throw(ArgumentError("The arrayType = $arrayType has not been implemented in get_array")) 
     end
@@ -210,7 +210,8 @@ end
 Returns a list of the dipole moments of each atom which yields a chiral fiber setup
 for the case of 1Dchain or doubleChain arrays
 """
-function chiralDipoleMoment(fiber, ρa, array::Vector{<:Vector{<:Real}})
+function chiralDipoleMoment(fiber, ρa, array::Vector{<:Vector})
+# function chiralDipoleMoment(fiber, ρa, array::Vector{<:Vector{<:Real}})
     return [chiralDipoleMoment(fiber, ρa).*[sign(site[1]), 1, 1] for site in array]    
 end
 
@@ -219,7 +220,8 @@ end
 Returns a list of the dipole moments of each atom which yields a chiral fiber setup
 for the case of 1Dchain or doubleChain arrays, for the case of n_inst != 1
 """
-function chiralDipoleMoment(fiber, ρa, array::Vector{<:Vector{<:Vector{<:Real}}})
+function chiralDipoleMoment(fiber, ρa, array::Vector{<:Vector{<:Vector}})
+# function chiralDipoleMoment(fiber, ρa, array::Vector{<:Vector{<:Vector{<:Real}}})
     return [chiralDipoleMoment(fiber, ρa, array_inst) for array_inst in array]
 end
 
@@ -445,7 +447,7 @@ end
 """
 Calculates the radiation mode Green's function or its derivatives 
 """
-function Grm(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_individual_res=true, abstol=1e-5, approx_Grm_trans=(false, false))
+function Grm(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_Im_Grm_trans=true, abstol=1e-5, approx_Grm_trans=(false, false))
     # The Green's function is calculated in terms of the contributions: the longitudinal part, the imaginary transverse part, and the real transverse part
     
     # First, we calculate the longitudinal part
@@ -455,7 +457,7 @@ function Grm(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_individ
     Re_Grm_tr = Re_Grm_trans(fiber, ω, r_field, r_source, derivOrder, α, approx_Grm_trans[1])
     
     # Finally, the imaginary transverse part
-    Im_Grm_tr = Im_Grm_trans(fiber, ω, r_field, r_source, derivOrder, α, save_individual_res, abstol, approx_Grm_trans[2])
+    Im_Grm_tr = Im_Grm_trans(fiber, ω, r_field, r_source, derivOrder, α, save_Im_Grm_trans, abstol, approx_Grm_trans[2])
     
     return G0_lo + Re_Grm_tr + 1im*Im_Grm_tr
 end
@@ -465,13 +467,13 @@ end
 Small wrapper for the calculation of the imaginary part of the transverse part of radiation mode 
 Green's function or its derivatives that exploits the Onsager reciprocity to simpilify calculations
 """
-function Im_Grm_trans(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_individual_res=true, abstol=1e-5, approx_Im_Grm_trans=false)
+function Im_Grm_trans(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_Im_Grm_trans=true, abstol=1e-5, approx_Im_Grm_trans=false)
     if approx_Im_Grm_trans return imag(G0(ω, r_field, r_source, derivOrder, α)) end
     
     if r_field[3] < r_source[3]
-        return transpose(Im_Grm_trans_(fiber, ω, r_source, r_field, reverse(derivOrder), α, save_individual_res, abstol))
+        return transpose(Im_Grm_trans_(fiber, ω, r_source, r_field, reverse(derivOrder), α, save_Im_Grm_trans, abstol))
     else
-        return Im_Grm_trans_(fiber, ω, r_field, r_source, derivOrder, α, save_individual_res, abstol)
+        return Im_Grm_trans_(fiber, ω, r_field, r_source, derivOrder, α, save_Im_Grm_trans, abstol)
     end
 end
 
@@ -481,7 +483,7 @@ Calculates the imaginary part of the transverse part of radiation mode Green's f
 
 Uses the normalization convention of Kien, Rauschenbeutel 2017
 """
-function Im_Grm_trans_(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_individual_res=true, abstol=1e-5)
+function Im_Grm_trans_(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_Im_Grm_trans=true, abstol=1e-5)
     # For distances greater than 100 times the wavelength, the coupling is effectively zero (the calculation below just yields random small values)
     # We should be careful with this cut-off if we ever do calculations that truly depend on long-distance interactions
     if norm(r_field - r_source) > 100
@@ -524,7 +526,7 @@ function Im_Grm_trans_(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, sa
             m += 1
         end
         
-        if save_individual_res save_as_txt(Im_Grm_trans, saveDir * folder, filename) end
+        if save_Im_Grm_trans save_as_txt(Im_Grm_trans, saveDir * folder, filename) end
         return Im_Grm_trans
     end
 end

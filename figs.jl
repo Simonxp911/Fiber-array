@@ -198,30 +198,60 @@ function fig_transmission_vs_Δ(Δ_range, T, phase, titl)
     
     # Make title and axis
     Label(fig[1, 1:2], titl, tellwidth=false)
-    Label(fig[2, 1], "Transmission coefficient", tellwidth=false)
+    Label(fig[2, 1], L"Transmission coefficient, $ |t|^2 $", tellwidth=false)
     ax1 = Axis(fig[3, 1], limits=(extrema(Δ_range)..., 0, 1), 
                xlabel=L"$ \Delta/\gamma $")
-    Label(fig[2, 2], "Transmission phase", tellwidth=false)
+    Label(fig[2, 2], L"Transmission phase, arg$ (t) $", tellwidth=false)
     ax2 = Axis(fig[3, 2], limits=(extrema(Δ_range)..., -π, π),
                yticks=([-π, -π/2, 0, π/2, π], [L"$ -π $", L"$ -π/2 $", L"$ 0 $", L"$ π/2 $", L"$ π $"]),
                xlabel=L"$ \Delta/\gamma $")
                
     # Plot magnitude squared and the phase of the transmission 
-    lines!(ax1, Δ_range, T    , label=L"$ |t|^2 $" , color=:blue)
-    lines!(ax2, Δ_range, phase, label=L"arg$ (t) $", color=:red)
+    lines!(ax1, Δ_range, T    , color=:blue)
+    lines!(ax2, Δ_range, phase, color=:red)
     
     # Finish figure
-    axislegend.([ax1, ax2])
     display(GLMakie.Screen(), fig)
 end
 
 
 """
 Plot mean magnitude and phase of transmission amplitude as a function of detuning
-
 with bands given by the standard deviation
 """
 function fig_imperfectArray_transmission_vs_Δ(Δ_range, T_means, T_stds, phase_means, phase_stds, titl)
+    # Start figure 
+    fig = Figure(size=(800, 600))
+    
+    # Make title and axis
+    Label(fig[1, 1:2], titl, tellwidth=false)
+    Label(fig[2, 1], L"Transmission coefficient, $ |t|^2 $", tellwidth=false)
+    ax1 = Axis(fig[3, 1], limits=(extrema(Δ_range)..., 0, 1), 
+               xlabel=L"$ \Delta/\gamma $")
+    Label(fig[2, 2], L"Transmission phase, arg$ (t) $", tellwidth=false)
+    ax2 = Axis(fig[3, 2], limits=(extrema(Δ_range)..., -π, π), 
+               yticks=([-π, -π/2, 0, π/2, π], [L"$ -π $", L"$ -π/2 $", L"$ 0 $", L"$ π/2 $", L"$ π $"]),
+               xlabel=L"$ \Delta/\gamma $")
+               
+    # Plot magnitude squared and the phase of the transmission with bands for standard deviations
+    lines!(ax1, Δ_range, T_means , color=:blue)
+    band!( ax1, Δ_range, T_means + T_stds, T_means - T_stds , color=(:blue, 0.35))
+    lines!(ax2, Δ_range, phase_means, color=:red)
+    band!( ax2, Δ_range, phase_means + phase_stds, phase_means - phase_stds , color=(:red, 0.35))
+    
+    # Finish figure
+    display(GLMakie.Screen(), fig)
+end
+
+
+"""
+Plot mean magnitude and phase of transmission amplitude as a function of detuning
+with bands given by the standard deviation
+for several values of ff and ηα
+"""
+function fig_compareImperfectArray_transmission_vs_Δ(Δ_range, T_meanss, T_stdss, phase_meanss, phase_stdss, labels, titl)
+    colors = distinguishable_colors(length(labels), [RGB(1,1,1), RGB(0,0,0)], dropseed=true)
+    
     # Start figure 
     fig = Figure(size=(800, 600))
     
@@ -234,15 +264,17 @@ function fig_imperfectArray_transmission_vs_Δ(Δ_range, T_means, T_stds, phase_
     ax2 = Axis(fig[3, 2], limits=(extrema(Δ_range)..., -π, π), 
                yticks=([-π, -π/2, 0, π/2, π], [L"$ -π $", L"$ -π/2 $", L"$ 0 $", L"$ π/2 $", L"$ π $"]),
                xlabel=L"$ \Delta/\gamma $")
-               
+    
     # Plot magnitude squared and the phase of the transmission with bands for standard deviations
-    lines!(ax1, Δ_range, T_means, label=L"$ |t|^2 $" , color=:blue)
-    band!( ax1, Δ_range, T_means + T_stds, T_means - T_stds , color=(:blue, 0.35))
-    lines!(ax2, Δ_range, phase_means, label=L"arg$ (t) $", color=:red)
-    band!( ax2, Δ_range, phase_means + phase_stds, phase_means - phase_stds , color=(:red, 0.35))
+    for (i, label) in enumerate(labels)
+        lines!(ax1, Δ_range, T_meanss[i], label=label , color=colors[i])
+        band!( ax1, Δ_range, T_meanss[i] + T_stdss[i], T_meanss[i] - T_stdss[i] , color=(colors[i], 0.35))
+        lines!(ax2, Δ_range, phase_meanss[i], color=colors[i])
+        band!( ax2, Δ_range, phase_meanss[i] + phase_stdss[i], phase_meanss[i] - phase_stdss[i] , color=(colors[i], 0.35))
+    end
     
     # Finish figure
-    axislegend.([ax1, ax2])
+    axislegend(ax1, position=:ct)
     display(GLMakie.Screen(), fig)
 end
 
@@ -627,6 +659,4 @@ function fig_state(rs, v, ks, vFT, z_range, x_range, intensity, ρf, array, κ, 
 end
 
 
-
-
-# save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Notes\\figures\\radiationEFieldN200D0.png", fig)
+# save("C:\\Users\\Simon\\Downloads\\compareImperfectArrayTransmissionN100_eta$(labels[1][end-16:end-14]).png", fig)
