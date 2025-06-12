@@ -1,7 +1,8 @@
 
 
 include("preamble.jl")
-const saveDir = ARGS[1] * "/fiber_array_data/"
+BLAS.set_num_threads(parse(Int, ARGS[1])) # Necessary on the workstation for LinearAlgebra to work properly
+const saveDir = ARGS[2] * "/fiber_array_data/"
 
 using MPI
 MPI.Init()
@@ -11,7 +12,7 @@ const myRank   = MPI.Comm_rank(comm)
 const commSize = MPI.Comm_size(comm)
 
 # Include the input file (which defines define_SP())
-include(ARGS[2])
+include(ARGS[3])
 
 
 # ================================================
@@ -23,7 +24,7 @@ function main()
     SP = MPI.bcast(SP, root, comm)
     
     
-    task = ARGS[3]
+    task = ARGS[4]
     if task == "prepare_Im_Grm_trans"
         prepare_Im_Grm_trans(SP)
     elseif task == "imperfectArray_transmission_vs_Δ"
