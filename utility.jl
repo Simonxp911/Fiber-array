@@ -451,3 +451,74 @@ function discFourierTransform(M::Matrix, a::Real, kx::Real, ky::Real)
     return sum( M.*(exp.(-1im*kx*(0:N-1)*a)*exp.(-1im*ky*(0:N-1)'*a)) )/N
 end
 
+
+# ================================================
+#   Functions pertaining to interpolation
+# ================================================
+"""
+Interpolate a 1D function, F(z), (whose function values may be scalar or array) from a set of 
+equally spaced points Fs_known = F.(zs_known) onto a set of points zs_target
+that are contained within the interval covered by zs_known
+"""
+function interpolateCubic_1D(zs_known, Fs_known, zs_target)
+    if !all(diff(zs_known) .≈ zs_known[2] - zs_known[1]) throw(ArgumentError("interpolateCubic_1D assumes the known points of the function to be on a regular 1D grid")) end
+    if !all(minimum(zs_known) .< zs_target .< maximum(zs_known)) throw(ArgumentError("interpolateCubic_1D assumes the zs_target to be within the interval covered by zs_known")) end
+    
+    itp = interpolationCubic_1D(Fs_known)
+    indices_target = interpolateIndex.(Ref(zs_known), zs_target)
+    return evalNestedFunc.(Ref(itp), indices_target)
+end
+
+
+"""
+Get the interpolation object for a set of equally spaced points, Fs_known,
+preserving whatever array structure Fs_known may have
+"""
+function interpolationCubic_1D(Fs_known)
+    if typeof(Fs_known[1]) <: AbstractArray
+        itp = Array{Any}(undef, size(Fs_known[1])) 
+        for i in eachindex(Fs_known[1])
+            Fs_known_i = [F[i] for F in Fs_known]
+            itp[i] = interpolationCubic_1D(Fs_known_i)
+        end
+    else
+        itp = interpolate(Fs_known, BSpline(Cubic(Throw(OnGrid()))))
+    end
+    return itp
+end
+
+
+"""
+Assuming zs_known to be a list of sorted zs, and z_target to be within 
+the interval covered by zs_known, return the 
+"""
+function interpolateIndex(zs_known, z_target)
+    if !issorted(zs_known) throw(ArgumentError("interpolateIndex assumes zs_known to be sorted")) end
+    if !(minimum(zs_known) < z_target < maximum(zs_known)) throw(ArgumentError("interpolateIndex assumes z_target to be within the interval covered by zs_known")) end
+    
+    nearestIndices = sortperm(abs.(zs_known .- z_target))
+    leftIndex, rightIndex = sort(nearestIndices[1:2])
+    return leftIndex + (z_target - zs_known[leftIndex])/(zs_known[rightIndex] - zs_known[leftIndex])
+end
+
+
+"""
+For f a function or f an array of functions, or array of arrays of functions, etc,
+evalute that or those functions at x, keeping the array structure
+"""
+function evalNestedFunc(f, x)
+    result = 0.0
+    try
+        result = f(x)
+    catch
+        if typeof(f) <: AbstractArray
+            result = Array{Any}(undef, size(f)) 
+            for i in eachindex(f)
+                result[i] = evalNestedFunc(f[i], x)
+            end
+        else
+            throw(ArgumentError("evalNestedFunc assumes f to be either a function or a nested array of functions"))
+        end
+    end
+    return result
+end

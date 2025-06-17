@@ -320,10 +320,17 @@ Calculates the guided mode Green's function or its derivatives
 i.e. the step-function is never differentiated)
 """
 function Ggm(fiber, r_field, r_source, derivOrder=(0, 0), α=1)
-    return 1im/(2*fiber.frequency)*fiber.propagation_constant_derivative*
-            sum([heaviside(f*(r_field[3] - r_source[3]))*
-                 Egm(fiber, l, f, r_field , derivOrder[1], α)*
-                 Egm(fiber, l, f, r_source, derivOrder[2], α)' for l in (1, -1), f in (1, -1)])
+    if r_field[3] - r_source[3] == 0 && norm(r_field - r_source) != 0
+        return 1im/(2*fiber.frequency)*fiber.propagation_constant_derivative*
+                sum([heaviside(f*eps(r_field[3] - r_source[3]))*
+                     Egm(fiber, l, f, r_field , derivOrder[1], α)*
+                     Egm(fiber, l, f, r_source, derivOrder[2], α)' for l in (1, -1), f in (1, -1)])
+    else
+        return 1im/(2*fiber.frequency)*fiber.propagation_constant_derivative*
+                sum([heaviside(f*(r_field[3] - r_source[3]))*
+                     Egm(fiber, l, f, r_field , derivOrder[1], α)*
+                     Egm(fiber, l, f, r_source, derivOrder[2], α)' for l in (1, -1), f in (1, -1)])
+    end
 end
 
 

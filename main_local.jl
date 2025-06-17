@@ -53,17 +53,17 @@ function define_SP_BerlinCS()
     να0_ul = να0/γ0 #unitless version of να0
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-1.0, 0.5, 300)
+    Δ_specs = (-1.0, 1.0, 100)
     
     # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
-    ΔvariDependence = "Gaussian"
-    Δvari_args = -3, 25*a0_ul
+    ΔvariDependence = "flat"
+    Δvari_args = -3, 50*a0_ul
     ΔvariDescription = ΔvariDescript(ΔvariDependence, Δvari_args)
     
     # Lamb-Dicke parameters
-    # ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
+    ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
     # ηα = ηα0 .* [0.1, 0.2, 0.1]
-    ηα = ηα0 * 0.4
+    # ηα = ηα0 * 0.4
     # ηα = [0.01, 0.01, 0.01]
     # ηα = [0., 0., 0.]
     
@@ -77,9 +77,10 @@ function define_SP_BerlinCS()
     N_sites = 100
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
-    ff = 1.0
-    pos_unc = 0.0 #ηα0/ωa * 0.4
-    n_inst = 2
+    ff = 0.5
+    pos_unc = 0.0
+    # pos_unc = ηα0/ωa
+    n_inst = 1
     
     # Generate the array, its description, and the number of atoms
     array, arrayDescription, N = get_array(arrayType, N_sites, ρa0_ul, a0_ul, ff, pos_unc, n_inst)
@@ -308,7 +309,33 @@ function main()
     # SP = define_SP_Olmos()
     # SP = define_SP_Rauschenbeutel()
     # SP = define_SP_Chang()
-    show(SP)
+    # show(SP)
+    
+    
+    
+    # TEMP
+    zs_known = collect(0.3*(0:20))
+    zs_target = [1.2, 3.7, 4.5]
+    F = [[x->x+1im*x^2, x->x^2]]
+    Fs_known = evalNestedFunc.(Ref(F), zs_known)
+    
+    # println(typeof(itp) <: AbstractArray)
+    # println(typeof(itp[1]) <: AbstractArray)
+    # println(typeof(itp[1][1]) <: AbstractArray)
+    # display(Fs_known)
+    # display(evalNestedFunc.(Ref(itp), zs_target))
+    # display(evalNestedFunc.(Ref(F), zs_target))
+    
+    display(interpolateCubic_1D(zs_known, Fs_known, zs_target))
+    display(evalNestedFunc.(Ref(F), zs_target))
+        
+    # interpolateCubic_1D(zs_known, Fs_known, zs_target)
+    # interpolationCubic_1D(Fs_known)
+    # interpolateIndex(zs_known, z_target)
+    # evalNestedFunc(f, x)
+    # TEMP
+    
+    
     
     
     # plot_propConst_inOutMom(ωρfn_ranges)
@@ -449,7 +476,7 @@ function plot_imperfectArray_transmission_vs_Δ(SP)
         # Prepare means and standard deviations of (squared) magnitudes and phases
         T_means, T_stds, phase_means, phase_stds = prep_imperfectArray_transmission(ts)
         formattedResult = vectorOfRows2Matrix([T_means, T_stds, phase_means, phase_stds])
-        # save_as_txt(formattedResult, saveDir * folder, filename)
+        save_as_txt(formattedResult, saveDir * folder, filename)
     end
     
     titl = prep_imperfectArray_transmission_title(SP)
@@ -460,15 +487,16 @@ end
 function plot_compareImperfectArray_transmission_vs_Δ(SP)
     if SP.n_inst == 1 throw(ArgumentError("plot_imperfectArray_transmission_vs_Δ requires n_inst > 1")) end
     
-    ff_list = (0.8, 0.85, 0.9, 0.95)
-    ηαFactor_list = (0.1, 0.4, 0.7, 1.0)
+    ff_list = (0.8, 0.85, 0.9, 0.95, 1.0)
+    ηαFactor_list = (0.0, 0.1, 0.4, 0.7, 1.0)
     for ηαFactor in ηαFactor_list
         T_meanss, T_stdss, phase_meanss, phase_stdss = [], [], [], []
         labels = []
         for ff in ff_list
         # for ff in ff_list, ηαFactor in ηαFactor_list
             ηα = SP.ηα * ηαFactor
-            arrayDescription = arrayDescript(SP.arrayType, SP.N_sites, SP.ρa, SP.a, ff, SP.pos_unc)
+            pos_unc = SP.pos_unc * ηαFactor
+            arrayDescription = arrayDescript(SP.arrayType, SP.N_sites, SP.ρa, SP.a, ff, pos_unc)
             postfix = get_postfix_imperfectArray_transmission(SP.Δ_specs, SP.ΔvariDescription, SP.dDescription, SP.να, ηα, SP.incField_wlf, SP.n_inst, arrayDescription, SP.fiber.postfix)
             filename = "T_phase" * postfix
             folder = "imperfectArray_T_phase/"
@@ -477,7 +505,7 @@ function plot_compareImperfectArray_transmission_vs_Δ(SP)
                 push!.([T_meanss, T_stdss, phase_meanss, phase_stdss], eachrow(load_as_txt(saveDir * folder, filename)))
                 push!(labels, L"$ ff = %$(ff) $, $ ηα = %$(ηαFactor) \cdot ηα0 $")
             else
-                throw(ArgumentError("The following file has seemingly not been prepared: " * filename))
+                throw(ArgumentError("The following file can not be found: " * filename))
             end
         end
         
@@ -528,10 +556,10 @@ function plot_GnmEigenModes(SP)
         
         # Plot
         for (eigen_σ, (ks, eigen_σ_FT), eigenEnergy, dom_k) in iter_list
-            collΔ, collΓ = collEnergies_from_eigenEnergies(eigenEnergy)
-            if collΓ < 10^-2.7
-            # if -7 < dom_k < -5
-                E = calc_radiation_Efield.(Ref(SP), Ref(eigen_σ))
+            # collΔ, collΓ = collEnergies_from_eigenEnergies(eigenEnergy)
+            # if collΓ < 10^-2.7
+            if 4.2 < dom_k < 4.5
+                E = scan_radiation_Efield(SP, eigen_σ)
                 intensity = norm.(E).^2
                 
                 titl = prep_GnmEigenModes_title(SP)
@@ -561,7 +589,7 @@ function plot_GnmEigenModes(SP)
             # collect(zip(eigen_σBαs, eigen_σs, eigen_σs_FT, eigen_diagBαs, eigen_diagBαs_FT, eigenEnergies))[1:30]
             collΔ, collΓ = collEnergies_from_eigenEnergies(eigenEnergy)
             if collΓ < 10^-2.7
-                E = calc_radiation_Efield.(Ref(SP), Ref(eigen_σBα))
+                E = scan_radiation_Efield(SP, eigen_σBα)
                 intensity = norm.(E).^2
                 
                 titl = prep_GnmEigenModes_title(SP)
@@ -596,7 +624,7 @@ function plot_emissionPatternOfGnmeigenModes(SP)
     end
     
     for eigen_σBα in eigen_σBαs
-        E = calc_radiation_Efield.(Ref(SP), Ref(eigen_σBα))
+        E = scan_radiation_Efield.(SP, eigen_σBα)
         intensity = norm.(E).^2
         fig_radiation_Efield(SP.z_range, SP.x_range, intensity, SP.ρf, SP.array)
     end
@@ -700,6 +728,12 @@ end
 # Argue which of the ηα is the most significant by looking at the parameter matrices
     # If certain derivatives of tildeΩ or tildeG are large, the corresponding ηα would have a greater effect
     # With this we can say which aspect of the atomic trap is the most important (radial, azimuthal, or axial trapping)
+
+# Figure out the calculation of Ggm in the limit of z1=z2
+    # an overall sign depending on the sign of Δz = ±eps?
+    # if the limit depends on from which direction you approach it, that is problematic?
+
+# Optimize calculation of Im_Grm_trans for the case of classical disorder
 
 # Implement plot_GnmEigenEnergies for the case of including phonons
     # Figure out how to order the eigenvalues of the fullCouplingMatrix

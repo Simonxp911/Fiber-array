@@ -20,6 +20,7 @@ using Bessels #Bessel functions for fiber equation and modes
 using Printf #for formatting strings
 using Random #for random permutations etc.
 using Statistics #for calculating mean, standard deviation, etc.
+using Interpolations #for interpolating the radiation Green's function
 
 
 # ================================================
