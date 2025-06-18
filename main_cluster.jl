@@ -38,20 +38,20 @@ end
 #   Generate figures
 # ================================================
 function prepare_Im_Grm_trans(SP)
-    # For arrays on the form [const, 0, zn] this is enough (as long as they are ordered according to their zn)
-    if SP.arrayType ∈ ("1Dchain", "randomZ")
+    # For 1Dchain it is enough to only consider the interaction between the first atom and the others
+    if SP.arrayType == "1Dchain"
         totalNumberOfJobs = SP.N
         myStartIndex, myEndIndex = myStartIndex_and_myEndIndex(totalNumberOfJobs)
         index = 1
         for i in 1:SP.N
             if myStartIndex <= index <= myEndIndex
                 println("My rank is $myRank, I am working on index = $index")
-                            Im_Grm_trans(SP.fiber, ωa, SP.array[i], SP.array[1], (0, 0), 1, true, SP.abstol_Im_Grm_trans)
+                              Im_Grm_trans(SP.fiber, ωa, SP.array[i], SP.array[1], (0, 0), 1, true, SP.abstol_Im_Grm_trans)
                 for α in 1:3
-                            Im_Grm_trans(SP.fiber, ωa, SP.array[i], SP.array[1], (1, 0), α, true, SP.abstol_Im_Grm_trans)
-                            Im_Grm_trans(SP.fiber, ωa, SP.array[i], SP.array[1], (0, 1), α, true, SP.abstol_Im_Grm_trans)
-                            Im_Grm_trans(SP.fiber, ωa, SP.array[i], SP.array[1], (2, 0), α, true, SP.abstol_Im_Grm_trans)
-                            Im_Grm_trans(SP.fiber, ωa, SP.array[i], SP.array[1], (0, 2), α, true, SP.abstol_Im_Grm_trans)
+                              Im_Grm_trans(SP.fiber, ωa, SP.array[i], SP.array[1], (1, 0), α, true, SP.abstol_Im_Grm_trans)
+                              Im_Grm_trans(SP.fiber, ωa, SP.array[i], SP.array[1], (0, 1), α, true, SP.abstol_Im_Grm_trans)
+                              Im_Grm_trans(SP.fiber, ωa, SP.array[i], SP.array[1], (2, 0), α, true, SP.abstol_Im_Grm_trans)
+                              Im_Grm_trans(SP.fiber, ωa, SP.array[i], SP.array[1], (0, 2), α, true, SP.abstol_Im_Grm_trans)
                     if i == 1 Im_Grm_trans(SP.fiber, ωa, SP.array[i], SP.array[1], (1, 1), α, true, SP.abstol_Im_Grm_trans) end
                 end
             end
