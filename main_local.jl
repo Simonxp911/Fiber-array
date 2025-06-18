@@ -61,11 +61,11 @@ function define_SP_BerlinCS()
     ΔvariDescription = ΔvariDescript(ΔvariDependence, Δvari_args)
     
     # Lamb-Dicke parameters
-    ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
+    # ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
     # ηα = ηα0 .* [0.1, 0.2, 0.1]
     # ηα = ηα0 * 0.4
     # ηα = [0.01, 0.01, 0.01]
-    # ηα = [0., 0., 0.]
+    ηα = [0., 0., 0.]
     
     # Whether phonons are excluded or not from the calculations
     noPhonons = all(ηα .== 0)
@@ -74,10 +74,10 @@ function define_SP_BerlinCS()
     arrayType = "1Dchain"
     
     # Set number of atomic sites 
-    N_sites = 100
+    N_sites = 300
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
-    ff = 0.5
+    ff = 1.0
     pos_unc = 0.0
     # pos_unc = ηα0/ωa
     n_inst = 1
@@ -108,18 +108,22 @@ function define_SP_BerlinCS()
     # Whether to approximate transverse part of radiation GF (real part and imaginary part respectively, usually (true, false))
     approx_Grm_trans = (true, false)
     
+    # Whether to interpolate Im_Grm_trans
+    interpolate_Im_Grm_trans = true #arrayType == "randomZ"
+    
     # Whether to save individual results (Im_Grm_trans, steady states, time evolutions)
-    save_Im_Grm_trans = pos_unc == 0 && arrayType != "randomZ"
+    save_Im_Grm_trans = pos_unc == 0 && arrayType != "randomZ" && !interpolate_Im_Grm_trans
     save_steadyState  = n_inst == 1 && ff == 1 && pos_unc == 0 && arrayType != "randomZ"
     save_timeEvol     = n_inst == 1 && ff == 1 && pos_unc == 0 && arrayType != "randomZ"
     
     # Ranges of z and x values to define r_fields for calculating the radiated E-field
     arrayL = (N_sites - 1)*a0_ul
-    # z_range = range(-0.5*arrayL, 1.5*arrayL, 60)
-    # x_range = range(ρa0_ul - 0.3*arrayL, ρa0_ul + 0.3*arrayL, 60)
     z_range = range(-10, arrayL + 10, 60)
     x_range = range(-ρf0_ul - 10, ρf0_ul + ρa0_ul + 10, 60)
     y_fix   = ρa0_ul
+    
+    # Get the interpolation function for the imaginary, transverse part of the radiation Green's function, if needed
+    if interpolate_Im_Grm_trans interpolation_Im_Grm_trans = interpolation1D_Im_Grm_trans(Fiber(ρf0_ul, n0, ωa), Int(ceil(arrayL*10)) + 1, ρa0_ul, 0.1, noPhonons) else interpolation_Im_Grm_trans = nothing end
     
     
     return SysPar(ρf0_ul, n0, ωa,
@@ -128,9 +132,11 @@ function define_SP_BerlinCS()
                   tspan, dtmax, initialState, initialStateDescription,
                   arrayType, N_sites, ρa0_ul, a0_ul, ff, pos_unc, n_inst, array, arrayDescription, N,
                   να0_ul, ηα, noPhonons,
-                  d, dDescription, incField_wlf, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans,
+                  d, dDescription, incField_wlf, 
+                  interpolate_Im_Grm_trans, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans,
                   save_steadyState, save_timeEvol,
-                  z_range, x_range, y_fix)
+                  interpolation_Im_Grm_trans,
+                  z_range, x_range, y_fix) 
 end
 
 
@@ -313,27 +319,29 @@ function main()
     
     
     
-    # TEMP
-    zs_known = collect(0.3*(0:20))
-    zs_target = [1.2, 3.7, 4.5]
-    F = [[x->x+1im*x^2, x->x^2]]
-    Fs_known = evalNestedFunc.(Ref(F), zs_known)
+    # # TEMP
     
-    # println(typeof(itp) <: AbstractArray)
-    # println(typeof(itp[1]) <: AbstractArray)
-    # println(typeof(itp[1][1]) <: AbstractArray)
-    # display(Fs_known)
-    # display(evalNestedFunc.(Ref(itp), zs_target))
-    # display(evalNestedFunc.(Ref(F), zs_target))
     
-    display(interpolateCubic_1D(zs_known, Fs_known, zs_target))
-    display(evalNestedFunc.(Ref(F), zs_target))
+    # zs = [site[3] for site in SP.array]
+    # N = length(SP.array)
+    # for derivOrder in [(1, 0), (0, 1), (2, 0), (0, 2)], α in 1:3
+    #     Grm_inter = fill(zeros(ComplexF64, 3, 3), N)
+    #     Grm_origi = fill(zeros(ComplexF64, 3, 3), N)
+    #     for i in 1:N
+    #         Grm_inter[i] = Grm(SP.fiber, ωa, SP.array[i], SP.array[1], derivOrder, α, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+    #         Grm_origi[i] = Grm(SP.fiber, ωa, SP.array[i], SP.array[1], derivOrder, α, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, false, nothing)
+    #     end
         
-    # interpolateCubic_1D(zs_known, Fs_known, zs_target)
-    # interpolationCubic_1D(Fs_known)
-    # interpolateIndex(zs_known, z_target)
-    # evalNestedFunc(f, x)
-    # TEMP
+    #     fig = Figure(size=(800, 600))
+    #     Axis(fig[1, 1])
+    #     for i in 1:9
+    #         data = [G_inter[i] - G_origi[i] for (G_inter, G_origi) in zip(Grm_inter, Grm_origi)]
+    #         lines!(zs, real(data), linestyle=:solid)
+    #         lines!(zs, imag(data), linestyle=:dash)
+    #     end
+    #     display(GLMakie.Screen(), fig)
+    # end
+    # # TEMP
     
     
     
@@ -545,7 +553,7 @@ function plot_GnmEigenModes(SP)
     
     if SP.noPhonons
         # Get coupling matrix and its spectrum
-        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
+        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
         eigenEnergies, eigen_σs, dominant_ks = spectrum_dominant_ks(Δvari + tildeG, SP.a)
         
         # Pack the eigenmodes
@@ -569,7 +577,7 @@ function plot_GnmEigenModes(SP)
         
     else
         # Get coupling matrix and its spectrum
-        Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
+        Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
         fullCoupling = get_fullCouplingMatrix(Δvari, tildeG, tildeFα, tildeGα1, tildeGα2)
         eigenEnergies, eigenModes = spectrum(fullCoupling)
         
@@ -611,11 +619,11 @@ end
 
 function plot_emissionPatternOfGnmeigenModes(SP)
     if SP.noPhonons
-        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
+        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
         eigenEnergies, eigen_σs = spectrum(Δvari + tildeG)
         eigen_σBαs = eigenModes
     else
-        Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
+        Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
         fullCoupling = get_fullCouplingMatrix(Δvari, tildeG, tildeFα, tildeGα1, tildeGα2)
         eigenEnergies, eigenModes = spectrum(fullCoupling)
         eigen_σBαs = unpack_σBαFromσBαVec.(eigenModes)
@@ -635,7 +643,7 @@ function plot_GnmEigenEnergies(SP)
     # The eigenmodes when including phonons do not have a clear band structure
     if any(SP.ηα .!= 0) throw(ArgumentError("plot_GnmEigenEnergies is not implemented for the case of including phonons")) end
     
-    Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
+    Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
     # tildeG = get_tildeG0(SP.fiber, SP.d, SP.array)
     
     eigenEnergies, dominant_ks, eigenModesMatrix, eigenModesMatrix_inv = spectrum_dominant_ks_basisMatrices(Δvari + tildeG, SP.a)
@@ -660,7 +668,7 @@ function plot_compareGnmEigenEnergies(SP)
     for N in Ns
         array, _, _ = get_array(SP.arrayType, N, SP.ρa, SP.a, SP.ff, SP.pos_unc, 1)
         d = chiralDipoleMoment(SP.fiber, SP.ρa, array)
-        tildeG = get_tildeGs(SP.fiber, d, array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
+        tildeG = get_tildeGs(SP.fiber, d, array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
     
         eigenEnergies, eigenModes, dominant_ks = spectrum_dominant_ks(tildeG, SP.a)
         collΔ, collΓ = collEnergies_from_eigenEnergies(eigenEnergies)
@@ -685,11 +693,11 @@ function plot_lossWithGnmEigenEnergies(SP)
     t = calc_transmission.(Ref(SP), σBα_scan)
     
     if SP.noPhonons
-        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
+        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
         drive = tildeΩ
         fullCoupling = Δvari + tildeG
     else
-        Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans)
+        Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
         drive = get_fullDriveVector(tildeΩ, tildeΩα)
         fullCoupling = get_fullCouplingMatrix(Δvari, tildeG, tildeFα, tildeGα1, tildeGα2)
     end

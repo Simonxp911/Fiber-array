@@ -460,13 +460,25 @@ Interpolate a 1D function, F(z), (whose function values may be scalar or array) 
 equally spaced points Fs_known = F.(zs_known) onto a set of points zs_target
 that are contained within the interval covered by zs_known
 """
-function interpolateCubic_1D(zs_known, Fs_known, zs_target)
+function interpolation1D_atTargetValues(zs_known, Fs_known, zs_target)
     if !all(diff(zs_known) .≈ zs_known[2] - zs_known[1]) throw(ArgumentError("interpolateCubic_1D assumes the known points of the function to be on a regular 1D grid")) end
     if !all(minimum(zs_known) .< zs_target .< maximum(zs_known)) throw(ArgumentError("interpolateCubic_1D assumes the zs_target to be within the interval covered by zs_known")) end
     
-    itp = interpolationCubic_1D(Fs_known)
-    indices_target = interpolateIndex.(Ref(zs_known), zs_target)
-    return evalNestedFunc.(Ref(itp), indices_target)
+    itp = interpolation1D_asFunction(zs_known, Fs_known)
+    return evalNestedFunc.(itp, zs_target)
+end
+
+
+"""
+Interpolate a 1D function, F(z), (whose function values may be scalar or array) from a set of 
+equally spaced points Fs_known = F.(zs_known) and return the interpolation function 
+(which can then be evaluated as needed)
+"""
+function interpolation1D_asFunction(zs_known, Fs_known)
+    if !all(diff(zs_known) .≈ zs_known[2] - zs_known[1]) throw(ArgumentError("interpolateCubic_1D assumes the known points of the function to be on a regular 1D grid")) end
+    
+    itp = interpolation1D_baseInterpolation(Fs_known) 
+    return z -> evalNestedFunc(itp, interpolateIndex(zs_known, z))
 end
 
 
@@ -474,15 +486,15 @@ end
 Get the interpolation object for a set of equally spaced points, Fs_known,
 preserving whatever array structure Fs_known may have
 """
-function interpolationCubic_1D(Fs_known)
+function interpolation1D_baseInterpolation(Fs_known)
     if typeof(Fs_known[1]) <: AbstractArray
         itp = Array{Any}(undef, size(Fs_known[1])) 
         for i in eachindex(Fs_known[1])
             Fs_known_i = [F[i] for F in Fs_known]
-            itp[i] = interpolationCubic_1D(Fs_known_i)
+            itp[i] = interpolation1D_baseInterpolation(Fs_known_i)
         end
     else
-        itp = interpolate(Fs_known, BSpline(Cubic(Throw(OnGrid()))))
+        itp = interpolate(Fs_known, BSpline(Cubic(Flat(OnGrid()))))
     end
     return itp
 end
@@ -494,7 +506,7 @@ the interval covered by zs_known, return the
 """
 function interpolateIndex(zs_known, z_target)
     if !issorted(zs_known) throw(ArgumentError("interpolateIndex assumes zs_known to be sorted")) end
-    if !(minimum(zs_known) < z_target < maximum(zs_known)) throw(ArgumentError("interpolateIndex assumes z_target to be within the interval covered by zs_known")) end
+    if !(minimum(zs_known) <= z_target <= maximum(zs_known)) throw(ArgumentError("interpolateIndex assumes z_target to be within the interval covered by zs_known. Possibly you are trying to evaluate an interpolation function outside the originally given interval.")) end
     
     nearestIndices = sortperm(abs.(zs_known .- z_target))
     leftIndex, rightIndex = sort(nearestIndices[1:2])
@@ -521,4 +533,38 @@ function evalNestedFunc(f, x)
         end
     end
     return result
+end
+
+
+"""
+Construct the interpolation of the Im_Grm_trans. Returns a dcitionary that takes a string
+'derivOrder, α' as argument and returns a function of z.
+"""
+function interpolation1D_Im_Grm_trans(fiber, N_sites, ρa, a, noPhonons)
+    array = get_array("1Dchain", N_sites, ρa, a)
+    N = length(array)
+    zs = [site[3] for site in array]
+    
+    derivOrder_α = [((0, 0), 1)]
+    if !noPhonons
+        derivOrders = [(1, 0), (0, 1), (1, 1), (2, 0), (0, 2)]
+        αs = 1:3
+        derivOrder_α = vcat(derivOrder_α, flatten([(derivOrder, α) for derivOrder in derivOrders, α in αs]))
+    end
+    
+    itp = Dict()
+    for (derivOrder, α) in derivOrder_α
+        if derivOrder == (1, 1)
+            Im_Grm = [Im_Grm_trans(fiber, ωa, array[1], array[1], derivOrder, α)]
+            itp["$derivOrder, $α"] = interpolation1D_asFunction(0.0, Im_Grm)
+        else
+            Im_Grm = fill(zeros(ComplexF64, 3, 3), N)
+            for i in 1:N
+                Im_Grm[i] = Im_Grm_trans(fiber, ωa, array[i], array[1], derivOrder, α)
+            end
+            itp["$derivOrder, $α"] = interpolation1D_asFunction(zs, Im_Grm)
+        end
+    end
+    
+    return itp
 end

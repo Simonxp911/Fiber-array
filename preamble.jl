@@ -114,6 +114,7 @@ struct SysPar
     dDescription::String                            # Description of the dipole moment for postfix
     incField_wlf::Vector{Tuple{<:Number, Int, Int}} # Vector of (weight, l, f) tuples for defining the incoming driving field
     
+    interpolate_Im_Grm_trans::Bool                  # Whether to use an interpolation for the calculation of Im_Grm_trans
     save_Im_Grm_trans::Bool                         # Whether to save calculated Im_Grm_trans
     abstol_Im_Grm_trans::Real                       # Absolute tolerance in the calculations of Im_Grm_trans
     
@@ -125,6 +126,8 @@ struct SysPar
     
     save_steadyState::Bool                          # Whether to save calculated steady states
     save_timeEvol::Bool                             # Whether to save calculated time evolutions
+    
+    interpolation_Im_Grm_trans::Union{Dict, Nothing}# Interpolation function of Im_Grm_trans
     
     z_range::Union{AbstractRange, Nothing}          # Range of z values for calculating the radiation E-field
     x_range::Union{AbstractRange, Nothing}          # Range of x values for calculating the radiation E-field
@@ -138,8 +141,10 @@ struct SysPar
                     tspan::Tuple{Real, Real}, dtmax::Real, initialState::Vector, initialStateDescription::String,
                     arrayType::String, N_sites::Int, ρa::Real, a::Real, ff::Real, pos_unc::Union{Real, Vector}, n_inst::Int, array::Vector, arrayDescription::String, N::Int,
                     να::Vector, ηα::Vector, noPhonons::Bool,
-                    d::Union{Vector, String}, dDescription::String, incField_wlf::Vector, save_Im_Grm_trans::Bool, abstol_Im_Grm_trans::Real, approx_Grm_trans::Tuple,
+                    d::Union{Vector, String}, dDescription::String, incField_wlf::Vector, 
+                    interpolate_Im_Grm_trans::Bool, save_Im_Grm_trans::Bool, abstol_Im_Grm_trans::Real, approx_Grm_trans::Tuple,
                     save_steadyState::Bool, save_timeEvol::Bool, 
+                    interpolation_Im_Grm_trans::Union{Dict, Nothing},
                     z_range::AbstractRange, x_range::AbstractRange, y_fix::Real)
 
         fiber = Fiber(ρf, n, ω)
@@ -152,8 +157,10 @@ struct SysPar
                    tspan, dtmax, initialState, initialStateDescription,
                    arrayType, N_sites, ρa, a, ff, pos_unc, n_inst, array, arrayDescription, N,
                    να, ηα, noPhonons,
-                   d, dDescription, incField_wlf, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans,
+                   d, dDescription, incField_wlf, 
+                   interpolate_Im_Grm_trans, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans,
                    save_steadyState, save_timeEvol, 
+                   interpolation_Im_Grm_trans,
                    z_range, x_range, y_fix, r_fields)
     end
     
@@ -173,9 +180,11 @@ struct SysPar
         array = get_array(arrayType, N, ρa, a, ff, pos_unc)
         arrayDescription = arrayDescript(arrayType, N_sites, ρa, a, ff, pos_unc)
         abstol_Im_Grm_trans = 1e-4
+        interpolate_Im_Grm_trans = false
         save_Im_Grm_trans = true
         save_steadyState = true
         save_timeEvol = true
+        interpolation_Im_Grm_trans = nothing
         z_range = nothing
         x_range = nothing
         y_fix   = nothing
@@ -187,8 +196,10 @@ struct SysPar
                    tspan, dtmax, initialState, initialStateDescription,
                    arrayType, N, ρa, a, ff, pos_unc, n_inst, array, arrayDescription, N,
                    να, ηα, noPhonons,
-                   d, dDescription, incField_wlf, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans,
+                   d, dDescription, incField_wlf, 
+                   interpolate_Im_Grm_trans, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans,
                    save_steadyState, save_timeEvol, 
+                   interpolation_Im_Grm_trans,
                    z_range, x_range, y_fix, r_fields)
     end
 end

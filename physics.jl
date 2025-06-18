@@ -454,7 +454,7 @@ end
 """
 Calculates the radiation mode Green's function or its derivatives 
 """
-function Grm(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_Im_Grm_trans=true, abstol=1e-5, approx_Grm_trans=(false, false))
+function Grm(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_Im_Grm_trans=true, abstol=1e-5, approx_Grm_trans=(false, false), interpolate_Im_Grm_trans=false, interpolation_Im_Grm_trans=nothing)
     # The Green's function is calculated in terms of the contributions: the longitudinal part, the imaginary transverse part, and the real transverse part
     
     # First, we calculate the longitudinal part
@@ -462,9 +462,13 @@ function Grm(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_Im_Grm_
     
     # Second, the real transverse part
     Re_Grm_tr = Re_Grm_trans(fiber, ω, r_field, r_source, derivOrder, α, approx_Grm_trans[1])
-    
-    # Finally, the imaginary transverse part
-    Im_Grm_tr = Im_Grm_trans(fiber, ω, r_field, r_source, derivOrder, α, save_Im_Grm_trans, abstol, approx_Grm_trans[2])
+
+    # Then, the imaginary transverse part (there is no longitudinal part of the imaginary part)
+    if interpolate_Im_Grm_trans
+        Im_Grm_tr = interpolation_Im_Grm_trans["$derivOrder, $α"](r_field[3] - r_source[3])
+    else
+        Im_Grm_tr = Im_Grm_trans(fiber, ω, r_field, r_source, derivOrder, α, save_Im_Grm_trans, abstol, approx_Grm_trans[2])
+    end
     
     return G0_lo + Re_Grm_tr + 1im*Im_Grm_tr
 end
@@ -549,6 +553,20 @@ function Re_Grm_trans(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, app
         # Calculate from imaginary part using Kramers-Kronig relation
         throw(ArgumentError("The non-approximate calculation of real part of the transverse part of radiation mode Green's function or its derivatives in Re_Grm_trans has not been implemented"))
     end
+end
+
+
+"""
+Calculates the real part of the radiation mode Green's function or its derivatives 
+"""
+function Re_Grm(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, approx_Re_Grm_trans=false)
+    # First, we calculate the longitudinal part
+    G0_lo     = G0_long(ω, r_field, r_source, derivOrder, α)
+    
+    # Second, the real transverse part
+    Re_Grm_tr = Re_Grm_trans(fiber, ω, r_field, r_source, derivOrder, α, approx_Re_Grm_trans)
+    
+    return G0_lo + Re_Grm_tr
 end
 
 
