@@ -555,8 +555,8 @@ function interpolation1D_Im_Grm_trans(fiber, N_sites, ρa, a, noPhonons)
     itp = Dict()
     for (derivOrder, α) in derivOrder_α
         if derivOrder == (1, 1)
-            Im_Grm = [Im_Grm_trans(fiber, ωa, array[1], array[1], derivOrder, α)]
-            itp["$derivOrder, $α"] = interpolation1D_asFunction(0.0, Im_Grm)
+            Im_Grm = Im_Grm_trans(fiber, ωa, array[1], array[1], derivOrder, α)
+            itp["$derivOrder, $α"] = f(z) = z == 0.0 ? Im_Grm : throw(ArgumentError("The derivOrder = (1, 1) interpolation1D_Im_Grm_trans can only be evaluated at z = 0.0"))
         else
             Im_Grm = fill(zeros(ComplexF64, 3, 3), N)
             for i in 1:N

@@ -463,12 +463,8 @@ function Grm(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_Im_Grm_
     # Second, the real transverse part
     Re_Grm_tr = Re_Grm_trans(fiber, ω, r_field, r_source, derivOrder, α, approx_Grm_trans[1])
 
-    # Then, the imaginary transverse part (there is no longitudinal part of the imaginary part)
-    if interpolate_Im_Grm_trans
-        Im_Grm_tr = interpolation_Im_Grm_trans["$derivOrder, $α"](r_field[3] - r_source[3])
-    else
-        Im_Grm_tr = Im_Grm_trans(fiber, ω, r_field, r_source, derivOrder, α, save_Im_Grm_trans, abstol, approx_Grm_trans[2])
-    end
+    # Then, the imaginary transverse part (there is no imaginary longitudinal part)
+    Im_Grm_tr = Im_Grm_trans(fiber, ω, r_field, r_source, derivOrder, α, save_Im_Grm_trans, abstol, approx_Grm_trans[2], interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
     
     return G0_lo + Re_Grm_tr + 1im*Im_Grm_tr
 end
@@ -478,8 +474,16 @@ end
 Small wrapper for the calculation of the imaginary part of the transverse part of radiation mode 
 Green's function or its derivatives that exploits the Onsager reciprocity to simpilify calculations
 """
-function Im_Grm_trans(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_Im_Grm_trans=true, abstol=1e-5, approx_Im_Grm_trans=false)
+function Im_Grm_trans(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_Im_Grm_trans=true, abstol=1e-5, approx_Im_Grm_trans=false, interpolate_Im_Grm_trans=false, interpolation_Im_Grm_trans=nothing)
     if approx_Im_Grm_trans return imag(G0(ω, r_field, r_source, derivOrder, α)) end
+    
+    if interpolate_Im_Grm_trans
+        if r_field[3] < r_source[3]
+            return transpose(interpolation_Im_Grm_trans["$(reverse(derivOrder)), $α"](r_source[3] - r_field[3]))
+        else
+            return interpolation_Im_Grm_trans["$derivOrder, $α"](r_field[3] - r_source[3])
+        end
+    end
     
     if r_field[3] < r_source[3]
         return transpose(Im_Grm_trans_(fiber, ω, r_source, r_field, reverse(derivOrder), α, save_Im_Grm_trans, abstol))

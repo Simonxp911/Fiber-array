@@ -5,6 +5,8 @@ const saveDir = "C:/Users/Simon/Forskning/Data/fiber_array_data/"
 
 using GLMakie #plotting, specialized interactive plots
 
+# Random.seed!(1234)
+
 
 # ================================================
 #   Main functions
@@ -53,7 +55,7 @@ function define_SP_BerlinCS()
     να0_ul = να0/γ0 #unitless version of να0
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-1.0, 1.0, 100)
+    Δ_specs = (-1.0, 1.0, 300)
     
     # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
     ΔvariDependence = "flat"
@@ -61,11 +63,11 @@ function define_SP_BerlinCS()
     ΔvariDescription = ΔvariDescript(ΔvariDependence, Δvari_args)
     
     # Lamb-Dicke parameters
-    # ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
+    ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
     # ηα = ηα0 .* [0.1, 0.2, 0.1]
     # ηα = ηα0 * 0.4
     # ηα = [0.01, 0.01, 0.01]
-    ηα = [0., 0., 0.]
+    # ηα = [0., 0., 0.]
     
     # Whether phonons are excluded or not from the calculations
     noPhonons = all(ηα .== 0)
@@ -74,7 +76,7 @@ function define_SP_BerlinCS()
     arrayType = "1Dchain"
     
     # Set number of atomic sites 
-    N_sites = 300
+    N_sites = 100
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
@@ -109,7 +111,7 @@ function define_SP_BerlinCS()
     approx_Grm_trans = (true, false)
     
     # Whether to interpolate Im_Grm_trans
-    interpolate_Im_Grm_trans = true #arrayType == "randomZ"
+    interpolate_Im_Grm_trans = arrayType == "randomZ"
     
     # Whether to save individual results (Im_Grm_trans, steady states, time evolutions)
     save_Im_Grm_trans = pos_unc == 0 && arrayType != "randomZ" && !interpolate_Im_Grm_trans
@@ -317,42 +319,14 @@ function main()
     # SP = define_SP_Chang()
     # show(SP)
     
-    
-    
-    # # TEMP
-    
-    
-    # zs = [site[3] for site in SP.array]
-    # N = length(SP.array)
-    # for derivOrder in [(1, 0), (0, 1), (2, 0), (0, 2)], α in 1:3
-    #     Grm_inter = fill(zeros(ComplexF64, 3, 3), N)
-    #     Grm_origi = fill(zeros(ComplexF64, 3, 3), N)
-    #     for i in 1:N
-    #         Grm_inter[i] = Grm(SP.fiber, ωa, SP.array[i], SP.array[1], derivOrder, α, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
-    #         Grm_origi[i] = Grm(SP.fiber, ωa, SP.array[i], SP.array[1], derivOrder, α, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, false, nothing)
-    #     end
         
-    #     fig = Figure(size=(800, 600))
-    #     Axis(fig[1, 1])
-    #     for i in 1:9
-    #         data = [G_inter[i] - G_origi[i] for (G_inter, G_origi) in zip(Grm_inter, Grm_origi)]
-    #         lines!(zs, real(data), linestyle=:solid)
-    #         lines!(zs, imag(data), linestyle=:dash)
-    #     end
-    #     display(GLMakie.Screen(), fig)
-    # end
-    # # TEMP
-    
-    
-    
-    
     # plot_propConst_inOutMom(ωρfn_ranges)
     # plot_coupling_strengths(SP)
     # plot_arrayIn3D(SP)
     # plot_σBαTrajectories_σBαSS(SP)
     # plot_transmission_vs_Δ(SP)
     # plot_imperfectArray_transmission_vs_Δ(SP)
-    # plot_compareImperfectArray_transmission_vs_Δ(SP)
+    plot_compareImperfectArray_transmission_vs_Δ(SP)
     # plot_steadyState_radiation_Efield(SP)
     # plot_radiation_Efield(SP)
     # plot_GnmEigenModes(SP)
@@ -495,8 +469,10 @@ end
 function plot_compareImperfectArray_transmission_vs_Δ(SP)
     if SP.n_inst == 1 throw(ArgumentError("plot_imperfectArray_transmission_vs_Δ requires n_inst > 1")) end
     
-    ff_list = (0.8, 0.85, 0.9, 0.95, 1.0)
-    ηαFactor_list = (0.0, 0.1, 0.4, 0.7, 1.0)
+    # ff_list = (0.8, 0.85, 0.9, 0.95, 1.0)
+    ff_list = (0.4, 0.5, 0.6)
+    # ηαFactor_list = (0.0, 0.1, 0.4, 0.7, 1.0)
+    ηαFactor_list = (1.0)
     for ηαFactor in ηαFactor_list
         T_meanss, T_stdss, phase_meanss, phase_stdss = [], [], [], []
         labels = []
