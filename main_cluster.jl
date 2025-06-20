@@ -20,7 +20,7 @@ include(ARGS[2])
 # ================================================
 function main()
     # Define system parameters
-    if myRank == root SP = define_SP() else SP = nothing end
+    if myRank == root SP = define_SP(); show(SP) else SP = nothing end
     SP = MPI.bcast(SP, root, comm)
     
     
@@ -138,10 +138,10 @@ end
 
 
 @time begin
-    println("\n -- Running main() -- \n")
+    println("\n -- Running main() on rank $myRank -- \n")
     main() 
     println(" -- -- ")
-    println("@time of main():")
+    println("@time of main() on rank $myRank:")
 end
 
 
