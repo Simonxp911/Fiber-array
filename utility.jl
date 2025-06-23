@@ -180,6 +180,32 @@ function vectorOfCols2Matrix(x)
 end
 
 
+"""
+Take a vector of phases that have been calculated modulo 2π and unwrap these, 
+i.e. whenever the phase jumps by close to 2π remove the jump and return a vector
+that is close to continous
+"""
+function unwrapPhase(phases, jumpTolerenace=π/2, dims=1)
+    jumps = diff(phases, dims=dims)
+    phases_unwrap = deepcopy(phases)
+    for (i, jump) in enumerate(jumps)
+        if abs(jump) > jumpTolerenace
+            phases_unwrap[i+1:end] .-= sign(jump)*2π
+        end
+    end
+    return phases_unwrap
+end
+
+
+"""
+Take a vector of unwrapped (i.e. close to continous) phases and wraps them 
+i.e. returns them modulo 2π in the interval -π to π
+"""
+function wrapPhase(phases)
+    return @. mod2pi(phases + π) - π
+end
+
+
 # ================================================
 #   Functions pertaining to how the dynamical variables are stored
 # ================================================

@@ -44,12 +44,12 @@ function prep_imperfectArray_transmission(ts)
     ts_mat = vectorOfRows2Matrix(ts)
     
     T_mat     = abs2.(ts_mat)
-    phase_mat = angle.(ts_mat)
+    phase_mat = unwrapPhase.(angle.(ts_mat))
     
-    return squeeze(mean(T_mat, dims=1)), 
-           squeeze(std(T_mat, dims=1)), 
-           squeeze(mean(phase_mat, dims=1)), 
-           squeeze(std(phase_mat, dims=1))
+    return            squeeze(mean(T_mat, dims=1)), 
+                      squeeze( std(T_mat, dims=1)), 
+           wrapPhase.(squeeze(mean(phase_mat, dims=1))), 
+                      squeeze( std(phase_mat, dims=1))
 end
 
 

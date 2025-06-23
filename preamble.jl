@@ -243,8 +243,18 @@ function Base.show(io::IO, SP::SysPar)
     println(io, "incField_wlf: ", "[" * join(["(" * join([format_Complex_to_String(wlf[1]), wlf[2], wlf[3]], ", ") * ")" for wlf in SP.incField_wlf], ", ") * "]")
     println(io, "")
     
-    println(io, "Whether to save the imaginary transverse part of the radiation Green's function")
+    println(io, "Whether to use interpolation to calculate Im_Grm_trans")
+    println(io, "interpolate_Im_Grm_trans: ", SP.interpolate_Im_Grm_trans)
+    println(io, "")
+    
+    println(io, "Whether to save different calculations")
     println(io, "save_Im_Grm_trans: ", SP.save_Im_Grm_trans)
+    println(io, "save_steadyState: ", SP.save_steadyState)
+    println(io, "save_timeEvol: ", SP.save_timeEvol)
+    println(io, "")
+    
+    println(io, "Absolute tolerence used for the calculation of Im_Grm_trans")
+    println(io, "abstol_Im_Grm_trans: ", SP.abstol_Im_Grm_trans)
     println(io, "")
     
     println(io, "Whether the real part, transverse part of the radiation GF has been approximated with corresponding part of the vacuum GF")

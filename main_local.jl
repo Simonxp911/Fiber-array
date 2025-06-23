@@ -55,7 +55,7 @@ function define_SP_BerlinCS()
     να0_ul = να0/γ0 #unitless version of να0
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-1.0, 1.0, 300)
+    Δ_specs = (-2.0, 2.0, 300)
     
     # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
     ΔvariDependence = "flat"
@@ -73,16 +73,16 @@ function define_SP_BerlinCS()
     noPhonons = all(ηα .== 0)
     
     # Set which kind of array to use ("1Dchain", "doubleChain", "randomZ")
-    arrayType = "1Dchain"
+    arrayType = "randomZ"
     
     # Set number of atomic sites 
-    N_sites = 100
+    N_sites = 1000
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
     pos_unc = 0.0
     # pos_unc = ηα0/ωa
-    n_inst = 1
+    n_inst = 100
     
     # Generate the array, its description, and the number of atoms
     array, arrayDescription, N = get_array(arrayType, N_sites, ρa0_ul, a0_ul, ff, pos_unc, n_inst)
@@ -125,7 +125,7 @@ function define_SP_BerlinCS()
     y_fix   = ρa0_ul
     
     # Get the interpolation function for the imaginary, transverse part of the radiation Green's function, if needed
-    if interpolate_Im_Grm_trans interpolation_Im_Grm_trans = interpolation1D_Im_Grm_trans(Fiber(ρf0_ul, n0, ωa), Int(ceil(arrayL*10)) + 1, ρa0_ul, 0.1, noPhonons) else interpolation_Im_Grm_trans = nothing end
+    if interpolate_Im_Grm_trans interpolation_Im_Grm_trans = interpolation1D_Im_Grm_trans(Fiber(ρf0_ul, n0, ωa), Int(ceil(arrayL/0.1)) + 1, ρa0_ul, 0.1, noPhonons) else interpolation_Im_Grm_trans = nothing end
     
     
     return SysPar(ρf0_ul, n0, ωa,
@@ -319,6 +319,8 @@ function main()
     # SP = define_SP_Chang()
     # show(SP)
     
+    
+    
         
     # plot_propConst_inOutMom(ωρfn_ranges)
     # plot_coupling_strengths(SP)
@@ -469,10 +471,12 @@ end
 function plot_compareImperfectArray_transmission_vs_Δ(SP)
     if SP.n_inst == 1 throw(ArgumentError("plot_imperfectArray_transmission_vs_Δ requires n_inst > 1")) end
     
-    # ff_list = (0.8, 0.85, 0.9, 0.95, 1.0)
-    ff_list = (0.4, 0.5, 0.6)
-    # ηαFactor_list = (0.0, 0.1, 0.4, 0.7, 1.0)
-    ηαFactor_list = (1.0)
+    # ff_list = [0.8, 0.85, 0.9, 0.95, 1.0]
+    # ff_list = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    # ff_list = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
+    ff_list = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7]
+    # ηαFactor_list = [0.0, 0.1, 0.4, 0.7, 1.0]
+    ηαFactor_list = [1.0]
     for ηαFactor in ηαFactor_list
         T_meanss, T_stdss, phase_meanss, phase_stdss = [], [], [], []
         labels = []
@@ -495,6 +499,15 @@ function plot_compareImperfectArray_transmission_vs_Δ(SP)
         
         titl = prep_imperfectArray_transmission_title(SP)
         fig_compareImperfectArray_transmission_vs_Δ(SP.Δ_range, T_meanss, T_stdss, phase_meanss, phase_stdss, labels, titl)
+        
+        
+        Δ_index = 1
+        T_means = [T_means[Δ_index] for T_means in T_meanss]
+        T_stds = [T_stds[Δ_index] for T_stds in T_stdss]
+        phase_means = [phase_means[Δ_index] for phase_means in phase_meanss]
+        phase_stds = [phase_stds[Δ_index] for phase_stds in phase_stdss]
+        titl = titl * L"\n$ ηα = %$(ηαFactor) \cdot ηα0 $"
+        fig_compareImperfectArray_transmission_vs_ffOrηα(ff_list, L"Filling fraction $$", T_means, T_stds, phase_means, phase_stds, titl)
     end
 end
 
@@ -730,8 +743,6 @@ end
     # Not needed for classical disorder calculations, so the need is not so great, since the calculations without classical disorder can exploit the z-translational invariance to reduce number of calculations
     # Possibly only implement optimized calculation of integral
         # Less work, and this is obviously the slow part of the overall calculation
-
-# Calculate reflection and loss
 
 # Implement saving and loading of the parameter matrices?
 

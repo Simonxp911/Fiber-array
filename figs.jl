@@ -280,6 +280,34 @@ end
 
 
 """
+Plot mean magnitude and phase of transmission amplitude as a function for a specific detuning
+as a function of ff or ηα
+with error bars given by the standard deviation
+"""
+function fig_compareImperfectArray_transmission_vs_ffOrηα(xs, x_label, T_means, T_stds, phase_means, phase_stds, titl)
+    # Start figure 
+    fig = Figure(size=(800, 600))
+    
+    # Make title and axis
+    Label(fig[1, 1:2], titl, tellwidth=false)
+    Label(fig[2, 1], "Transmission coefficient", tellwidth=false)
+    ax1 = Axis(fig[3, 1], limits=(nothing, nothing, 0, 1), 
+               xlabel=x_label)
+    Label(fig[2, 2], "Transmission phase", tellwidth=false)
+    ax2 = Axis(fig[3, 2], limits=(nothing, nothing, -π, π), 
+               yticks=([-π, -π/2, 0, π/2, π], [L"$ -π $", L"$ -π/2 $", L"$ 0 $", L"$ π/2 $", L"$ π $"]),
+               xlabel=x_label)
+    
+    # Plot magnitude squared and the phase of the transmission with bands for standard deviations
+    errorbars!(ax1, xs, T_means, T_stds, color=:black, whiskerwidth=10)
+    errorbars!(ax2, xs, phase_means, phase_stds, color=:black, whiskerwidth=10)
+    
+    # Finish figure
+    display(GLMakie.Screen(), fig)
+end
+
+
+"""
 Plot the intensity (norm-squared) of the radiated E-field around the fiber
 """
 function fig_radiation_Efield(z_range, x_range, intensity, ρf, array)
