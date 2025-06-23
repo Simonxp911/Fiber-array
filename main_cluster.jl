@@ -20,8 +20,10 @@ include(ARGS[2])
 # ================================================
 function main()
     # Define system parameters
-    if myRank == root SP = define_SP(); show(SP) else SP = nothing end
-    SP = MPI.bcast(SP, root, comm)
+    SP = define_SP()
+    MPI.Barrier(comm)
+    if myRank == root show(SP) end
+    MPI.Barrier(comm)
     
     
     task = ARGS[3]
