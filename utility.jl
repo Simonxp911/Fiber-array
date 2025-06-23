@@ -185,8 +185,8 @@ Take a vector of phases that have been calculated modulo 2π and unwrap these,
 i.e. whenever the phase jumps by close to 2π remove the jump and return a vector
 that is close to continous
 """
-function unwrapPhase(phases, jumpTolerenace=π/2, dims=1)
-    jumps = diff(phases, dims=dims)
+function unwrapPhase(phases, jumpTolerenace=π/2)
+    jumps = diff(phases)
     phases_unwrap = deepcopy(phases)
     for (i, jump) in enumerate(jumps)
         if abs(jump) > jumpTolerenace
