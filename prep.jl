@@ -41,8 +41,9 @@ Prepare the means and standard deviations of the transmission as calculated over
 a set of imperfect atomic arrays
 """
 function prep_imperfectArray_transmission(ts)
-    Ts     = [abs2.(t) for t in ts]
-    phases = [unwrapPhase(angle.(t)) for t in ts]
+    Ts = [abs2.(t) for t in ts]
+    phasesDifferences = [angle.(t[2:end]./t[1:end-1]) for t in ts]
+    phases = [vcat([angle(t[1])], angle(t[1]) .+ cumsum(phaDiff)) for phaDiff in phasesDifferences]
     
     T_mat      = vectorOfRows2Matrix(Ts)
     phases_mat = vectorOfRows2Matrix(phases)
@@ -51,6 +52,19 @@ function prep_imperfectArray_transmission(ts)
                      squeeze( std(T_mat, dims=1)), 
            wrapPhase(squeeze(mean(phases_mat, dims=1))), 
                      squeeze( std(phases_mat, dims=1))
+end
+
+
+"""
+Prepare the means and standard deviations of the transmission as calculated over
+a set of imperfect atomic arrays
+"""
+function prep_compareImperfectArray_transmission_vs_ffOrηα(Δ_index, T_meanss, T_stdss, phase_meanss, phase_stdss)
+    T_means     = [T_means[Δ_index]     for T_means     in T_meanss]
+    T_stds      = [T_stds[Δ_index]      for T_stds      in T_stdss]
+    phase_means = [phase_means[Δ_index] for phase_means in phase_meanss]
+    phase_stds  = [phase_stds[Δ_index]  for phase_stds  in phase_stdss]
+    return T_means, T_stds, phase_means, phase_stds
 end
 
 
