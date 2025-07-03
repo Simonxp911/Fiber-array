@@ -29,6 +29,7 @@ using Interpolations #for interpolating the radiation Green's function
 include("calcs.jl")
 include("prep.jl")
 include("figs.jl")
+include("presentations.jl")
 include("physics.jl")
 include("utility.jl")
 include("save_load.jl")

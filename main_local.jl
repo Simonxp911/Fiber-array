@@ -55,7 +55,7 @@ function define_SP_BerlinCS()
     να0_ul = να0/γ0 #unitless version of να0
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-2.0, 2.0, 300)
+    Δ_specs = (-1.0, 1.0, 300)
     
     # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
     ΔvariDependence = "flat"
@@ -63,26 +63,26 @@ function define_SP_BerlinCS()
     ΔvariDescription = ΔvariDescript(ΔvariDependence, Δvari_args)
     
     # Lamb-Dicke parameters
-    ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
+    # ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
     # ηα = ηα0 .* [0.1, 0.2, 0.1]
     # ηα = ηα0 * 0.4
     # ηα = [0.01, 0.01, 0.01]
-    # ηα = [0., 0., 0.]
+    ηα = [0., 0., 0.]
     
     # Whether phonons are excluded or not from the calculations
     noPhonons = all(ηα .== 0)
     
     # Set which kind of array to use ("1Dchain", "doubleChain", "randomZ")
-    arrayType = "randomZ"
+    arrayType = "1Dchain"
     
     # Set number of atomic sites 
-    N_sites = 1000
+    N_sites = 1
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
     pos_unc = 0.0
     # pos_unc = ηα0/ωa
-    n_inst = 100
+    n_inst = 1
     
     # Generate the array, its description, and the number of atoms
     array, arrayDescription, N = get_array(arrayType, N_sites, ρa0_ul, a0_ul, ff, pos_unc, n_inst)
@@ -120,8 +120,9 @@ function define_SP_BerlinCS()
     
     # Ranges of z and x values to define r_fields for calculating the radiated E-field
     arrayL = (N_sites - 1)*a0_ul
-    z_range = range(-10, arrayL + 10, 60)
-    x_range = range(-ρf0_ul - 10, ρf0_ul + ρa0_ul + 10, 60)
+    margin = 4
+    z_range = range(-margin, arrayL + margin, 100)
+    x_range = range(-ρf0_ul - margin, ρf0_ul + ρa0_ul + margin, 100)
     y_fix   = ρa0_ul
     
     # Get the interpolation function for the imaginary, transverse part of the radiation Green's function, if needed
@@ -321,14 +322,13 @@ function main()
     
     
     
-        
     # plot_propConst_inOutMom(ωρfn_ranges)
     # plot_coupling_strengths(SP)
     # plot_arrayIn3D(SP)
     # plot_σBαTrajectories_σBαSS(SP)
-    # plot_transmission_vs_Δ(SP)
+    plot_transmission_vs_Δ(SP)
     # plot_imperfectArray_transmission_vs_Δ(SP)
-    plot_compareImperfectArray_transmission_vs_Δ(SP)
+    # plot_compareImperfectArray_transmission_vs_Δ(SP)
     # plot_steadyState_radiation_Efield(SP)
     # plot_radiation_Efield(SP)
     # plot_GnmEigenModes(SP)
@@ -431,6 +431,10 @@ function plot_transmission_vs_Δ(SP)
     T, phase = prep_transmission(t)
     titl = prep_transmission_title(SP)
     fig_transmission_vs_Δ(SP.Δ_range, T, phase, titl)
+    
+    # titl = L"$ N = %$(SP.N) $"
+    # fig = fig_presentation_transmission_vs_Δ(SP.Δ_range, T, phase, titl)
+    # save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Conferences and visits\\Berlin 2025\\talk\\figures\\transmission_N500_linear_negative_zoom1.png", fig, px_per_unit=2)
 end
 
 
@@ -471,43 +475,65 @@ end
 function plot_compareImperfectArray_transmission_vs_Δ(SP)
     if SP.n_inst == 1 throw(ArgumentError("plot_imperfectArray_transmission_vs_Δ requires n_inst > 1")) end
     
+    # ff_list = [1.0]
     # ff_list = [0.8, 0.85, 0.9, 0.95, 1.0]
     # ff_list = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
     # ff_list = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
     ff_list = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7]
     # ηαFactor_list = [0.0, 0.1, 0.4, 0.7, 1.0]
     ηαFactor_list = [1.0]
+    Nsites_list = [2000, 1000, 667, 500, 400, 334, 250, 200, 167, 143]
+    # Nsites_list = [6000, 3000, 2000, 1500, 1200, 1000, 750, 600, 500, 429]
+    arrayType_list = ["1Dchain", "randomZ"]
     for ηαFactor in ηαFactor_list
+    # for ff in ff_list
         T_meanss, T_stdss, phase_meanss, phase_stdss = [], [], [], []
         labels = []
-        for ff in ff_list
+        # for ηαFactor in ηαFactor_list
+        # for ff in ff_list
+        # for (ff, N_sites) in zip(ff_list, Nsites_list)
+        # for arrayType in arrayType_list, ff in ff_list
+        for arrayType in arrayType_list, (ff, N_sites) in zip(ff_list, Nsites_list)
         # for ff in ff_list, ηαFactor in ηαFactor_list
             ηα = SP.ηα * ηαFactor
             pos_unc = SP.pos_unc * ηαFactor
-            arrayDescription = arrayDescript(SP.arrayType, SP.N_sites, SP.ρa, SP.a, ff, pos_unc)
+            # arrayDescription = arrayDescript(SP.arrayType, SP.N_sites, SP.ρa, SP.a, ff, pos_unc)
+            # arrayDescription = arrayDescript(arrayType, SP.N_sites, SP.ρa, SP.a, ff, pos_unc)
+            # arrayDescription = arrayDescript(SP.arrayType, N_sites, SP.ρa, SP.a, ff, pos_unc)
+            arrayDescription = arrayDescript(arrayType, N_sites, SP.ρa, SP.a, ff, pos_unc)
             postfix = get_postfix_imperfectArray_transmission(SP.Δ_specs, SP.ΔvariDescription, SP.dDescription, SP.να, ηα, SP.incField_wlf, SP.n_inst, arrayDescription, SP.fiber.postfix)
             filename = "T_phase" * postfix
             folder = "imperfectArray_T_phase/"
         
             if isfile(saveDir * folder * filename * ".txt") 
                 push!.([T_meanss, T_stdss, phase_meanss, phase_stdss], eachrow(load_as_txt(saveDir * folder, filename)))
-                push!(labels, L"$ ff = %$(ff) $, $ ηα = %$(ηαFactor) \cdot ηα0 $")
+                # push!(labels, L"$ ff = %$(ff) $, $ ηα = %$(ηαFactor) \cdot ηα0 $")
+                push!(labels, L"$ ff = %$(ff) $")
+                # push!(labels, L"$ η_{α} = %$(ηαFactor) \cdot η_{α}^{(0)} $")
             else
                 throw(ArgumentError("The following file can not be found: " * filename))
             end
         end
         
-        titl = prep_imperfectArray_transmission_title(SP)
-        fig_compareImperfectArray_transmission_vs_Δ(SP.Δ_range, T_meanss, T_stdss, phase_meanss, phase_stdss, labels, titl)
+        # titl = prep_imperfectArray_transmission_title(SP)
+        # fig_compareImperfectArray_transmission_vs_Δ(SP.Δ_range, T_meanss, T_stdss, phase_meanss, phase_stdss, labels, titl)
         
+        Δ_index = 75
+        T_means, T_stds, phase_means, phase_stds = prep_compareImperfectArray_transmission_vs_ffOrηα(Δ_index, T_meanss, T_stdss, phase_meanss, phase_stdss)
+        # titl = titl * "\nηα = $(ηαFactor) * ηα0" * "\nΔ = $(SP.Δ_range[Δ_index])"
+        # fig_compareImperfectArray_transmission_vs_ffOrηα(ff_list, L"Filling fraction $$", T_means, T_stds, phase_means, phase_stds, titl)
         
-        Δ_index = 1
-        T_means = [T_means[Δ_index] for T_means in T_meanss]
-        T_stds = [T_stds[Δ_index] for T_stds in T_stdss]
-        phase_means = [phase_means[Δ_index] for phase_means in phase_meanss]
-        phase_stds = [phase_stds[Δ_index] for phase_stds in phase_stdss]
-        titl = titl * L"\n$ ηα = %$(ηαFactor) \cdot ηα0 $"
-        fig_compareImperfectArray_transmission_vs_ffOrηα(ff_list, L"Filling fraction $$", T_means, T_stds, phase_means, phase_stds, titl)
+        # titl = L"$ N = %$(SP.N) $, random $ z_{n} $"
+        # titl = L"$ N_{sites} = 1000 $, ordered $ z_{n} $"
+        # titl = L"$ N_{sites} = 1000 $, $ Δ = %$(round(SP.Δ_range[Δ_index], digits=2)) $"
+        titl = L"$ N = 100 $, $ Δ = %$(round(SP.Δ_range[Δ_index], digits=2)) $"
+        # labels = ff_list
+        # labels = ηαFactor_list
+        # fig = fig_presentation_compareImperfectArray_transmission_vs_Δ(SP.Δ_range, T_meanss, T_stdss, phase_meanss, phase_stdss, labels, titl)
+        # save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Conferences and visits\\Berlin 2025\\talk\\figures\\compareff_eta1.0_NsitesFixed.png", fig, px_per_unit=2)
+        
+        fig = fig_presentation_compareImperfectArray_transmission_vs_ffOrηα(ff_list, L"Filling fraction $$", T_means, T_stds, phase_means, phase_stds, titl)
+        # save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Conferences and visits\\Berlin 2025\\talk\\figures\\compareff_eta1.0_NFixed_vs_ff.png", fig, px_per_unit=2)
     end
 end
 
@@ -524,6 +550,9 @@ function plot_steadyState_radiation_Efield(SP)
     
     titl = prep_state_title(SP, Δ)
     fig_state(zs, σ_SS, ks, σ_SS_FT, SP.z_range, SP.x_range, intensity, SP.ρf, SP.array, SP.fiber.propagation_constant, titl)
+    
+    # fig = fig_presentation_state(zs, σ_SS, ks, σ_SS_FT, SP.z_range, SP.x_range, intensity, SP.ρf, SP.array, SP.fiber.propagation_constant, titl)
+    # save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Conferences and visits\\Berlin 2025\\talk\\figures\\steadyState_N500_linear_positive.png", fig, px_per_unit=2)
 end
 
 
@@ -534,6 +563,9 @@ function plot_radiation_Efield(SP)
     intensity = norm.(E).^2
     
     fig_radiation_Efield(SP.z_range, SP.x_range, intensity, SP.ρf, SP.array)
+    
+    # fig = fig_presentation_radiation_Efield(SP.z_range, SP.x_range, intensity, SP.ρf, SP.array)
+    # save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Conferences and visits\\Berlin 2025\\talk\\figures\\radiation_Efield_N100_ff0.9.png", fig, px_per_unit=2)
 end
 
 
@@ -642,6 +674,11 @@ function plot_GnmEigenEnergies(SP)
     
     titl = prep_GnmEigenEnergies_title(SP)
     fig_eigenEnergies_vs_k(dominant_ks, collΔ, collΓ, weights_abs, SP.fiber.propagation_constant, titl) 
+    
+    # titl = L"$ N = %$(SP.N) $"
+    # titl = L"$ N = %$(SP.N) $, without guided modes"
+    # fig = fig_presentation_eigenEnergies_vs_k(dominant_ks, collΔ, collΓ, weights_abs, SP.fiber.propagation_constant, titl)
+    # save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Conferences and visits\\Berlin 2025\\talk\\figures\\band_N50.png", fig, px_per_unit=2)
 end
 
 
@@ -698,6 +735,12 @@ function plot_lossWithGnmEigenEnergies(SP)
     loss, weights_abs, resonances_abs = prep_loss_weights_resonances(t, weights, resonances)
     titl = prep_transmissionWithGnmEigenEnergies_title(SP)
     fig_loss_withGnmeigenEnergies(SP.Δ_range, loss, resonances_abs, collΔ, collΓ, weights_abs, titl)
+    # fig_loss_withGnmeigenEnergies(SP.Δ_range, loss, resonances_abs, collΔ, abs.(collΓ), weights_abs, titl)
+    # fig_loss_withGnmeigenEnergies(SP.Δ_range, loss, resonances_abs, collΔ, abs.(collΓ), 2*weights_abs./abs.(collΓ), titl)
+    
+    # flt = weights_abs .> 1e-20
+    # fig = fig_presentation_loss_withGnmeigenEnergies(SP.Δ_range, loss, resonances_abs[flt], collΔ[flt], collΓ[flt], weights_abs[flt], titl)
+    # save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Conferences and visits\\Berlin 2025\\talk\\figures\\loss_N10_withPhonons.png", fig, px_per_unit=2)
 end
 
 
@@ -715,16 +758,53 @@ end
 
 # TODO list:
 
+
+# Look at gamma much smaller than trap frequencies (presently we have gamma 50 times greater than the traps)
+    # With gamma much greater than trap frequencies, the atoms decay before they move, so it should match with classical disorder (which is indeed what we see)
+    # If gamma is smaller we will see more quantum effects due to motion, and ther should be a difference between the phonon calculation and simply including classical disorder
+
+# Consider a pulse/localized excitation in a very long chain to see their dynamics before they reach the ends of the chain, do they decay before the it hits the end?
+    # Use transmission spectrum to predict the dynamics of a pulse that is narrow enough in momentum to live within the range of detuning where the transmission is close to 1 when doing Δvari
+    # The pulse, implemented via time-dependent driving, will be spatially very very long in order to fit inside the window of high transmission with non-zero phase
+    # It should be spatially compressed in the chain, due to the phase gradient (?)
+
+# Make plots of effect of ff without motion, i.e. eta=0, focus on T = 1 peak right after flat plateau at negative detuning when including Deltavari 
+    # This peak is not always there (depending on the number of atoms that is), so it's a bit arbitrary to focus on it
+    # These peaks are result of a complicated interference of many modes, so the appearance of such a peak is somewhat random/arbitrary
+
+
 # Figure out T>1 error for doubleChain 
     # Something with the coupling..?
 
 
-# What filling fraction is needed to see any (?) sign of collective behaviour?
-    # Compare with randomZ arrays
+# Be careful that large phase is not just N times a small phase per atom
+
+# FT Im_Grm_trans in z?
+
+# Determine effective β-factor from the phase?
+    # Compare phase with that of a single atom in the case of no radiation GF
+    # Find analytical expression for phase to see how
+    # ... but in that case there is no radiation and thus β is just 1..?
+    # Well, something can be done perhaps...
+    # Compare with model of 1Dchain with some decay rate into free space, but no interaction through free space (i.e. independent decay into free space, but still interacting through fiber)
+
+# Find out why transmission phase sometimes has an extra dip/swing..?
+
+# Make scans where only one etaalpha is varied away from zero, to see their individual effects and significances
 
 # Argue which of the ηα is the most significant by looking at the parameter matrices
     # If certain derivatives of tildeΩ or tildeG are large, the corresponding ηα would have a greater effect
     # With this we can say which aspect of the atomic trap is the most important (radial, azimuthal, or axial trapping)
+    # Six curves for Ωnα and Ωnαα, twelve heatmaps for Gnmα1, Gnmα2, Gnmαα11, and Gnmαα22 (potentially Gnmα1 and Gnmα2 will show the same plot and likewise for Gnmαα11 and Gnmαα22 - so only six heatmaps)
+
+# While high-weight modes give the big overarching contributions to the loss, the actual visible peaks of the loss are given by relatively low-weight low-decay modes
+    # What's up with that?
+
+# Plot the Poynting vector instead of the radiation intensity to see where the light is leaked out of the atomic array
+
+# We include terms that go as eta^3 in terms like tildeG*B_α or tildeGα1*σ
+    # Removing them can be messy (the eta^2 contribution in σ is not easily removed...)
+    # By construction this error should be negligible
 
 # Figure out the calculation of Ggm in the limit of z1=z2
     # an overall sign depending on the sign of Δz = ±eps?
