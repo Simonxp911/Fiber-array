@@ -604,8 +604,8 @@ function fig_loss_withGnmeigenEnergies(Δ_range, L, resonances_abs, collΔ, coll
     # Plot the loss
     Label(fig[1, 1], titl, tellwidth=false)
     Label(fig[end+1, 1], L"Loss coefficient, individual resonances superimposed $$", tellwidth=false)
-    # ax1 = Axis(fig[end+1, 1], limits=(extrema(Δ_range)..., 0, nothing), 
-    ax1 = Axis(fig[end+1, 1], limits=(extrema(Δ_range)..., nothing, nothing), 
+    ax1 = Axis(fig[end+1, 1], limits=(extrema(Δ_range)..., 0, nothing), 
+    # ax1 = Axis(fig[end+1, 1], limits=(extrema(Δ_range)..., nothing, nothing), 
                xlabel=L"$ Δ/γ_{a} $",
                ylabel=L"$ 1 - |t|^2 $")
                lines!(ax1, Δ_range, L, color=:blue, label=L"Loss, $ 1 - |t|^2 $")

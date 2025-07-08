@@ -114,6 +114,7 @@ struct SysPar
     d::Union{Vector, String}                        # Dipole moment of atoms (one for each atom)
     dDescription::String                            # Description of the dipole moment for postfix
     incField_wlf::Vector{Tuple{<:Number, Int, Int}} # Vector of (weight, l, f) tuples for defining the incoming driving field
+    tildeG_flags::Tuple{Bool, Bool, Bool}           # Whether to include the guided contribution, the radiated contribution, and the radiated interactions when calculating tildeG
     
     interpolate_Im_Grm_trans::Bool                  # Whether to use an interpolation for the calculation of Im_Grm_trans
     save_Im_Grm_trans::Bool                         # Whether to save calculated Im_Grm_trans
@@ -142,7 +143,7 @@ struct SysPar
                     tspan::Tuple{Real, Real}, dtmax::Real, initialState::Vector, initialStateDescription::String,
                     arrayType::String, N_sites::Int, ρa::Real, a::Real, ff::Real, pos_unc::Union{Real, Vector}, n_inst::Int, array::Vector, arrayDescription::String, N::Int,
                     να::Vector, ηα::Vector, noPhonons::Bool,
-                    d::Union{Vector, String}, dDescription::String, incField_wlf::Vector, 
+                    d::Union{Vector, String}, dDescription::String, incField_wlf::Vector, tildeG_flags::Tuple,
                     interpolate_Im_Grm_trans::Bool, save_Im_Grm_trans::Bool, abstol_Im_Grm_trans::Real, approx_Grm_trans::Tuple,
                     save_steadyState::Bool, save_timeEvol::Bool, 
                     interpolation_Im_Grm_trans::Union{Dict, Nothing},
@@ -158,7 +159,7 @@ struct SysPar
                    tspan, dtmax, initialState, initialStateDescription,
                    arrayType, N_sites, ρa, a, ff, pos_unc, n_inst, array, arrayDescription, N,
                    να, ηα, noPhonons,
-                   d, dDescription, incField_wlf, 
+                   d, dDescription, incField_wlf, tildeG_flags,
                    interpolate_Im_Grm_trans, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans,
                    save_steadyState, save_timeEvol, 
                    interpolation_Im_Grm_trans,
@@ -180,6 +181,7 @@ struct SysPar
         n_inst = 1
         array = get_array(arrayType, N, ρa, a, ff, pos_unc)
         arrayDescription = arrayDescript(arrayType, N_sites, ρa, a, ff, pos_unc)
+        tildeG_flags = (true, true, true)
         abstol_Im_Grm_trans = 1e-4
         interpolate_Im_Grm_trans = false
         save_Im_Grm_trans = true
@@ -197,7 +199,7 @@ struct SysPar
                    tspan, dtmax, initialState, initialStateDescription,
                    arrayType, N, ρa, a, ff, pos_unc, n_inst, array, arrayDescription, N,
                    να, ηα, noPhonons,
-                   d, dDescription, incField_wlf, 
+                   d, dDescription, incField_wlf, tildeG_flags,
                    interpolate_Im_Grm_trans, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans,
                    save_steadyState, save_timeEvol, 
                    interpolation_Im_Grm_trans,
@@ -242,6 +244,10 @@ function Base.show(io::IO, SP::SysPar)
     
     println(io, "Incoming field described in terms of weights, polarization indices, and direction indices")
     println(io, "incField_wlf: ", "[" * join(["(" * join([format_Complex_to_String(wlf[1]), wlf[2], wlf[3]], ", ") * ")" for wlf in SP.incField_wlf], ", ") * "]")
+    println(io, "")
+    
+    println(io, "Whether to include the guided contribution, the radiated contribution, and the radiated interactions when calculating tildeG")
+    println(io, "tildeG_flags: ", SP.tildeG_flags)
     println(io, "")
     
     println(io, "Whether to use interpolation to calculate Im_Grm_trans")

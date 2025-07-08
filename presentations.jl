@@ -345,19 +345,30 @@ function fig_presentation_compareImperfectArray_transmission_vs_ffOrηα(xs, x_l
                xlabel=x_label,
                ylabel=L"arg$ (t) $")
     
+    # Add line or scatter for independent decay calculation
+    # t2 = 0.4507100477120275
+    # argt = 0.797941863152475
+    # hlines!(ax1, t2, color=:black, label=L"Ind. decay $$")
+    # hlines!(ax2, argt, color=:black, label=L"Ind. decay $$")
+    t2s = [0.889, 0.791, 0.704, 0.626, 0.557, 0.495, 0.392, 0.310, 0.245, 0.194]
+    argts = [0.237, 0.469, 0.704, 0.939, 1.173, 1.408, 1.878, 2.346, 2.816, -2.999]
+    scatter!(ax1, xs, t2s, color=:black, label=L"Ind. decay $$")
+    scatter!(ax2, xs, argts, color=:black, label=L"Ind. decay $$")
+    
     # Plot magnitude squared and the phase of the transmission 
     x_n = length(xs)
     for (color, label, T_mean, T_std, phase_mean, phase_std) in zip([:blue, :red], 
-                                                                    ["Ordered", "Random"],
+                                                                    [L"Ordered$$", L"Random$$"],
                                                                     [T_means[1:x_n], T_means[x_n+1:end]], 
                                                                     [T_stds[1:x_n], T_stds[x_n+1:end]], 
                                                                     [phase_means[1:x_n], phase_means[x_n+1:end]], 
                                                                     [phase_stds[1:x_n], phase_stds[x_n+1:end]])
-        errorbars!(ax1, xs, T_mean, T_std, color=color, whiskerwidth=10)
+        errorbars!(ax1, xs, T_mean, T_std, color=color, whiskerwidth=10, label=label)
         errorbars!(ax2, xs, phase_mean, phase_std, color=color, whiskerwidth=10, label=label)
     end
     
     # Finish figure
+    # axislegend(ax1, position=:lt, titlesize=16, labelsize=16)
     axislegend(ax2, position=:lb, titlesize=16, labelsize=16)
     display(GLMakie.Screen(), fig)
     return fig

@@ -29,7 +29,7 @@ end
 """
 For calculation of steady state σ and Bα
 """
-function get_postfix_steadyState(Δ, ΔvariDescription, dDescription, να, ηα, incField_wlf, arrayDescription, fiberPostfix)
+function get_postfix_steadyState(Δ, ΔvariDescription, dDescription, να, ηα, incField_wlf, tildeG_flags, arrayDescription, fiberPostfix)
     postfix_components = [
         "Delta_$(ro(Δ))",
         ΔvariDescription,
@@ -37,6 +37,7 @@ function get_postfix_steadyState(Δ, ΔvariDescription, dDescription, να, ηα
         "trapFreqs_$(join(ro.(να), ","))",
         "LamDic_$(join(ro.(ηα), ","))",
         "wlf_$("[" * join(["(" * join([format_Complex_to_String(wlf[1]), wlf[2], wlf[3]], ",") * ")" for wlf in incField_wlf], ",") * "]")",
+        "tGfl_$(join(Int.(tildeG_flags), ","))",
         arrayDescription,
         fiberPostfix
     ]
@@ -47,7 +48,7 @@ end
 """
 For calculation of transmission over classically disordered arrays
 """
-function get_postfix_imperfectArray_transmission(Δ_specs, ΔvariDescription, dDescription, να, ηα, incField_wlf, n_inst, arrayDescription, fiberPostfix)
+function get_postfix_imperfectArray_transmission(Δ_specs, ΔvariDescription, dDescription, να, ηα, incField_wlf, n_inst, tildeG_flags, arrayDescription, fiberPostfix)
     postfix_components = [
         "Delta_$(join((ro(Δ_specs[1]), ro(Δ_specs[2]), Δ_specs[3]), ","))",
         ΔvariDescription,
@@ -56,6 +57,7 @@ function get_postfix_imperfectArray_transmission(Δ_specs, ΔvariDescription, dD
         "LamDic_$(join(ro.(ηα), ","))",
         "wlf_$("[" * join(["(" * join([format_Complex_to_String(wlf[1]), wlf[2], wlf[3]], ",") * ")" for wlf in incField_wlf], ",") * "]")",
         "nInst_$(n_inst)",
+        "tGfl_$(join(Int.(tildeG_flags), ","))",
         arrayDescription,
         fiberPostfix
     ]
@@ -66,7 +68,7 @@ end
 """
 For time evolution
 """
-function get_postfix_timeEvolution(Δ, ΔvariDescription, dDescription, να, ηα, incField_wlf, arrayDescription, fiberPostfix, initialStateDescription, tspan, dtmax)
+function get_postfix_timeEvolution(Δ, ΔvariDescription, dDescription, να, ηα, incField_wlf, tildeG_flags, arrayDescription, fiberPostfix, initialStateDescription, tspan, dtmax)
     postfix_components = [
         "Delta_$(ro(Δ))",
         ΔvariDescription,
@@ -74,6 +76,7 @@ function get_postfix_timeEvolution(Δ, ΔvariDescription, dDescription, να, η
         "trapFreqs_$(join(ro.(να), ","))",
         "LamDic_$(join(ro.(ηα), ","))",
         "wlf_$("[" * join(["(" * join([format_Complex_to_String(wlf[1]), wlf[2], wlf[3]], ",") * ")" for wlf in incField_wlf], ",") * "]")",
+        "tGfl_$(join(Int.(tildeG_flags), ","))",
         arrayDescription,
         fiberPostfix,
         initialStateDescription,

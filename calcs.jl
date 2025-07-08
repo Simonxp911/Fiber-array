@@ -62,15 +62,20 @@ end
 # ================================================
 #   Functions pertaining to calculating the driving and couplings of the system
 # ================================================
-function get_parameterMatrices(ΔvariDependence, Δvari_args, fiber, d, να, ηα, incField_wlf, array, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+function get_parameterMatrices(SP)
+    return get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+end
+
+
+function get_parameterMatrices(ΔvariDependence, Δvari_args, fiber, d, να, ηα, incField_wlf, array, tildeG_flags, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
     Δvari = get_Δvari(ΔvariDependence, Δvari_args, array)
     if all(ηα .== 0)
         tildeΩ = get_tildeΩs(fiber, d, incField_wlf, array)
-        tildeG = get_tildeGs(fiber, d, array, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+        tildeG = get_tildeGs(fiber, d, array, tildeG_flags, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
         return Δvari, tildeΩ, tildeG
     else
         tildeΩ, tildeΩα            = get_tildeΩs(fiber, d, ηα, incField_wlf, array)
-        tildeG, tildeGα1, tildeGα2 = get_tildeGs(fiber, d, ηα, array, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+        tildeG, tildeGα1, tildeGα2 = get_tildeGs(fiber, d, ηα, array, tildeG_flags, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
         tildeFα                    = get_tildeFα(tildeG, να)
         return Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2
     end
@@ -167,14 +172,15 @@ function get_tildeΩs(fiber, d, ηα, incField_wlf, array)
 end
 
 
-function get_tildeGs(fiber, d::String, array, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+function get_tildeGs(fiber, d::String, array, tildeG_flags, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
     if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
+    include_Ggm, include_Grm, include_Grm_offdiag = tildeG_flags
     
     if d == "chiral"
         if save_Im_Grm_trans
             ρa = abs(array[1][1])
             d = chiralDipoleMoment(fiber, ρa, array)
-            return get_tildeGs(fiber, d, array, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+            return get_tildeGs(fiber, d, array, tildeG_flags, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
         else
             # Prepare some parameters and quantities
             ρa = abs(array[1][1])
@@ -198,59 +204,63 @@ function get_tildeGs(fiber, d::String, array, save_Im_Grm_trans, abstol_Im_Grm_t
                 z_rel = array[i][3] - array[j][3]
                 
                 # The guided mode GF (exploiting Onsager reciprocity)
-                if z_rel >= 0
-                    Ggm_[i, j] += 1im/(2*ωa)*κ_prime*heaviside(z_rel)*
-                                8*eρ_gm^2*ez_gm^2/(eρ_gm^2 + ez_gm^2)*exp(1im*κ*z_rel)
-                else
-                    Ggm_[j, i] += 1im/(2*ωa)*κ_prime*heaviside(-z_rel)*
-                                8*eρ_gm^2*ez_gm^2/(eρ_gm^2 + ez_gm^2)*exp(-1im*κ*z_rel)
+                if include_Ggm
+                    if z_rel >= 0
+                        Ggm_[i, j] += 1im/(2*ωa)*κ_prime*heaviside(z_rel)*
+                                    8*eρ_gm^2*ez_gm^2/(eρ_gm^2 + ez_gm^2)*exp(1im*κ*z_rel)
+                    else
+                        Ggm_[j, i] += 1im/(2*ωa)*κ_prime*heaviside(-z_rel)*
+                                    8*eρ_gm^2*ez_gm^2/(eρ_gm^2 + ez_gm^2)*exp(-1im*κ*z_rel)
+                    end
                 end
                 
                 # The radiation mode GF
-                # The real part
-                Re_Grm = 0.0im
-                if approx_Grm_trans[1]
-                    if z_rel != 0
-                        r = abs(z_rel)
-                        Re_Grm = -ωa/(4*π)*(2/3*sphericalbessely(0, ωa*r) - 1/3*sphericalbessely(2, ωa*r) + sphericalbessely(2, ωa*r)*eρ_gm^2/(eρ_gm^2 + ez_gm^2))
-                    end
-                else
-                    throw(ArgumentError("The non-approximate calculation of real part of the transverse part of radiation mode Green's function or its derivatives in get_tildeGs has not been implemented"))
-                end
-                
-                # The imaginary (transverse) part
-                Im_Grm_tr = 0.0im
-                if approx_Grm_trans[2]
-                    if z_rel == 0
-                        Im_Grm_tr = ωa/(6*π)
+                if include_Grm && (include_Grm_offdiag || i == j)
+                    # The real part
+                    Re_Grm = 0.0im
+                    if approx_Grm_trans[1]
+                        if z_rel != 0
+                            r = abs(z_rel)
+                            Re_Grm = -ωa/(4*π)*(2/3*sphericalbessely(0, ωa*r) - 1/3*sphericalbessely(2, ωa*r) + sphericalbessely(2, ωa*r)*eρ_gm^2/(eρ_gm^2 + ez_gm^2))
+                        end
                     else
-                        r = abs(z_rel)
-                        Im_Grm_tr = ωa/(4*π)*((2/3*sphericalbesselj(0, ωa*r) - 1/3*sphericalbesselj(2, ωa*r)) + sphericalbesselj(2, ωa*r)*eρ_gm^2/(eρ_gm^2 + ez_gm^2))
+                        throw(ArgumentError("The non-approximate calculation of real part of the transverse part of radiation mode Green's function or its derivatives in get_tildeGs has not been implemented"))
                     end
-                else
-                    # Perform the combined sum and integration
-                    summand_m = 2*abstol_Im_Grm_trans + 0.0im
-                    m = 0
-                    while abs(summand_m) > abstol_Im_Grm_trans
-                        summand_m = 0.0im
-                        for l in (-1, 1)
-                            args = (m, l, z_rel)
-                            prob = IntegralProblem(integrand, domain, args)
-                            integral = Integrals.solve(prob, HCubatureJL())
-                            summand_m += integral.u/(4*ωa)
-                            if m != 0
-                                args = (-m, l, z_rel)
+                    
+                    # The imaginary (transverse) part
+                    Im_Grm_tr = 0.0im
+                    if approx_Grm_trans[2]
+                        if z_rel == 0
+                            Im_Grm_tr = ωa/(6*π)
+                        else
+                            r = abs(z_rel)
+                            Im_Grm_tr = ωa/(4*π)*((2/3*sphericalbesselj(0, ωa*r) - 1/3*sphericalbesselj(2, ωa*r)) + sphericalbesselj(2, ωa*r)*eρ_gm^2/(eρ_gm^2 + ez_gm^2))
+                        end
+                    else
+                        # Perform the combined sum and integration
+                        summand_m = 2*abstol_Im_Grm_trans + 0.0im
+                        m = 0
+                        while abs(summand_m) > abstol_Im_Grm_trans
+                            summand_m = 0.0im
+                            for l in (-1, 1)
+                                args = (m, l, z_rel)
                                 prob = IntegralProblem(integrand, domain, args)
                                 integral = Integrals.solve(prob, HCubatureJL())
                                 summand_m += integral.u/(4*ωa)
+                                if m != 0
+                                    args = (-m, l, z_rel)
+                                    prob = IntegralProblem(integrand, domain, args)
+                                    integral = Integrals.solve(prob, HCubatureJL())
+                                    summand_m += integral.u/(4*ωa)
+                                end
                             end
+                            Im_Grm_tr += summand_m
+                            m += 1
                         end
-                        Im_Grm_tr += summand_m
-                        m += 1
                     end
+                    Grm_[i, j] = Re_Grm + 1im*Im_Grm_tr
+                    Grm_[j, i] = Re_Grm + 1im*conj(Im_Grm_tr) # Onsager reciprocity
                 end
-                Grm_[i, j] = Re_Grm + 1im*Im_Grm_tr
-                Grm_[j, i] = Re_Grm + 1im*conj(Im_Grm_tr) # Onsager reciprocity
             end
             
             # Get the couplings by appropriately multiplying some constants
@@ -258,7 +268,7 @@ function get_tildeGs(fiber, d::String, array, save_Im_Grm_trans, abstol_Im_Grm_t
             Grm_ *= 3*π/ωa
             
             # Scale the real part of the radiation GF with the local radiation decay rates (if Re_Grm_trans is being approximated)
-            if approx_Grm_trans[1]
+            if approx_Grm_trans[1] && include_Grm
                 gammas = 2*diag(imag(Grm_))
                 scaleFactors = sqrt.(gammas*gammas')
                 Grm_ = real(Grm_).*scaleFactors + 1im*imag(Grm_)
@@ -273,33 +283,42 @@ function get_tildeGs(fiber, d::String, array, save_Im_Grm_trans, abstol_Im_Grm_t
 end
 
 
-function get_tildeGs(fiber, d::String, ηα, array, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+function get_tildeGs(fiber, d::String, ηα, array, tildeG_flags, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
     if d == "chiral"
         ρa = abs(array[1][1])
         d = chiralDipoleMoment(fiber, ρa, array)
-        return get_tildeGs(fiber, d, ηα, array, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+        return get_tildeGs(fiber, d, ηα, array, tildeG_flags, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
     else
         throw(ArgumentError("get_tildeGs(d::String) is only implemented for d = 'chiral'"))
     end
 end
 
 
-function get_tildeGs(fiber, d, array, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
-    if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
+function get_tildeGs(fiber, d, array, tildeG_flags, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+    if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa    
+    include_Ggm, include_Grm, include_Grm_offdiag = tildeG_flags
     
     N = length(array)
     Ggm_ = fill(zeros(ComplexF64, 3, 3), N, N)
     Grm_ = deepcopy(Ggm_)
-    for j in 1:N, i in 1:j
-        # Calculate the guided and radiation mode Green's functions
-        Ggm_[i, j] = Ggm(fiber, array[i], array[j])
-        Grm_[i, j] = Grm(fiber, ωa, array[i], array[j], (0, 0), 1, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
-        Ggm_[j, i] = transpose(Ggm_[i, j]) #Onsager reciprocity
-        Grm_[j, i] = transpose(Grm_[i, j])
+    # Calculate the guided and radiation mode Green's functions
+    if include_Ggm
+        for j in 1:N, i in 1:j
+            Ggm_[i, j] = Ggm(fiber, array[i], array[j])
+            Ggm_[j, i] = transpose(Ggm_[i, j]) #Onsager reciprocity
+        end
+    end
+    if include_Grm
+        for j in 1:N, i in 1:j
+            if include_Grm_offdiag || i == j
+                Grm_[i, j] = Grm(fiber, ωa, array[i], array[j], (0, 0), 1, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+                Grm_[j, i] = transpose(Grm_[i, j]) #Onsager reciprocity
+            end
+        end
     end
     
     # Scale the real part of the radiation GF with the local radiation decay rates (if Re_Grm_trans is being approximated)
-    if approx_Grm_trans[1]
+    if approx_Grm_trans[1] && include_Grm
         gammas = 2*3*π/ωa*(adjoint.(d).*diag(imag(Grm_)).*d)
         scaleFactors = sqrt.(gammas*gammas')
         Grm_ = real(Grm_).*scaleFactors + 1im*imag(Grm_)
@@ -313,8 +332,9 @@ function get_tildeGs(fiber, d, array, save_Im_Grm_trans, abstol_Im_Grm_trans, ap
 end
 
 
-function get_tildeGs(fiber, d, ηα, array, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+function get_tildeGs(fiber, d, ηα, array, tildeG_flags, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
     if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
+    include_Ggm, include_Grm, include_Grm_offdiag = tildeG_flags
     
     N = length(array)
     Ggm_     = fill(zeros(ComplexF64, 3, 3), N, N)
@@ -322,44 +342,69 @@ function get_tildeGs(fiber, d, ηα, array, save_Im_Grm_trans, abstol_Im_Grm_tra
     Ggm_α2   = deepcopy(Ggm_α1)
     Ggm_αα11 = deepcopy(Ggm_α1)
     Ggm_αα22 = deepcopy(Ggm_α1)
-    Ggm_αα12 = [fill(zeros(ComplexF64, 3, 3), N) for α in 1:3]
+    Ggm_αα12 = deepcopy(Ggm_α1)
     Grm_     = deepcopy(Ggm_)
     Grm_α1   = deepcopy(Ggm_α1)
     Grm_α2   = deepcopy(Ggm_α1)
     Grm_αα11 = deepcopy(Ggm_α1)
     Grm_αα22 = deepcopy(Ggm_α1)
-    Grm_αα12 = deepcopy(Ggm_αα12)
+    Grm_αα12 = deepcopy(Ggm_α1)
     
     # Calculate the guided and radiation mode Green's function and the needed derivatives (notice that Ggm_αα12 and Grm_αα12 consist of vectors)    
-    for j in 1:N, i in 1:j
-        Ggm_[i, j] = Ggm(fiber, array[i], array[j])
-        Grm_[i, j] = Grm(fiber, ωa, array[i], array[j], (0, 0), 1, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
-        Ggm_[j, i] = transpose(Ggm_[i, j]) #Onsager reciprocity
-        Grm_[j, i] = transpose(Grm_[i, j])
+    if include_Ggm
+        for j in 1:N, i in 1:j
+            Ggm_[i, j] = Ggm(fiber, array[i], array[j])
+            Ggm_[j, i] = transpose(Ggm_[i, j]) #Onsager reciprocity
+        end
+    end
+    if include_Grm
+        for j in 1:N, i in 1:j
+            if include_Grm_offdiag || i == j
+                Grm_[i, j] = Grm(fiber, ωa, array[i], array[j], (0, 0), 1, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+                Grm_[j, i] = transpose(Grm_[i, j]) #Onsager reciprocity
+            end
+        end 
     end
     
-    for j in 1:N, i in 1:N, α in 1:3
-        Ggm_α1[α][i, j]   = Ggm(fiber, array[i], array[j], (1, 0), α)
-        Ggm_αα11[α][i, j] = Ggm(fiber, array[i], array[j], (2, 0), α)
-        
-        Grm_α1[α][i, j]   = Grm(fiber, ωa, array[i], array[j], (1, 0), α, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
-        Grm_αα11[α][i, j] = Grm(fiber, ωa, array[i], array[j], (2, 0), α, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)            
-        if i == j
-            Ggm_αα12[α][i] = Ggm(fiber, array[i], array[i], (1, 1), α)
-            Grm_αα12[α][i] = Grm(fiber, ωa, array[i], array[i], (1, 1), α, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+    if include_Ggm
+        for j in 1:N, i in 1:N, α in 1:3
+            Ggm_α1[α][i, j]   = Ggm(fiber, array[i], array[j], (1, 0), α)
+            Ggm_αα11[α][i, j] = Ggm(fiber, array[i], array[j], (2, 0), α)
+            if i == j
+                Ggm_αα12[α][i, j] = Ggm(fiber, array[i], array[j], (1, 1), α)
+            end
+        end
+    end
+    if include_Grm
+        for j in 1:N, i in 1:N, α in 1:3
+            if include_Grm_offdiag || i == j
+                Grm_α1[α][i, j]   = Grm(fiber, ωa, array[i], array[j], (1, 0), α, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+                Grm_αα11[α][i, j] = Grm(fiber, ωa, array[i], array[j], (2, 0), α, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+                if i == j
+                    Grm_αα12[α][i, j] = Grm(fiber, ωa, array[i], array[j], (1, 1), α, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+                end
+            end
         end
     end
     
     # Onsager reciprocity
-    for j in 1:N, i in 1:N, α in 1:3
-        Ggm_α2[α][i, j]   = transpose(Ggm_α1[α][j, i])
-        Ggm_αα22[α][i, j] = transpose(Ggm_αα11[α][j, i])
-        Grm_α2[α][i, j]   = transpose(Grm_α1[α][j, i])
-        Grm_αα22[α][i, j] = transpose(Grm_αα11[α][j, i])
+    if include_Ggm
+        for j in 1:N, i in 1:N, α in 1:3
+            Ggm_α2[α][i, j]   = transpose(Ggm_α1[α][j, i])
+            Ggm_αα22[α][i, j] = transpose(Ggm_αα11[α][j, i])
+        end
+    end
+    if include_Grm
+        for j in 1:N, i in 1:N, α in 1:3
+            if include_Grm_offdiag || i == j
+                Grm_α2[α][i, j]   = transpose(Grm_α1[α][j, i])
+                Grm_αα22[α][i, j] = transpose(Grm_αα11[α][j, i])
+            end
+        end
     end
     
     # Scale the real part of the radiation GF with the local radiation decay rates (if Re_Grm_trans is being approximated)
-    if approx_Grm_trans[1]
+    if approx_Grm_trans[1] && include_Grm
         gammas = 2*imag(3*π/ωa*(adjoint.(d).*diag(Grm_).*d))
         scaleFactors = sqrt.(gammas*gammas')
         Grm_     =  real(Grm_)       .*scaleFactors + 1im*imag(Grm_)
@@ -379,12 +424,12 @@ function get_tildeGs(fiber, d, ηα, array, save_Im_Grm_trans, abstol_Im_Grm_tra
     G_αα12 = Ggm_αα12 + Grm_αα12
     
     # Get the couplings by appropriately multiplying with the dipole moment and some constants
-    Gnm     =     3*π/ωa*(adjoint.(d).*G        .*d)
-    Gnmα1   = [   3*π/ωa*(adjoint.(d).*G_α1[α]  .*d)  for α in 1:3]
-    Gnmα2   = [   3*π/ωa*(adjoint.(d).*G_α2[α]  .*d)  for α in 1:3]
-    Gnmαα11 = [   3*π/ωa*(adjoint.(d).*G_αα11[α].*d)  for α in 1:3]
-    Gnmαα22 = [   3*π/ωa*(adjoint.(d).*G_αα22[α].*d)  for α in 1:3]
-    Gnnαα12 = [Di(3*π/ωa*(adjoint.(d).*G_αα12[α].*d)) for α in 1:3]
+    Gnm     =  3*π/ωa*(adjoint.(d).*G        .*d)
+    Gnmα1   = [3*π/ωa*(adjoint.(d).*G_α1[α]  .*d) for α in 1:3]
+    Gnmα2   = [3*π/ωa*(adjoint.(d).*G_α2[α]  .*d) for α in 1:3]
+    Gnmαα11 = [3*π/ωa*(adjoint.(d).*G_αα11[α].*d) for α in 1:3]
+    Gnmαα22 = [3*π/ωa*(adjoint.(d).*G_αα22[α].*d) for α in 1:3]
+    Gnnαα12 = [3*π/ωa*(adjoint.(d).*G_αα12[α].*d) for α in 1:3]
     
     # Put together tildeG
     return Gnm + sum(@. ηα^2*(Gnmαα11 + Gnmαα22 + 2*Gnnαα12))/(2*ωa^2), ηα.*Gnmα1/ωa, ηα.*Gnmα2/ωa
@@ -585,8 +630,8 @@ Calculate the steady state values of atomic coherences σ and the atom-phonon co
 for parameters given by SP and a given detuning
 """
 function calc_steadyState(SP, Δ)
-    postfix = get_postfix_steadyState(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.incField_wlf, SP.arrayDescription, SP.fiber.postfix)
-    params = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+    postfix = get_postfix_steadyState(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.incField_wlf, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix)
+    params = get_parameterMatrices(SP)
     return calc_steadyState(Δ, params, postfix, SP.noPhonons, SP.save_steadyState)
 end
 
@@ -595,8 +640,8 @@ end
 Scan the steady state values of atomic coherences σ and the atom-phonon correlations Bα over the detuning
 """
 function scan_steadyState(SP)
-    postfixes = get_postfix_steadyState.(SP.Δ_range, SP.ΔvariDescription, SP.dDescription, Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), SP.arrayDescription, SP.fiber.postfix)
-    params = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+    postfixes = get_postfix_steadyState.(SP.Δ_range, SP.ΔvariDescription, SP.dDescription, Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), Ref(SP.tildeG_flags), SP.arrayDescription, SP.fiber.postfix)
+    params = get_parameterMatrices(SP)
     return calc_steadyState.(SP.Δ_range, Ref(params), postfixes, SP.noPhonons, SP.save_steadyState)
 end
 
@@ -606,7 +651,7 @@ Scan the steady state values of atomic coherences σ and the atom-phonon correla
 for a given array (and dipole moments)
 """
 function scan_steadyState(SP, d, array)
-    params = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, d, SP.να, SP.ηα, SP.incField_wlf, array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+    params = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, d, SP.να, SP.ηα, SP.incField_wlf, array, SP.tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
     return calc_steadyState.(SP.Δ_range, Ref(params), "", SP.noPhonons, false)
 end
 
@@ -653,8 +698,8 @@ end
 Perform time evolution for parameters given by SP
 """
 function calc_timeEvolution(SP, Δ)
-    postfix = get_postfix_timeEvolution(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.incField_wlf, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax)
-    params = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+    postfix = get_postfix_timeEvolution(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.incField_wlf, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax)
+    params = get_parameterMatrices(SP)
     return calc_timeEvolution(Δ, params, SP.N, SP.initialState, SP.tspan, SP.dtmax, postfix, SP.noPhonons, SP.save_timeEvol)
 end
     
@@ -663,8 +708,8 @@ end
 Scan time evolutions over the detuning
 """
 function scan_timeEvolution(SP)
-    postfixes = get_postfix_timeEvolution.(SP.Δ_range, SP.ΔvariDescription, SP.dDescription, Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, Ref(SP.tspan), SP.dtmax)
-    params = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+    postfixes = get_postfix_timeEvolution.(SP.Δ_range, SP.ΔvariDescription, SP.dDescription, Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), Ref(SP.tildeG_flags), SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, Ref(SP.tspan), SP.dtmax)
+    params = get_parameterMatrices(SP)
     return calc_timeEvolution.(SP.Δ_range, Ref(params), SP.N, Ref(SP.initialState), Ref(SP.tspan), SP.dtmax, postfixes, SP.noPhonons, SP.save_timeEvol)
 end
 
@@ -704,7 +749,7 @@ end
 Perform time evolution for parameters given by SP, using the eigenmodes approach
 """
 function calc_timeEvolution_eigenmodes(SP, Δ)
-    postfix = get_postfix_timeEvolution(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.incField_wlf, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax)
+    postfix = get_postfix_timeEvolution(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.incField_wlf, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax)
     drive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = prepare_eigenmodesCalculation(SP)
     return calc_timeEvolution_eigenmodes(Δ, drive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, SP.initialState, SP.tspan, SP.dtmax, postfix, SP.noPhonons, SP.save_timeEvol)
 end
@@ -714,7 +759,7 @@ end
 Scan time evolutions over the detuning, using the eigenmodes approach
 """
 function scan_timeEvolution_eigenmodes(SP)
-    postfixes = get_postfix_timeEvolution.(SP.Δ_range, SP.ΔvariDescription, SP.dDescription, Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, Ref(SP.tspan), SP.dtmax)
+    postfixes = get_postfix_timeEvolution.(SP.Δ_range, SP.ΔvariDescription, SP.dDescription, Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), Ref(SP.tildeG_flags), SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, Ref(SP.tspan), SP.dtmax)
     drive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = prepare_eigenmodesCalculation(SP)
     return calc_timeEvolution_eigenmodes.(SP.Δ_range, Ref(drive), Ref(eigenEnergies), Ref(eigenModesMatrix), Ref(eigenModesMatrix_inv), Ref(SP.initialState), Ref(SP.tspan), SP.dtmax, postfixes, SP.noPhonons, SP.save_timeEvol)
 end
@@ -821,11 +866,11 @@ end
 # ================================================
 function prepare_eigenmodesCalculation(SP)
     if SP.noPhonons
-        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP)
         drive = tildeΩ
         coupling = Δvari + tildeG
     else 
-        Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+        Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP)
         drive = get_fullDriveVector(tildeΩ, tildeΩα)
         coupling = get_fullCouplingMatrix(Δvari, tildeG, tildeFα, tildeGα1, tildeGα2)
     end
