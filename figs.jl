@@ -216,6 +216,39 @@ end
 
 
 """
+Plot magnitude and phase of the transmission and reflection amplitudes as a function of detuning
+"""
+function fig_transmissionAndReflection_vs_Δ(Δ_range, T, tPhase, R, rPhase, titl)
+    # Start figure 
+    fig = Figure(size=(800, 600))
+    
+    # Make title and axis
+    Label(fig[1, 1:2], titl, tellwidth=false)
+    Label(fig[2, 1], L"Transmission coefficient, $ |t|^2 $", tellwidth=false)
+    ax1 = Axis(fig[3, 1], limits=(extrema(Δ_range)..., 0, 1))
+    Label(fig[2, 2], L"Transmission phase, arg$ (t) $", tellwidth=false)
+    ax2 = Axis(fig[3, 2], limits=(extrema(Δ_range)..., -π, π),
+               yticks=([-π, -π/2, 0, π/2, π], [L"$ -π $", L"$ -π/2 $", L"$ 0 $", L"$ π/2 $", L"$ π $"]))
+    Label(fig[4, 1], L"Reflection coefficient, $ |r|^2 $", tellwidth=false)
+    ax3 = Axis(fig[5, 1], limits=(extrema(Δ_range)..., 0, 1), 
+               xlabel=L"$ \Delta/γ_{a} $")
+    Label(fig[4, 2], L"Reflection phase, arg$ (r) $", tellwidth=false)
+    ax4 = Axis(fig[5, 2], limits=(extrema(Δ_range)..., -π, π),
+               yticks=([-π, -π/2, 0, π/2, π], [L"$ -π $", L"$ -π/2 $", L"$ 0 $", L"$ π/2 $", L"$ π $"]),
+               xlabel=L"$ \Delta/γ_{a} $")
+               
+    # Plot magnitudes squared and the phases
+    lines!(ax1, Δ_range, T     , color=:blue)
+    lines!(ax2, Δ_range, tPhase, color=:red)
+    lines!(ax3, Δ_range, R     , color=:blue)
+    lines!(ax4, Δ_range, rPhase, color=:red)
+    
+    # Finish figure
+    display(GLMakie.Screen(), fig)
+end
+
+
+"""
 Plot mean magnitude and phase of transmission amplitude as a function of detuning
 with bands given by the standard deviation
 """
@@ -530,6 +563,7 @@ function fig_eigenEnergies_vs_k(dominant_ks, collΔ, collΓ, weights_abs, κ, ti
     ax1 = Axis(fig[end+1, 1])
     Label(fig[end+1, 1], L"Collective decay rates, $ Γ_\text{coll}/γ_{a} $", tellwidth=false)
     ax2 = Axis(fig[end+1, 1])
+            #    yscale=log10)
     Label(fig[end+1, 1], L"Resonance weights, $ |w| $", tellwidth=false)
     ax3 = Axis(fig[end+1, 1], 
                xlabel=L"$ λ_{a}k_z $",
@@ -547,7 +581,7 @@ function fig_eigenEnergies_vs_k(dominant_ks, collΔ, collΓ, weights_abs, κ, ti
     end
     
     # Finish figure
-    axislegend(ax1)
+    axislegend(ax1, position=:ct)
     display(GLMakie.Screen(), fig)
 end
 

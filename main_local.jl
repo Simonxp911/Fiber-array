@@ -11,20 +11,7 @@ using GLMakie #plotting, specialized interactive plots
 # ================================================
 #   Main functions
 # ================================================
-function define_ω_ρf_n_ranges()
-    λ0  = 852       #nm, guided mode wavelength, transition frequency of cs133
-    ω0  = 2π/λ0     #nm^-1, guided mode angular frequency
-    ρf0 = 200       #nm, fiber radius
-    n0  = 1.45      #unitless, index of refraction
-    
-    ω_specs  = (0.1*ω0, 2*ω0, 100) 
-    ρf_specs = (ρf0, ρf0, 1)
-    n_specs  = (n0, n0, 1)
-    return ω_ρf_n_ranges(ω_specs, ρf_specs, n_specs)
-end 
-
-
-function define_SP_BerlinCS()
+function define_SP_BerlinCs()
     # Fiber specs from "Magic-wavelength nanofiber-based two-color dipole trap with sub-λ/2 spacing"
     λ0  = 852       #nm, guided mode wavelength, transition frequency of cs133
     ω0  = 2π/λ0     #nm^-1, guided mode angular frequency
@@ -55,7 +42,7 @@ function define_SP_BerlinCS()
     να0_ul = να0/γ0 #unitless version of να0
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-1.0, 1.0, 300)
+    Δ_specs = (-2, 2, 300)
     
     # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
     ΔvariDependence = "flat"
@@ -63,11 +50,9 @@ function define_SP_BerlinCS()
     ΔvariDescription = ΔvariDescript(ΔvariDependence, Δvari_args)
     
     # Lamb-Dicke parameters
-    ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
-    # ηα = ηα0 .* [0.1, 0.2, 0.1]
+    # ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
     # ηα = ηα0 * 0.4
-    # ηα = [0.01, 0.01, 0.01]
-    # ηα = [0., 0., 0.]
+    ηα = [0., 0., 0.]
     
     # Whether phonons are excluded or not from the calculations
     noPhonons = all(ηα .== 0)
@@ -77,6 +62,252 @@ function define_SP_BerlinCS()
     
     # Set number of atomic sites 
     N_sites = 100
+    
+    # Set filling fraction, positional uncertainty, and number of instantiations 
+    ff = 1.0
+    pos_unc = 0.0
+    # pos_unc = ηα0/ωa
+    n_inst = 1
+    
+    # Generate the array, its description, and the number of atoms
+    array, arrayDescription, N = get_array(arrayType, N_sites, ρa0_ul, a0_ul, ff, pos_unc, n_inst)
+    
+    # Time span and maximum time step allowed in time evolution
+    tspan = (0, 100)
+    dtmax = 0.01
+    
+    # Prepare initial state for time evolution, as well as description for postfix
+    initialState = groundstate(N, noPhonons)
+    initialStateDescription = "gs"
+    
+    # Atomic dipole moment
+    # d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul, array)
+    # d = "chiral"
+    # dDescription = "chiral"
+    d = rightCircularDipoleMoment(array)
+    dDescription = "rgtCrc"
+    
+    # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
+    incField_wlf = [(1, 1, 1), (1, -1, 1)]
+    if typeof(d) == String incField_wlf = [] end
+    
+    # Whether to include the guided contribution, the radiated contribution, and the radiated interactions when calculating tildeG
+    tildeG_flags = (true, true, true)
+    
+    # Absolute tolerance in the calculations of Im_Grm_trans
+    abstol_Im_Grm_trans = 1e-5
+    
+    # Whether to approximate transverse part of radiation GF (real part and imaginary part respectively, usually (true, false))
+    approx_Grm_trans = (true, false)
+    
+    # Whether to interpolate Im_Grm_trans
+    interpolate_Im_Grm_trans = arrayType == "randomZ"
+    
+    # Whether to save individual results (Im_Grm_trans, steady states, time evolutions)
+    save_Im_Grm_trans = pos_unc == 0 && arrayType != "randomZ" && !interpolate_Im_Grm_trans
+    save_steadyState  = n_inst == 1 && ff == 1 && pos_unc == 0 && arrayType != "randomZ"
+    save_timeEvol     = n_inst == 1 && ff == 1 && pos_unc == 0 && arrayType != "randomZ"
+    
+    # Ranges of z and x values to define r_fields for calculating the radiated E-field
+    arrayL = (N_sites - 1)*a0_ul
+    margin = 0.1*arrayL
+    z_range = range(-margin, arrayL + margin, 100)
+    x_range = range(-ρf0_ul - margin, ρf0_ul + ρa0_ul + margin, 100)
+    y_fix   = ρa0_ul
+    
+    # Get the interpolation function for the imaginary, transverse part of the radiation Green's function, if needed
+    if interpolate_Im_Grm_trans interpolation_Im_Grm_trans = interpolation1D_Im_Grm_trans(Fiber(ρf0_ul, n0, ωa), Int(ceil(arrayL/0.1)) + 1, ρa0_ul, 0.1, noPhonons) else interpolation_Im_Grm_trans = nothing end
+    
+    
+    return SysPar(ρf0_ul, n0, ωa,
+                  Δ_specs,
+                  ΔvariDependence, Δvari_args, ΔvariDescription,
+                  tspan, dtmax, initialState, initialStateDescription,
+                  arrayType, N_sites, ρa0_ul, a0_ul, ff, pos_unc, n_inst, array, arrayDescription, N,
+                  να0_ul, ηα, noPhonons,
+                  d, dDescription, incField_wlf, tildeG_flags, 
+                  interpolate_Im_Grm_trans, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans,
+                  save_steadyState, save_timeEvol,
+                  interpolation_Im_Grm_trans,
+                  z_range, x_range, y_fix) 
+end
+
+
+function define_SP_BerlinCs_mod()
+    # Fiber specs from "Magic-wavelength nanofiber-based two-color dipole trap with sub-λ/2 spacing"
+    λ0  = 852       #nm, guided mode wavelength, transition frequency of cs133
+    ω0  = 2π/λ0     #nm^-1, guided mode angular frequency
+    γ0  = 2π*5.22e3 #kHz, free decay rate of cs133
+    ρf0 = 200       #nm, fiber radius
+    n0  = 1.45      #unitless, index of refraction
+    
+    # Atomic array specs
+    ρa0 = 550   #nm, atomic array radial coordinate
+    a0  = 300   #nm, atomic array lattice constant
+    
+    # Trap specs
+    ν0_radial    = 2π*109 #kHz, radial atomic trap angular frequency
+    ν0_axial     = 2π*139 #kHz, axial atomic trap angular frequency
+    ν0_azimuthal = 2π*62  #kHz, azimuthal atomic trap angular frequency (estimate from graph: 18 kHz, but usually half of the others)
+    να0 = [ν0_radial, ν0_azimuthal, ν0_axial] #trap frequencies in a Cartesian basis (x, y, z) which matches with (radial, azimuthal, axial) if the position is taken to be on the x-axis
+    
+    # Recoil energy
+    νR0 = 2π*2.0663 #kHz, recoil energy of cesium atoms (as an angular frequency)
+    
+    # Lamb-Dicke parameters in a Cartesian basis (x, y, z)
+    # να0 = να0/0.7^2
+    ηα0 = @. sqrt(νR0/να0)
+    
+    # Unitless versions
+    ρf0_ul = ρf0/λ0 #unitless version of ρf0
+    ρa0_ul = ρa0/λ0 #unitless version of ρa0
+    a0_ul  = a0/λ0  #unitless version of a0
+    να0_ul = να0/γ0 #unitless version of να0
+    
+    # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
+    Δ_specs = (-0.5, 3.5, 300)
+    
+    # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
+    ΔvariDependence = "flat"
+    Δvari_args = -3, 50*a0_ul
+    ΔvariDescription = ΔvariDescript(ΔvariDependence, Δvari_args)
+    
+    # Lamb-Dicke parameters
+    # ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
+    ηα = [0., 0., 0.]
+    
+    # Whether phonons are excluded or not from the calculations
+    noPhonons = all(ηα .== 0)
+    
+    # Set which kind of array to use ("1Dchain", "doubleChain", "randomZ")
+    arrayType = "1Dchain"
+    
+    # Set number of atomic sites 
+    N_sites = 100
+    
+    # Set filling fraction, positional uncertainty, and number of instantiations 
+    ff = 1.0
+    pos_unc = 0.0
+    # pos_unc = ηα0/ωa
+    n_inst = 1
+    
+    # Generate the array, its description, and the number of atoms
+    array, arrayDescription, N = get_array(arrayType, N_sites, ρa0_ul, a0_ul, ff, pos_unc, n_inst)
+    
+    # Time span and maximum time step allowed in time evolution
+    tspan = (0, 100)
+    dtmax = 0.01
+    
+    # Prepare initial state for time evolution, as well as description for postfix
+    initialState = groundstate(N, noPhonons)
+    initialStateDescription = "gs"
+    
+    # Atomic dipole moment
+    # d = rightCircularDipoleMoment(array)
+    # dDescription = "rgtCrc"
+    # d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul, array)
+    d = "chiral"
+    dDescription = "chiral"
+    # dDescription = "circXZ_left"
+    
+    # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
+    incField_wlf = [(1, 1, 1), (1, -1, 1)]
+    if typeof(d) == String incField_wlf = [] end
+    
+    # Whether to include the guided contribution, the radiated contribution, and the radiated interactions when calculating tildeG
+    tildeG_flags = (true, true, true)
+    
+    # Absolute tolerance in the calculations of Im_Grm_trans
+    abstol_Im_Grm_trans = 1e-5
+    
+    # Whether to approximate transverse part of radiation GF (real part and imaginary part respectively, usually (true, false))
+    approx_Grm_trans = (true, false)
+    
+    # Whether to interpolate Im_Grm_trans
+    interpolate_Im_Grm_trans = arrayType == "randomZ"
+    
+    # Whether to save individual results (Im_Grm_trans, steady states, time evolutions)
+    save_Im_Grm_trans  = pos_unc == 0 && arrayType != "randomZ" && !interpolate_Im_Grm_trans
+    save_steadyState   = n_inst == 1 && pos_unc == 0 && ff == 1 && arrayType != "randomZ"
+    save_timeEvol      = save_steadyState
+    
+    # Ranges of z and x values to define r_fields for calculating the radiated E-field
+    arrayL = (N_sites - 1)*a0_ul
+    margin = 4
+    z_range = range(-margin, arrayL + margin, 100)
+    x_range = range(-ρf0_ul - margin, ρf0_ul + ρa0_ul + margin, 100)
+    y_fix   = ρa0_ul
+    
+    # Get the interpolation function for the imaginary, transverse part of the radiation Green's function, if needed
+    if interpolate_Im_Grm_trans interpolation_Im_Grm_trans = interpolation1D_Im_Grm_trans(Fiber(ρf0_ul, n0, ωa), Int(ceil(arrayL/0.1)) + 1, ρa0_ul, 0.1, noPhonons) else interpolation_Im_Grm_trans = nothing end
+    
+    
+    return SysPar(ρf0_ul, n0, ωa,
+                  Δ_specs,
+                  ΔvariDependence, Δvari_args, ΔvariDescription,
+                  tspan, dtmax, initialState, initialStateDescription,
+                  arrayType, N_sites, ρa0_ul, a0_ul, ff, pos_unc, n_inst, array, arrayDescription, N,
+                  να0_ul, ηα, noPhonons,
+                  d, dDescription, incField_wlf, tildeG_flags, 
+                  interpolate_Im_Grm_trans, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans,
+                  save_steadyState, save_timeEvol,
+                  interpolation_Im_Grm_trans,
+                  z_range, x_range, y_fix) 
+end
+
+
+function define_SP_BerlinSr()
+    # Fiber specs from "Magic-wavelength nanofiber-based two-color dipole trap with sub-λ/2 spacing"
+    λ0  = 689       #nm, guided mode wavelength, transition frequency of sr
+    ω0  = 2π/λ0     #nm^-1, guided mode angular frequency
+    γ0  = 2π*7.4    #kHz, free decay rate of cs133
+    ρf0 = 115       #nm, fiber radius
+    n0  = 1.45      #unitless, index of refraction
+    
+    # Atomic array specs
+    ρa0 = 275   #nm, atomic array radial coordinate
+    a0  = 200   #nm, atomic array lattice constant
+    
+    # Trap specs (might be lower than the Cs experiment)
+    ν0_radial    = 2π*109 #kHz, radial atomic trap angular frequency
+    ν0_axial     = 2π*139 #kHz, axial atomic trap angular frequency
+    ν0_azimuthal = 2π*62  #kHz, azimuthal atomic trap angular frequency (estimate from graph: 18 kHz, but usually half of the others)
+    να0 = [ν0_radial, ν0_azimuthal, ν0_axial] #trap frequencies in a Cartesian basis (x, y, z) which matches with (radial, azimuthal, axial) if the position is taken to be on the x-axis
+    
+    # Recoil energy
+    νR0 = nothing #kHz, recoil energy of strontium atoms (as an angular frequency)
+    # νR0 = 2π*3.47 #kHz, recoil energy of strontium atoms (as an angular frequency)
+    # THIS VALUE MAY BE WRONG - calculate from transition wavelength and mass (ask which isotope of Strontium is used, maybe 87?)
+    
+    # Lamb-Dicke parameters in a Cartesian basis (x, y, z)
+    ηα0 = @. sqrt(νR0/να0)
+    
+    # Unitless versions
+    ρf0_ul = ρf0/λ0 #unitless version of ρf0
+    ρa0_ul = ρa0/λ0 #unitless version of ρa0
+    a0_ul  = a0/λ0  #unitless version of a0
+    να0_ul = να0/γ0 #unitless version of να0
+    
+    # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
+    Δ_specs = (-0.2, 0.4, 300)
+    
+    # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
+    ΔvariDependence = "flat"
+    Δvari_args = -3, 50*a0_ul
+    ΔvariDescription = ΔvariDescript(ΔvariDependence, Δvari_args)
+    
+    # Lamb-Dicke parameters
+    # ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
+    # ηα = ηα0 * 0.0
+    
+    # Whether phonons are excluded or not from the calculations
+    noPhonons = all(ηα .== 0)
+    
+    # Set which kind of array to use ("1Dchain", "doubleChain", "randomZ")
+    arrayType = "1Dchain"
+    
+    # Set number of atomic sites 
+    N_sites = 50
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
@@ -146,302 +377,10 @@ function define_SP_BerlinCS()
 end
 
 
-function define_SP_BerlinCS_mod()
-    # Fiber specs from "Magic-wavelength nanofiber-based two-color dipole trap with sub-λ/2 spacing"
-    λ0  = 852       #nm, guided mode wavelength, transition frequency of cs133
-    ω0  = 2π/λ0     #nm^-1, guided mode angular frequency
-    γ0  = 2π*5.22e3 #kHz, free decay rate of cs133
-    ρf0 = 200       #nm, fiber radius
-    n0  = 1.45      #unitless, index of refraction
-    
-    # Atomic array specs
-    ρa0 = 550   #nm, atomic array radial coordinate
-    a0  = 300   #nm, atomic array lattice constant
-    
-    # Trap specs
-    ν0_radial    = 2π*109 #kHz, radial atomic trap angular frequency
-    ν0_axial     = 2π*139 #kHz, axial atomic trap angular frequency
-    ν0_azimuthal = 2π*62  #kHz, azimuthal atomic trap angular frequency (estimate from graph: 18 kHz, but usually half of the others)
-    να0 = [ν0_radial, ν0_azimuthal, ν0_axial] #trap frequencies in a Cartesian basis (x, y, z) which matches with (radial, azimuthal, axial) if the position is taken to be on the x-axis
-    
-    # Recoil energy
-    νR0 = 2π*2.0663 #kHz, recoil energy of cesium atoms (as an angular frequency)
-    
-    # Lamb-Dicke parameters in a Cartesian basis (x, y, z)
-    # να0 = να0/0.7^2
-    ηα0 = @. sqrt(νR0/να0)
-    
-    # Unitless versions
-    ρf0_ul = ρf0/λ0 #unitless version of ρf0
-    ρa0_ul = ρa0/λ0 #unitless version of ρa0
-    a0_ul  = a0/λ0  #unitless version of a0
-    να0_ul = να0/γ0 #unitless version of να0
-    
-    # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-2.0, 2.0, 300)
-    
-    # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
-    ΔvariDependence = "flat"
-    Δvari_args = -3, 50*a0_ul
-    ΔvariDescription = ΔvariDescript(ΔvariDependence, Δvari_args)
-    
-    # Lamb-Dicke parameters
-    ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
-    # ηα = [0., 0., 0.]
-    
-    # Whether phonons are excluded or not from the calculations
-    noPhonons = all(ηα .== 0)
-    
-    # Set which kind of array to use ("1Dchain", "doubleChain", "randomZ")
-    arrayType = "1Dchain"
-    
-    # Set number of atomic sites 
-    N_sites = 1000
-    
-    # Set filling fraction, positional uncertainty, and number of instantiations 
-    ff = 0.4
-    pos_unc = 0.0
-    # pos_unc = ηα0/ωa
-    n_inst = 1
-    
-    # Generate the array, its description, and the number of atoms
-    array, arrayDescription, N = get_array(arrayType, N_sites, ρa0_ul, a0_ul, ff, pos_unc, n_inst)
-    
-    # Time span and maximum time step allowed in time evolution
-    tspan = (0, 100)
-    dtmax = 0.01
-    
-    # Prepare initial state for time evolution, as well as description for postfix
-    initialState = groundstate(N, noPhonons)
-    initialStateDescription = "gs"
-    
-    # Atomic dipole moment
-    # d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul, array)
-    d = "chiral"
-    dDescription = "chiral"
-    
-    # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
-    incField_wlf = [(1, 1, 1), (1, -1, 1)]
-    if typeof(d) == String incField_wlf = [] end
-    
-    # Whether to include the guided contribution, the radiated contribution, and the radiated interactions when calculating tildeG
-    tildeG_flags = (true, true, true)
-    
-    # Absolute tolerance in the calculations of Im_Grm_trans
-    abstol_Im_Grm_trans = 1e-5
-    
-    # Whether to approximate transverse part of radiation GF (real part and imaginary part respectively, usually (true, false))
-    approx_Grm_trans = (true, false)
-    
-    # Whether to interpolate Im_Grm_trans
-    interpolate_Im_Grm_trans = arrayType == "randomZ"
-    
-    # Whether to save individual results (Im_Grm_trans, steady states, time evolutions)
-    save_Im_Grm_trans = pos_unc == 0 && arrayType != "randomZ" && !interpolate_Im_Grm_trans
-    save_steadyState  = n_inst == 1 && pos_unc == 0 && ((ff == 1 && arrayType != "randomZ") || !tildeG_flags[3])
-    save_timeEvol     = save_steadyState
-    
-    # Ranges of z and x values to define r_fields for calculating the radiated E-field
-    arrayL = (N_sites - 1)*a0_ul
-    margin = 4
-    z_range = range(-margin, arrayL + margin, 100)
-    x_range = range(-ρf0_ul - margin, ρf0_ul + ρa0_ul + margin, 100)
-    y_fix   = ρa0_ul
-    
-    # Get the interpolation function for the imaginary, transverse part of the radiation Green's function, if needed
-    if interpolate_Im_Grm_trans interpolation_Im_Grm_trans = interpolation1D_Im_Grm_trans(Fiber(ρf0_ul, n0, ωa), Int(ceil(arrayL/0.1)) + 1, ρa0_ul, 0.1, noPhonons) else interpolation_Im_Grm_trans = nothing end
-    
-    
-    return SysPar(ρf0_ul, n0, ωa,
-                  Δ_specs,
-                  ΔvariDependence, Δvari_args, ΔvariDescription,
-                  tspan, dtmax, initialState, initialStateDescription,
-                  arrayType, N_sites, ρa0_ul, a0_ul, ff, pos_unc, n_inst, array, arrayDescription, N,
-                  να0_ul, ηα, noPhonons,
-                  d, dDescription, incField_wlf, tildeG_flags, 
-                  interpolate_Im_Grm_trans, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans,
-                  save_steadyState, save_timeEvol,
-                  interpolation_Im_Grm_trans,
-                  z_range, x_range, y_fix) 
-end
-
-
-function define_SP_Olmos()
-    # Fiber specs from "Modified dipole-dipole interactions in the presence of a nanophotonic waveguide"
-    λ0 = 852  #nm, guided mode wavelength, transition frequency of cs133
-    n  = 1.45 #unitless, index of refraction
-    # n = 1.452467
-    ρf = 250  #nm, Fiber radius
-    
-    # Unitless fiber radius
-    ρf_ul = ρf/λ0 
-    
-    # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-10, 10, 1000)
-    
-    # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "parabolic" (amp))
-    ΔvariDependence = "flat"
-    Δvari_args = nothing
-    ΔvariDescription = ΔvariDescription(ΔvariDependence, Δvari_args)
-    
-    # Time spand and maximum time step allowed in time evolution
-    tspan = (0, 100)
-    dtmax = 0.01
-    
-    # Set array specs and generate array, as well as description for postfix
-    arrayType = "1Dchain"
-    N  = 10
-    ρa = ρf_ul + 50/λ0
-    a  = 0.1
-    
-    # Phonon bare energies, i.e. trap frequencies
-    να = [0, 0, 0]
-    
-    # Lamb-Dicke parameters
-    ηα = [0, 0, 0]
-    
-    # Prepare initial state for time evolution, as well as description for postfix
-    initialState = groundstate(N, true)
-    initialStateDescription = "gs"
-     
-    # Atomic dipole moment
-    d = fill([1, 0, 0], N)
-    dDescription = "xPol"
-    
-    # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
-    incField_wlf = [(1, 1, 1), (1, -1, 1)]
-    
-    # Whether to approximate transverse part of radiation GF (real part and imaginary part respectively)
-    approx_Grm_trans = (true, false)
-    
-    return SysPar(ρf_ul, n, ωa,
-                  Δ_specs,
-                  ΔvariDependence, Δvari_args, ΔvariDescription,
-                  tspan, dtmax, initialState, initialStateDescription,
-                  arrayType, N, ρa, a,
-                  να, ηα, true,
-                  d, dDescription, incField_wlf, approx_Grm_trans)
-end
-
-
-function define_SP_Rauschenbeutel()
-    # Fiber specs from "Modified dipole-dipole interactions in the presence of a nanophotonic waveguide"
-    λ0 = 852  #nm, guided mode wavelength, transition frequency of cs133
-    n  = 1.45 #unitless, index of refraction
-    ρf = 250  #nm, Fiber radius
-    
-    # Unitless fiber radius
-    ρf_ul = ρf/λ0
-    
-    # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-30, 30, 100)
-    
-    # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "parabolic" (amp))
-    ΔvariDependence = "flat"
-    Δvari_args = nothing
-    ΔvariDescription = ΔvariDescription(ΔvariDependence, Δvari_args)
-    
-    # Time spand and maximum time step allowed in time evolution
-    tspan = (0, 5)
-    dtmax = 0.01
-    
-    # Set array specs and generate array, as well as description for postfix
-    arrayType = "1Dchain"
-    N  = 2
-    ρa = ρf_ul + 100/λ0
-    a  = 0.1
-    
-    # Phonon bare energies, i.e. trap frequencies
-    να = [0, 0, 0]
-    
-    # Lamb-Dicke parameters
-    ηα = [0, 0, 0]
-    
-    # Prepare initial state for time evolution, as well as description for postfix
-    initialState = groundstate(N, true)
-    initialStateDescription = "gs"
-     
-    # Atomic dipole moment
-    d = fill(conj([1im, 0, -1]/sqrt(2)), N)
-    dDescription = "rightCirc"
-    
-    # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
-    incField_wlf = [(1, 1, 1), (1, -1, 1)]
-    
-    # Whether to approximate transverse part of radiation GF (real part and imaginary part respectively)
-    approx_Grm_trans = (true, false)
-    
-    return SysPar(ρf_ul, n, ωa,
-                  Δ_specs,
-                  ΔvariDependence, Δvari_args, ΔvariDescription,
-                  tspan, dtmax, initialState, initialStateDescription,
-                  arrayType, N, ρa, a,
-                  να, ηα, true,
-                  d, dDescription, incField_wlf, approx_Grm_trans)
-end
-
-
-function define_SP_Chang()
-    # Fiber specs from "Modified dipole-dipole interactions in the presence of a nanophotonic waveguide"
-    n  = 2 #unitless, index of refraction
-    ρf = 1.2/(2π)  #unitless, fiber radius
-    
-    # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-10, 10, 300)
-    
-    # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "parabolic" (amp))
-    ΔvariDependence = "flat"
-    Δvari_args = nothing
-    ΔvariDescription = ΔvariDescription(ΔvariDependence, Δvari_args)
-    
-    # Time spand and maximum time step allowed in time evolution
-    tspan = (0, 5)
-    dtmax = 0.01
-    
-    # Set array specs and generate array, as well as description for postfix
-    arrayType = "1Dchain"
-    N  = 20
-    ρa = 1.5*ρf
-    a  = 0.25
-    
-    # Phonon bare energies, i.e. trap frequencies
-    να = [0, 0, 0]
-    
-    # Lamb-Dicke parameters
-    ηα = [0, 0, 0]
-    
-    # Prepare initial state for time evolution, as well as description for postfix
-    initialState = groundstate(N, true)
-    initialStateDescription = "gs"
-     
-    # Atomic dipole moment
-    d = fill([1, 0, 0], N)
-    dDescription = "xPol"
-    
-    # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
-    incField_wlf = [(1, 1, 1), (1, -1, 1)]
-    
-    # Whether to approximate transverse part of radiation GF (real part and imaginary part respectively)
-    approx_Grm_trans = (true, false)
-    
-    return SysPar(ρf, n, ωa,
-                  Δ_specs,
-                  ΔvariDependence, Δvari_args, ΔvariDescription,
-                  tspan, dtmax, initialState, initialStateDescription,
-                  arrayType, N, ρa, a,
-                  να, ηα, true,
-                  d, dDescription, incField_wlf, approx_Grm_trans)
-end
-
-
 function main()
     # Define system parameters
-    # ωρfn_ranges = define_ω_ρf_n_ranges()
-    # SP = define_SP_BerlinCS()
-    SP = define_SP_BerlinCS_mod()
-    # SP = define_SP_Olmos()
-    # SP = define_SP_Rauschenbeutel()
-    # SP = define_SP_Chang()
+    SP = define_SP_BerlinCs()
+    # SP = define_SP_BerlinCs_mod()
     # show(SP)
     
     
@@ -548,16 +487,23 @@ end
 
 function plot_transmission_vs_Δ(SP)
     σBα_scan = scan_steadyState(SP)
+    
     t = calc_transmission.(Ref(SP), σBα_scan)
     # t = scan_transmission_eigenmodes(SP)
-    
-    T, phase = prep_transmission(t)
+    T, tPhase = prep_squaredNorm_phase(t)
     titl = prep_transmission_title(SP)
-    fig_transmission_vs_Δ(SP.Δ_range, T, phase, titl)
+    fig_transmission_vs_Δ(SP.Δ_range, T, tPhase, titl)
+        
+    # clear up function names, plot labels, and commit...
+    
+    r = calc_reflection.(Ref(SP), σBα_scan)
+    R, rPhase = prep_squaredNorm_phase(r)
+    fig_transmissionAndReflection_vs_Δ(SP.Δ_range, T, tPhase, R, rPhase, titl)
     
     # titl = L"$ N = %$(SP.N) $"
     # fig = fig_presentation_transmission_vs_Δ(SP.Δ_range, T, phase, titl)
     # save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Conferences and visits\\Berlin 2025\\talk\\figures\\transmission_N500_linear_negative_zoom1.png", fig, px_per_unit=2)
+
 end
 
 
@@ -602,10 +548,10 @@ function plot_compareImperfectArray_transmission_vs_Δ(SP)
     # ff_list = [0.8, 0.85, 0.9, 0.95, 1.0]
     # ff_list = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
     # ff_list = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
-    ff_list = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7][1:1]
+    ff_list = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7][1:5]
     # ηαFactor_list = [0.0, 0.1, 0.4, 0.7, 1.0]
     ηαFactor_list = [1.0]
-    Nsites_list = [2000, 1000, 667, 500, 400, 334, 250, 200, 167, 143]
+    Nsites_list = [2000, 1000, 667, 500, 400, 334, 250, 200, 167, 143][1:5]
     # Nsites_list = [6000, 3000, 2000, 1500, 1200, 1000, 750, 600, 500, 429]
     arrayType_list = ["1Dchain", "randomZ"]
     for ηαFactor in ηαFactor_list
@@ -614,15 +560,15 @@ function plot_compareImperfectArray_transmission_vs_Δ(SP)
         labels = []
         # for ηαFactor in ηαFactor_list
         # for ff in ff_list
-        # for (ff, N_sites) in zip(ff_list, Nsites_list)
-        for arrayType in arrayType_list, ff in ff_list
+        for (ff, N_sites) in zip(ff_list, Nsites_list)
+        # for arrayType in arrayType_list, ff in ff_list
         # for arrayType in arrayType_list, (ff, N_sites) in zip(ff_list, Nsites_list)
         # for ff in ff_list, ηαFactor in ηαFactor_list
             ηα = SP.ηα * ηαFactor
             pos_unc = SP.pos_unc * ηαFactor
             # arrayDescription = arrayDescript(SP.arrayType, SP.N_sites, SP.ρa, SP.a, ff, pos_unc)
-            arrayDescription = arrayDescript(arrayType, SP.N_sites, SP.ρa, SP.a, ff, pos_unc)
-            # arrayDescription = arrayDescript(SP.arrayType, N_sites, SP.ρa, SP.a, ff, pos_unc)
+            # arrayDescription = arrayDescript(arrayType, SP.N_sites, SP.ρa, SP.a, ff, pos_unc)
+            arrayDescription = arrayDescript(SP.arrayType, N_sites, SP.ρa, SP.a, ff, pos_unc)
             # arrayDescription = arrayDescript(arrayType, N_sites, SP.ρa, SP.a, ff, pos_unc)
             postfix = get_postfix_imperfectArray_transmission(SP.Δ_specs, SP.ΔvariDescription, SP.dDescription, SP.να, ηα, SP.incField_wlf, SP.n_inst, SP.tildeG_flags, arrayDescription, SP.fiber.postfix)
             filename = "T_phase" * postfix
@@ -638,24 +584,44 @@ function plot_compareImperfectArray_transmission_vs_Δ(SP)
             end
         end
         
+        # Δ_index = 100
+        # T_noRadInt, phase_noRadInt = [], []
+        # for ff in ff_list
+        #     ηα = SP.ηα * ηαFactor
+        #     pos_unc = SP.pos_unc * ηαFactor
+        #     arrayDescription = arrayDescript(SP.arrayType, SP.N_sites, SP.ρa, SP.a, ff, pos_unc)
+        #     n_inst = 2
+        #     tildeG_flags = (true, true, false)
+        #     postfix = get_postfix_imperfectArray_transmission(SP.Δ_specs, SP.ΔvariDescription, SP.dDescription, SP.να, ηα, SP.incField_wlf, n_inst, tildeG_flags, arrayDescription, SP.fiber.postfix)
+        #     filename = "T_phase" * postfix
+        #     folder = "imperfectArray_T_phase/"
+        
+        #     if isfile(saveDir * folder * filename * ".txt") 
+        #         T_means, T_stds, phase_means, phase_stds = eachrow(load_as_txt(saveDir * folder, filename))
+        #         push!(T_noRadInt, T_means[Δ_index])
+        #         push!(phase_noRadInt, phase_means[Δ_index])
+        #     else
+        #         throw(ArgumentError("The following file can not be found: " * filename))
+        #     end
+        # end
+        
         titl = prep_imperfectArray_transmission_title(SP)
         fig_compareImperfectArray_transmission_vs_Δ(SP.Δ_range, T_meanss, T_stdss, phase_meanss, phase_stdss, labels, titl)
         
-        Δ_index = 1
-        T_means, T_stds, phase_means, phase_stds = prep_compareImperfectArray_transmission_vs_ffOrηα(Δ_index, T_meanss, T_stdss, phase_meanss, phase_stdss)
+        # T_means, T_stds, phase_means, phase_stds = prep_compareImperfectArray_transmission_vs_ffOrηα(Δ_index, T_meanss, T_stdss, phase_meanss, phase_stdss)
         # titl = titl * "\nηα = $(ηαFactor) * ηα0" * "\nΔ = $(SP.Δ_range[Δ_index])"
         # fig_compareImperfectArray_transmission_vs_ffOrηα(ff_list, L"Filling fraction $$", T_means, T_stds, phase_means, phase_stds, titl)
         
         # titl = L"$ N = %$(SP.N) $, random $ z_{n} $"
         # titl = L"$ N_{sites} = 1000 $, ordered $ z_{n} $"
-        titl = L"$ N_{sites} = 1000 $, $ Δ = %$(round(SP.Δ_range[Δ_index], digits=2)) $"
+        # titl = L"$ N_{sites} = 1000 $, $ Δ = %$(round(SP.Δ_range[Δ_index], digits=2)) $"
         # titl = L"$ N = 100 $, $ Δ = %$(round(SP.Δ_range[Δ_index], digits=2)) $"
         # labels = ff_list
         # labels = ηαFactor_list
         # fig = fig_presentation_compareImperfectArray_transmission_vs_Δ(SP.Δ_range, T_meanss, T_stdss, phase_meanss, phase_stdss, labels, titl)
         # save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Conferences and visits\\Berlin 2025\\talk\\figures\\compareff_eta1.0_NsitesFixed.png", fig, px_per_unit=2)
         
-        # fig = fig_presentation_compareImperfectArray_transmission_vs_ffOrηα(ff_list, L"Filling fraction $$", T_means, T_stds, phase_means, phase_stds, titl)
+        # fig = fig_presentation_compareImperfectArray_transmission_vs_ffOrηα(ff_list, L"Filling fraction $$", T_means, T_stds, phase_means, phase_stds, T_noRadInt, phase_noRadInt, titl)
         # save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Conferences and visits\\Berlin 2025\\talk\\figures\\compareff_eta1.0_NsitesFixed_vs_ff.png", fig, px_per_unit=2)
     end
 end
@@ -701,7 +667,8 @@ function plot_GnmEigenModes(SP)
         eigenEnergies, eigen_σs, dominant_ks = spectrum_dominant_ks(Δvari + tildeG, SP.a)
         
         # Pack the eigenmodes
-        eigen_σs_FT = discFourierTransform.(eigen_σs, SP.a, true, 1000)
+        # eigen_σs_FT = discFourierTransform.(eigen_σs, SP.a, true, 1000)
+        eigen_σs_FT = discFourierTransform.(eigen_σs, SP.a)
         
         # Prepare iteration list to facilitate sorting according to dominant_ks
         iter_list = collect(zip(eigen_σs, eigen_σs_FT, eigenEnergies, dominant_ks))[sortperm(dominant_ks)]
@@ -710,13 +677,18 @@ function plot_GnmEigenModes(SP)
         for (eigen_σ, (ks, eigen_σ_FT), eigenEnergy, dom_k) in iter_list
             # collΔ, collΓ = collEnergies_from_eigenEnergies(eigenEnergy)
             # if collΓ < 10^-2.7
-            if 6.4 < dom_k < 7
+            if -5.5 < dom_k < -4
                 E = scan_radiation_Efield(SP, eigen_σ)
                 intensity = norm.(E).^2
                 # intensity = zeros(size(SP.r_fields))
                 
                 titl = prep_GnmEigenModes_title(SP)
                 fig_GnmEigenModes(zs, eigen_σ, ks, eigen_σ_FT, SP.z_range, SP.x_range, intensity, SP.ρf, SP.array, eigenEnergy, SP.fiber.propagation_constant, titl)
+                
+                # collΔ, collΓ = collEnergies_from_eigenEnergies(eigenEnergy)
+                # titl = L"$ \tilde{Δ}_{i}/γ_{a} = %$(round(collΔ, digits=2)) $, $ \tilde{Γ}_{i}/γ_{a} = %$(round(collΓ, digits=4)) $, dominant $ λ_{a}k_z = %$(round(dom_k, digits=2)) $"
+                # fig = fig_presentation_GnmEigenModes(zs, eigen_σ, ks, eigen_σ_FT, SP.z_range, SP.x_range, intensity, SP.ρf, SP.array, eigenEnergy, SP.fiber.propagation_constant, titl)
+                # save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Conferences and visits\\Berlin 2025\\talk\\figures\\GnmEigenmode_N1000_$(round(dom_k, digits=2)).png", fig, px_per_unit=2)
             end
         end
         
@@ -786,23 +758,51 @@ end
 
 function plot_GnmEigenEnergies(SP)
     # The eigenmodes when including phonons do not have a clear band structure
-    if any(SP.ηα .!= 0) throw(ArgumentError("plot_GnmEigenEnergies is not implemented for the case of including phonons")) end
+    # if any(SP.ηα .!= 0) throw(ArgumentError("plot_GnmEigenEnergies is not implemented for the case of including phonons")) end
+    # but we can still consider the band structure of just the sigma block of the full coupling matrix, which does experience a second order shift due to ground state motion
     
-    Δvari, tildeΩ, tildeG = get_parameterMatrices(SP)
+    # Get parameters (explicitly getting guided and radiated part of Gnm)
+    Δvari = get_Δvari(SP.ΔvariDependence, SP.Δvari_args, SP.array)
+    if SP.noPhonons
+        tildeΩ    = get_tildeΩs(SP.fiber, SP.d, SP.incField_wlf, SP.array)
+        tildeG_gm = get_tildeGs(SP.fiber, SP.d, SP.array, (true, false, true), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+        tildeG_rm = get_tildeGs(SP.fiber, SP.d, SP.array, (false, true, true), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+    else 
+        tildeΩ, _       = get_tildeΩs(SP.fiber, SP.d, SP.ηα, SP.incField_wlf, SP.array)
+        tildeG_gm, _, _ = get_tildeGs(SP.fiber, SP.d, SP.ηα, SP.array, (true, false, true), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+        tildeG_rm, _, _ = get_tildeGs(SP.fiber, SP.d, SP.ηα, SP.array, (false, true, true), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+    end
+    tildeG = tildeG_gm + tildeG_rm
     # tildeG = get_tildeG0(SP.fiber, SP.d, SP.array)
     
+    # Find eigenmodes etc.
     eigenEnergies, dominant_ks, eigenModesMatrix, eigenModesMatrix_inv = spectrum_dominant_ks_basisMatrices(Δvari + tildeG, SP.a)
-    collΔ, collΓ = collEnergies_from_eigenEnergies(eigenEnergies)
+    
+    # Get separate expectation values and total eigenvalues
+    eigenEnergies_gm   = [eigenmode'*tildeG_gm*eigenmode for eigenmode in eachcol(eigenModesMatrix)]
+    collΔ_gm, collΓ_gm = collEnergies_from_eigenEnergies(eigenEnergies_gm)
+    eigenEnergies_rm   = [eigenmode'*tildeG_rm*eigenmode for eigenmode in eachcol(eigenModesMatrix)]
+    collΔ_rm, collΓ_rm = collEnergies_from_eigenEnergies(eigenEnergies_rm)
+    collΔ = collΔ_gm + collΔ_rm
+    collΓ = collΓ_gm + collΓ_rm
+    
+    # Get weight and resonances
     weights, resonances = transmission_eigenmodes_weights_resonances(SP.Δ_range, tildeΩ, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, SP.fiber.propagation_constant_derivative)
     weights_abs = abs.(weights)
     
-    titl = prep_GnmEigenEnergies_title(SP)
-    fig_eigenEnergies_vs_k(dominant_ks, collΔ, collΓ, weights_abs, SP.fiber.propagation_constant, titl) 
     
-    # titl = L"$ N = %$(SP.N) $"
+    titl = prep_GnmEigenEnergies_title(SP)
+    # fig_eigenEnergies_vs_k(dominant_ks, collΔ, collΓ, weights_abs, SP.fiber.propagation_constant, titl) 
+    fig_eigenEnergies_vs_k(dominant_ks, collΔ, abs.(collΓ), weights_abs, SP.fiber.propagation_constant, titl) 
+    fig_eigenEnergies_vs_k(dominant_ks, collΔ_gm, collΓ_gm, weights_abs, SP.fiber.propagation_constant, titl * "\nGuided contribution") 
+    fig_eigenEnergies_vs_k(dominant_ks, collΔ_rm, collΓ_rm, weights_abs, SP.fiber.propagation_constant, titl * "\nRadiated contribution") 
+    beta = collΓ_gm./abs.(collΓ)
+    fig_eigenEnergies_vs_k(dominant_ks, collΔ, beta, weights_abs, SP.fiber.propagation_constant, titl * "\nβ-factor") 
+    
+    # titl = L"$ N = %$(SP.N) $, including $ η_{α}^2 $ shift"
     # titl = L"$ N = %$(SP.N) $, without guided modes"
-    # fig = fig_presentation_eigenEnergies_vs_k(dominant_ks, collΔ, collΓ, weights_abs, SP.fiber.propagation_constant, titl)
-    # save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Conferences and visits\\Berlin 2025\\talk\\figures\\band_N50.png", fig, px_per_unit=2)
+    # fig = fig_presentation_eigenEnergies_vs_k(dominant_ks, collΔ, abs.(collΓ), weights_abs, SP.fiber.propagation_constant, titl)
+    # save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Conferences and visits\\Berlin 2025\\talk\\figures\\band_N200_log_shifted.png", fig, px_per_unit=2)
 end
 
 
@@ -858,13 +858,14 @@ function plot_lossWithGnmEigenEnergies(SP)
     
     loss, weights_abs, resonances_abs = prep_loss_weights_resonances(t, weights, resonances)
     titl = prep_transmissionWithGnmEigenEnergies_title(SP)
-    fig_loss_withGnmeigenEnergies(SP.Δ_range, loss, resonances_abs, collΔ, collΓ, weights_abs, titl)
-    # fig_loss_withGnmeigenEnergies(SP.Δ_range, loss, resonances_abs, collΔ, abs.(collΓ), weights_abs, titl)
+    # fig_loss_withGnmeigenEnergies(SP.Δ_range, loss, resonances_abs, collΔ, collΓ, weights_abs, titl)
+    fig_loss_withGnmeigenEnergies(SP.Δ_range, loss, resonances_abs, collΔ, abs.(collΓ), weights_abs, titl)
     # fig_loss_withGnmeigenEnergies(SP.Δ_range, loss, resonances_abs, collΔ, abs.(collΓ), 2*weights_abs./abs.(collΓ), titl)
     
     # flt = weights_abs .> 1e-20
+    # titl = L"$ γ_{a} = 0.01 \cdot γ_{a}^{(0)} $"
     # fig = fig_presentation_loss_withGnmeigenEnergies(SP.Δ_range, loss, resonances_abs[flt], collΔ[flt], collΓ[flt], weights_abs[flt], titl)
-    # save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Conferences and visits\\Berlin 2025\\talk\\figures\\loss_N10_withPhonons.png", fig, px_per_unit=2)
+    # save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Conferences and visits\\Berlin 2025\\talk\\figures\\loss_N10_withPhonons_e1.png", fig, px_per_unit=2)
 end
 
 
@@ -882,53 +883,90 @@ end
 
 # TODO list:
 
-# Set up code to systematically calculate with
-    # Only Grm
-    # Only Ggm
-    # Independent decay (only diagonal from Grm)
-# Make sure it is indicated in the postfixes...
+# Talk with Thomas about:
+    # Arno presented an argument that the increase in decay rate due to ground state motion is due to suddenly having "which path"-information
+        # The perfect subradiance of subwavelength arrays can be said to be due to not knowing which atom emits what light
+        # If you somehow get information of where light is emitted, the perfect destructive interference disappears
+        # And now, if some atom occasionally also generates a phonon when it emits a photon you would be able to know which atom emitted, by looking at where the phonon is
+        # But I don't understand this "which path" stuff generally, and the calculation of the decay rates including the eta^2 shift does not involve the phonon part of the state space?
 
+
+# Understand peak in decay rate vs kz
+    # Are these modes always "spread" into the light cone and that is why they can radiate?
+    # Could a mode that lives entirely outside of the light cone be radiating because of the finite size of the system and thus the breaking of translational symmetry? (yes, I think so...)
+    # The plotted decay rates are the TOTAL decay rates - could it be that their decay into free space is small but their decay into the fiber is large?
+    # Divide decay rate (and energies?) by taking expectation value of gm or rm part of Gnm with respect to eigenmodes of full Gnm
+    # FT Im_Grm_trans in z?
+    # Understand kink in decay rate band at negative light cone boundary
+    # Plot bands for non-chiral case or at least sigma+ dipole moment 
+    # Calculate emitted guided and radiation light through cylindrical surface around a collection of atoms? 
+        # Intensity on surface or flux through surface or?
+        # See if these quantities are related simply to the expectation value of the Im_Ggm and Im_Grm, i.e. do the split decay rates really tell us about the ratio of light emitted in the guided or radiated modes?
+
+# Metrics of interaction strength
+    # Slope of phase in area where T is close to 1
+    # Total amount of phase accumulated in area where T is close to 1
+    # T = e^(-OD) = e^(4*β_eff*N) - effective definition of β-factor?
+    # Consider phase per atom
+        # IS the large accumulated phase we have simply due to lots of atoms? 
+    # Read up on slow light (it comes from a lot of phase per atom?), maybe we have it here without three-level/EIT setup?
+    # Compare with β-factor for a single atom or analytic expressions for independent atoms?
+    # Winding number of phase?
+    # ... Compare with independent atoms
+
+# Clean up plot_compareImperfectArray_transmission_vs_Δ
+
+# Consider a = 500 nm - make t vs ff plots and talk to Philip because he thought that it explained some change in beta?
+
+# Try to calculate with circular dipole moment (circular in xz plane) - it's closer to the experiment
+    # Also calculate reflection (emission in all four guided modes)
+
+# Consider small lattice spacing to see if holes matter less? (For small lattice spacing a single hole is not resolved by the wavelength)
+
+# Zoom in on resonances in T (for no motion or imperfections) and consider phase shift across these
+    # To see what could be achieved in the ideal case (in terms of a narrow resonance with near unity transmission and strong light-matter coupling)
+
+# Make randomZ array but with a minimum distance allowed (use the lattice spacing as minimum distance? Then it would only be different from 1Dchain for low ff)
+    # Maybe t vs ff plots will level out/find a plateau 
+    # This is relevant for comparing with the ordered case, where there is a minimum distance allowed
 
 # Look at modes of Gnm with only eta^2 corrections to Hamiltonian but without bsigma part of Hilbert space (find eigenbasis of only first block of coupling matrix with eta^2 included)
-# When looking at loss spectrum, and we have extra significant peaks when including phonons, these are exactly polaron modes which actually have an effect on the transmission
-    # whereas for smaller gamma the phonon modes (polaron modes) are pushed far away
-# Plot total "population" in sigma part of wave function and in bsigma part of wave function - find some metric for how much weight each wave function has
-    # plot this weight when doing loss and eigenmodes - maybe color markers of decay rate or have another line of plotting
-# Effect of individual eta - scale each individually to show that axial is most important
-
-# In slides:
-    # Emphasize that even with phonon energies far away, there is still a second order contribution to the parameters (write it out more explicitly)
-        # In particular, there is a contribution to the decay rate, such that modes outside the light cone start to decay
-    # Show loss and modes for smaller gamma (same eta)
-    # Talk about width of transmission features coming from gamma, and whether these widths then include the spread of phonons due to trap energies or not
-    # Phonons pushed away is because they are only created by photon-mediated interactions and with gamma small, these are small, such that we dont excite phonons
-    # Show which eta is most important?
-    # Compare t vs ff for fixed N with result for independent decay (no interaction through radiation)
-    
-
+    # Make notes about the pleateu'ing of the decay rate
+    # See how plateau scales with eta^2? I guess it's obvious that is scales as eta^2
 
 # Look at gamma much smaller than trap frequencies (presently we have gamma 50 times greater than the traps)
     # With gamma much greater than trap frequencies, the atoms decay before they move, so it should match with classical disorder (which is indeed what we see)
     # If gamma is smaller we will see more quantum effects due to motion, and ther should be a difference between the phonon calculation and simply including classical disorder
+    # Make notes about the phonon modes moving away and becoming irrelevant due to weak driving
+
+# Plot total "population" in sigma part of wave function and in bsigma part of wave function - find some metric for how much weight each wave function has
+    # plot this weight when doing loss and eigenmodes - maybe color markers of decay rate or have another line of plotting
+
+# When looking at loss spectrum, and we have extra significant peaks appearing when including phonons, 
+    # these are exactly polaron modes which actually have an effect on the transmission
+    # whereas for smaller gamma the phonon modes (polaron modes) are pushed far away
+
+# Effect of individual eta - scale each individually to see their effect
+    # We previously tentatively concluded that axial eta is the most significant
+    # Argue which of the ηα is the most significant by looking at the parameter matrices
+        # If certain derivatives of tildeΩ or tildeG are large, the corresponding ηα would have a greater effect
+        # With this we can say which aspect of the atomic trap is the most important (radial, azimuthal, or axial trapping)
+        # Six curves for Ωnα and Ωnαα, twelve heatmaps for Gnmα1, Gnmα2, Gnmαα11, and Gnmαα22 (potentially Gnmα1 and Gnmα2 will show the same plot and likewise for Gnmαα11 and Gnmαα22 - so only six heatmaps)
 
 # Consider a pulse/localized excitation in a very long chain to see their dynamics before they reach the ends of the chain, do they decay before the it hits the end?
     # Use transmission spectrum to predict the dynamics of a pulse that is narrow enough in momentum to live within the range of detuning where the transmission is close to 1 when doing Δvari
     # The pulse, implemented via time-dependent driving, will be spatially very very long in order to fit inside the window of high transmission with non-zero phase
     # It should be spatially compressed in the chain, due to the phase gradient (?)
+    # Maybe a pulse will not see the narrow loss resonances, because they take a long time to populate?
+    # Somehow calculate the loss of the pulse? I.e. does the pulse stay in the chain more than steady state light..?
 
-# Make plots of effect of ff without motion, i.e. eta=0, focus on T = 1 peak right after flat plateau at negative detuning when including Deltavari 
-    # This peak is not always there (depending on the number of atoms that is), so it's a bit arbitrary to focus on it
-    # These peaks are result of a complicated interference of many modes, so the appearance of such a peak is somewhat random/arbitrary
-    
 # Decompose state in terms of eigenmodes
     # Decompose steady state
     # See how the steady state distribution is over momentum, energies, decay rates, and weights
     # Does it make sense?
     # Is it consistent with expectations from Fourier transforming steady state?
-
-# The eigenmodes which are due to the guided mode GF are not strongly peaked in kz
-    # Does it really make sense to plot them on the kz spectrum as we have?
-    # Is it misleading to think of them as concentrated around kz = kappa?
+    # Look at dynamics of kz components
+    # Does the final state ever have significant components within the light cone?
 
 # Is it relevant for our case that excitations with a certain kz (if this parameter even makes sense to use)
 # can "jump" to another kz' by creating a phonon with momentum kz - kz'?
@@ -938,35 +976,16 @@ end
 # One can think of the band structure of sigma block of the interaction matrix, 
     # and then the bands of the bsigma blocks (diagonalizing the blocks without taking interaction between them into account)
     # Maybe this is a helpful way of imagining things?
-
+    # Coupling between blocks is small because it scales with eta
 
 # Figure out T>1 error for doubleChain 
     # Something with the coupling..?
     # Or dipole moment cannot be such that both sides of the fiber couple to the same mode?
-
-
-# Be careful that large phase is not just N times a small phase per atom
-
-# FT Im_Grm_trans in z?
-
-# Determine effective β-factor from the phase?
-    # Compare phase with that of a single atom in the case of no radiation GF
-    # Find analytical expression for phase to see how
-    # ... but in that case there is no radiation and thus β is just 1..?
-    # Well, something can be done perhaps...
-    # Compare with model of 1Dchain with some decay rate into free space, but no interaction through free space (i.e. independent decay into free space, but still interacting through fiber)
+    # Should be sigma+ above and sigma- below (or the other way around), or the corresponding matching pair for the chiral case
+    # The atoms are driven by the guided light, so they enter a state that matches the polarization of that light
+    # so they should indeed be sigma+ and sigma- polarized above and below respectively
 
 # Find out why transmission phase sometimes has an extra dip/swing..? (i.e. whether the winding number is different for some random instantiations)
-
-# Make scans where only one etaalpha is varied away from zero, to see their individual effects and significances
-
-# Argue which of the ηα is the most significant by looking at the parameter matrices
-    # If certain derivatives of tildeΩ or tildeG are large, the corresponding ηα would have a greater effect
-    # With this we can say which aspect of the atomic trap is the most important (radial, azimuthal, or axial trapping)
-    # Six curves for Ωnα and Ωnαα, twelve heatmaps for Gnmα1, Gnmα2, Gnmαα11, and Gnmαα22 (potentially Gnmα1 and Gnmα2 will show the same plot and likewise for Gnmαα11 and Gnmαα22 - so only six heatmaps)
-
-# While high-weight modes give the big overarching contributions to the loss, the actual visible peaks of the loss are given by relatively low-weight low-decay modes
-    # What's up with that?
 
 # Implement analytic calculation of steady state and transmission for the case of no radiation interactions
 

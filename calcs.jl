@@ -821,6 +821,22 @@ function scan_transmission_eigenmodes(SP)
 end
 
 
+"""
+Calculate the reflection of light through the fiber, assuming dipole moments in the xz plane for parameters given by SP
+
+The function assumes that σBα contains only σ if the Lamb-Dicke parameters are zero
+"""
+function calc_reflection(SP, σBα)
+    if SP.noPhonons
+        tildeΩ_refl = get_tildeΩs(SP.fiber, SP.d, [(1, 1, -1), (1, -1, -1)], SP.array)
+        return reflection(σBα, tildeΩ_refl, SP.fiber)
+    else
+        tildeΩ_refl, tildeΩα_refl = get_tildeΩs(SP.fiber, SP.d, SP.ηα, [(1, 1, -1), (1, -1, -1)], SP.array)
+        return reflection(σBα..., tildeΩ_refl, tildeΩα_refl, SP.fiber)
+    end
+end
+
+
 # ================================================
 #   Functions pertaining to the radiation E-field around the fiber
 # ================================================

@@ -31,7 +31,7 @@ end
 """
 Prepare the squared magnitude and phase of the transmission
 """
-function prep_transmission(t)
+function prep_squaredNorm_phase(t)
     return abs2.(t), angle.(t)
 end
 
@@ -84,6 +84,7 @@ function prep_transmission_title(SP)
     title_components = [
         "Δvari: " * SP.ΔvariDescription,
         "Array: " * SP.arrayDescription,
+        "tildeG flags: $(join(SP.tildeG_flags, ", "))",
         "να = $(ro.(SP.να)), ηα = $(ro.(SP.ηα)),",
         "Dipole moments: " * SP.dDescription
     ]
@@ -98,6 +99,7 @@ function prep_imperfectArray_transmission_title(SP)
     title_components = [
         "Δvari: " * SP.ΔvariDescription,
         "Array: " * SP.arrayDescription,
+        "tildeG flags: $(join(SP.tildeG_flags, ", "))",
         "n_inst: $(SP.n_inst)",
         "να = $(ro.(SP.να)), ηα = $(ro.(SP.ηα)),",
         "Dipole moments: " * SP.dDescription
@@ -113,6 +115,7 @@ function prep_state_title(SP, Δ)
     title_components = [
         "Δvari: " * SP.ΔvariDescription,
         "Array: " * SP.arrayDescription,
+        "tildeG flags: $(join(SP.tildeG_flags, ", "))",
         "να = $(ro.(SP.να)), ηα = $(ro.(SP.ηα)),",
         "Dipole moments: " * SP.dDescription,
         "Δ = $(ro(Δ))"
@@ -128,6 +131,7 @@ function prep_GnmEigenModes_title(SP)
     title_components = [
         "Δvari: " * SP.ΔvariDescription,
         "Array: " * SP.arrayDescription,
+        "tildeG flags: $(join(SP.tildeG_flags, ", "))",
         "να = $(ro.(SP.να)), ηα = $(ro.(SP.ηα)),",
         "Dipole moments: " * SP.dDescription
     ]
@@ -142,6 +146,7 @@ function prep_GnmEigenEnergies_title(SP)
     title_components = [
         "Δvari: " * SP.ΔvariDescription,
         "Array: " * SP.arrayDescription,
+        "tildeG flags: $(join(SP.tildeG_flags, ", "))",
         "να = $(ro.(SP.να)), ηα = $(ro.(SP.ηα)),",
         "Dipole moments: " * SP.dDescription
     ]
@@ -156,6 +161,7 @@ function prep_transmissionWithGnmEigenEnergies_title(SP)
     title_components = [
         "Δvari: " * SP.ΔvariDescription,
         "Array: " * SP.arrayDescription,
+        "tildeG flags: $(join(SP.tildeG_flags, ", "))",
         "να = $(ro.(SP.να)), ηα = $(ro.(SP.ηα)),",
         "Dipole moments: " * SP.dDescription
     ]

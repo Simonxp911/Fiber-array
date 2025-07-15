@@ -74,10 +74,11 @@ function fig_presentation_eigenEnergies_vs_k(dominant_ks, collΔ, collΓ, weight
     ax1 = Axis(fig[end+1, 1],
                ylabel=L"$ \tilde{Δ}_{i}/γ_{a} $")
     ax2 = Axis(fig[end+1, 1],
-               ylabel=L"$ \tilde{Γ}_{i}/γ_{a} $")
+               ylabel=L"$ \tilde{Γ}_{i}/γ_{a} $",
+               yscale=log10, limits=(nothing, nothing, 1e-6, 5))
     ax3 = Axis(fig[end+1, 1], 
                xlabel=L"$ λ_{a}k_z $",
-               ylabel=L"$ |w_{i}|Γ_{\text{gm}}/2γ_{a} $",
+               ylabel=L"$ |w_{i}|Γ_{\text{gm}}/γ_{a} $",
                yscale=log10)
     
     # Plot
@@ -108,6 +109,7 @@ function fig_presentation_loss_withGnmeigenEnergies(Δ_range, L, resonances_abs,
     fig = Figure(size=(600, 1000), fontsize=24)
     
     # Plot the loss
+    Label(fig[0, 1], titl, tellwidth=false)
     ax1 = Axis(fig[1, 1], limits=(extrema(Δ_range)..., 0, 1), 
                xlabel=L"$ Δ/γ_{a} $",
                ylabel=L"$ 1 - |t|^2 $")
@@ -115,7 +117,7 @@ function fig_presentation_loss_withGnmeigenEnergies(Δ_range, L, resonances_abs,
     
     # Plot the resonances
     for resonance in resonances_abs
-        lines!(ax1, Δ_range, resonance, color=:skyblue, label=L"Peaks, $ \left|\frac{Γ_{\text{gm}}w_{i}/2}{(Δ - \tilde{Δ}_{i} + i\tilde{Γ}_{i}/2)}\right| $")
+        lines!(ax1, Δ_range, resonance, color=:skyblue, label=L"Peaks, $ \left|\frac{Γ_{\text{gm}}w_{i}}{(Δ - \tilde{Δ}_{i} + i\tilde{Γ}_{i}/2)}\right| $")
     end
     # Legend(fig[0, 1], ax1, unique=true, tellwidth=false)
     # axislegend(position=:lt, unique=true, labelsize=16)
@@ -133,7 +135,7 @@ function fig_presentation_loss_withGnmeigenEnergies(Δ_range, L, resonances_abs,
     # Plot the weights of the resonances
     ax3 = Axis(fig[end+1, 1], limits=(extrema(Δ_range), nothing), 
                xlabel=L"$ \tilde{Δ}_{i}/γ_{a} $",
-               ylabel=L"$ |w_{i}|Γ_{\text{gm}}/2γ_{a} $",
+               ylabel=L"$ |w_{i}|Γ_{\text{gm}}/γ_{a} $",
                yscale=log10)
     scatter!(ax3, collΔ, weights_abs, color=:black)
     
@@ -329,7 +331,7 @@ showing mean magnitude and phase of transmission amplitude as a function for a s
 as a function of ff or ηα
 with error bars given by the standard deviation
 """
-function fig_presentation_compareImperfectArray_transmission_vs_ffOrηα(xs, x_label, T_means, T_stds, phase_means, phase_stds, titl)
+function fig_presentation_compareImperfectArray_transmission_vs_ffOrηα(xs, x_label, T_means, T_stds, phase_means, phase_stds, T_noRadInt, phase_noRadInt, titl)
     # Start figure 
     fig = Figure(size=(700, 300), fontsize=24)
     
@@ -350,10 +352,10 @@ function fig_presentation_compareImperfectArray_transmission_vs_ffOrηα(xs, x_l
     # argt = 0.797941863152475
     # hlines!(ax1, t2, color=:black, label=L"Ind. decay $$")
     # hlines!(ax2, argt, color=:black, label=L"Ind. decay $$")
-    t2s = [0.889, 0.791, 0.704, 0.626, 0.557, 0.495, 0.392, 0.310, 0.245, 0.194]
-    argts = [0.237, 0.469, 0.704, 0.939, 1.173, 1.408, 1.878, 2.346, 2.816, -2.999]
-    scatter!(ax1, xs, t2s, color=:black, label=L"Ind. decay $$")
-    scatter!(ax2, xs, argts, color=:black, label=L"Ind. decay $$")
+    # t2s = [0.889, 0.791, 0.704, 0.626, 0.557, 0.495, 0.392, 0.310, 0.245, 0.194]
+    # argts = [0.237, 0.469, 0.704, 0.939, 1.173, 1.408, 1.878, 2.346, 2.816, -2.999]
+    scatter!(ax1, xs, T_noRadInt, color=:black, label=L"Ind. decay $$")
+    scatter!(ax2, xs, phase_noRadInt, color=:black, label=L"Ind. decay $$")
     
     # Plot magnitude squared and the phase of the transmission 
     x_n = length(xs)
@@ -370,6 +372,60 @@ function fig_presentation_compareImperfectArray_transmission_vs_ffOrηα(xs, x_l
     # Finish figure
     # axislegend(ax1, position=:lt, titlesize=16, labelsize=16)
     axislegend(ax2, position=:lb, titlesize=16, labelsize=16)
+    display(GLMakie.Screen(), fig)
+    return fig
+end
+
+
+"""
+Presentation version of fig_GnmEigenModes, 
+showing the eigenvectors of a coupling matrix in real space, as well as their Fourier transform.
+Furthermore, plot the emission pattern of that mode.
+"""
+function fig_presentation_GnmEigenModes(zs, eigen_σ, ks, eigen_σ_FT, z_range, x_range, intensity, ρf, array, eigval, κ, titl)
+    # Start figure 
+    fig = Figure(size=(800, 700), fontsize=24)
+    
+    # Make title and axis
+    Label(fig[1, 1:3], titl, tellwidth=false)
+    Label(fig[2, 2], L"Real space$$", tellwidth=false)
+    Label(fig[2, 3], L"Momentum space$$", tellwidth=false)
+    Label(fig[3, 1], L"Magnitude$$", rotation = pi/2, tellheight=false)
+    Label(fig[4, 1], L"Phase$$", rotation = pi/2, tellheight=false)
+    ax1 = Axis(fig[3, 2])
+    ax2 = Axis(fig[3, 3])
+    ax3 = Axis(fig[4, 2], limits=(nothing, nothing, -π, π),
+                          yticks=([-π, -π/2, 0, π/2, π], [L"$ -π $", L"$ -π/2 $", L"$ 0 $", L"$ π/2 $", L"$ π $"]),
+                          xlabel=L"$ z/λ_{a} $")
+    ax4 = Axis(fig[4, 3], limits=(nothing, nothing, -π, π),
+                          yticks=([-π, -π/2, 0, π/2, π], [L"$ -π $", L"$ -π/2 $", L"$ 0 $", L"$ π/2 $", L"$ π $"]),
+                          xlabel=L"$ λ_{a}k_z $")
+    ax5 = Axis(fig[5, 2:3][1, 1], aspect=DataAspect(), xlabel=L"$ z/λ_{a} $", ylabel=L"$ x/λ_{a} $")
+    
+    # Plot real space 
+    lines!(ax1, zs, abs.(eigen_σ)  , color=:blue)
+    lines!(ax3, zs, angle.(eigen_σ), color=:blue)
+    
+    # Plot k-space 
+    lines!(ax2, ks, abs.(eigen_σ_FT)  , color=:red)
+    lines!(ax4, ks, angle.(eigen_σ_FT), color=:red)
+    
+    # Mark the light cone and position of propagation constant
+    vlines!(ax2, [-ωa, ωa], color=:black, linestyle=:dash, linewidth=1, label=L"Light cone$$")
+    vlines!(ax2, [κ], color=:red, linestyle=:dash, linewidth=1, label=L"$ \kappa $")
+    axislegend(ax2, position=:ct, labelsize=16)
+    
+    # Plot the E-field intensity
+    hm = heatmap!(ax5, z_range, x_range, intensity, colormap=:viridis, colorrange = (0, 0.2))
+    Colorbar(fig[5, 2:3][1, 2], hm)
+    
+    # Plot a representation of the fiber
+    poly!(ax5, [(z_range[1], -ρf), (z_range[end], -ρf), (z_range[end], ρf), (z_range[1], ρf)], color=(:gray, 0.3))
+    
+    # Plot a representation of the atomic array
+    scatter!(ax5, [site[3] for site in array], [site[1] for site in array], color=:black, marker=:circle, markersize=10)
+    
+    # Finish figure
     display(GLMakie.Screen(), fig)
     return fig
 end

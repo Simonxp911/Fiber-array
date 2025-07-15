@@ -211,7 +211,6 @@ Returns a list of the dipole moments of each atom which yields a chiral fiber se
 for the case of 1Dchain or doubleChain arrays
 """
 function chiralDipoleMoment(fiber, ρa, array::Vector{<:Vector})
-# function chiralDipoleMoment(fiber, ρa, array::Vector{<:Vector{<:Real}})
     return [chiralDipoleMoment(fiber, ρa).*[sign(site[1]), 1, 1] for site in array]    
 end
 
@@ -221,8 +220,33 @@ Returns a list of the dipole moments of each atom which yields a chiral fiber se
 for the case of 1Dchain or doubleChain arrays, for the case of n_inst != 1
 """
 function chiralDipoleMoment(fiber, ρa, array::Vector{<:Vector{<:Vector}})
-# function chiralDipoleMoment(fiber, ρa, array::Vector{<:Vector{<:Vector{<:Real}}})
     return [chiralDipoleMoment(fiber, ρa, array_inst) for array_inst in array]
+end
+
+
+"""
+Calculates the dipole moment which yields a chiral fiber setup
+"""
+function rightCircularDipoleMoment()
+    return [1im, 0, 1]/sqrt(2)
+end
+
+
+"""
+Returns a list of the dipole moments of each atom which yields a chiral fiber setup
+for the case of 1Dchain or doubleChain arrays
+"""
+function rightCircularDipoleMoment(array::Vector{<:Vector})
+    return [rightCircularDipoleMoment().*[sign(site[1]), 1, 1] for site in array]    
+end
+
+
+"""
+Returns a list of the dipole moments of each atom which yields a chiral fiber setup
+for the case of 1Dchain or doubleChain arrays, for the case of n_inst != 1
+"""
+function rightCircularDipoleMoment(array::Vector{<:Vector{<:Vector}})
+    return [rightCircularDipoleMoment(array_inst) for array_inst in array]
 end
 
 
@@ -935,6 +959,70 @@ function transmission_eigenmodes_weights_resonances(Δ_range, drive, eigenEnergi
     weights    = [3im*π*κ_prime/(2*ωa^2)*driveTimesModes[i]*modesTimesDrive[i] for i in eachindex(eigenEnergies)]
     resonances = [weights[i]./(Δ_range .+ eigenEnergy) for (i, eigenEnergy) in enumerate(eigenEnergies)]
     return weights, resonances 
+end
+
+
+"""
+Calculates the emission amplitude for the H-backward mode, corresponding to the reflection
+assuming the atoms to be polarized in xz plane,
+assuming the driving to be in the (l=1,f=1)+(l=-1,f=1) mode (H forward)
+(in the case of no phonons)
+"""
+function reflection(σ, tildeΩ_refl, fiber)
+    return 3im*π*fiber.propagation_constant_derivative/(2*ωa^2)*sum( conj(tildeΩ_refl).*σ )
+end
+
+
+"""
+Calculates the emission amplitude for the H-backward mode, corresponding to the reflection
+assuming the atoms to be polarized in xz plane,
+assuming the driving to be in the (l=1,f=1)+(l=-1,f=1) mode (H forward)
+"""
+function reflection(σ, Bα, tildeΩ_refl, tildeΩα_refl, fiber)
+    return 3im*π*fiber.propagation_constant_derivative/(2*ωa^2)*sum( conj(tildeΩ_refl).*σ + sum([conj(tildeΩα_refl[α]).*di(Bα[α]) for α in 1:3]) )
+end
+
+
+"""
+Calculates the emission amplitudes in each of the four guided modes (assuming a 'single-mode' fiber),
+assuming the driving to be in the (l=1,f=1)+(l=-1,f=1) mode (H forward)
+(in the case of no phonons)
+"""
+function guidedEmissions(σ, fiber, d, array)
+    emissions = []
+    for incField_wlf in [[(1, 1,  1), (1, -1,  1)],
+                         [(1, 1, -1), (1, -1, -1)],
+                         [(1, 1,  1), (1,  1,  1)],
+                         [(1, 1, -1), (1,  1, -1)]]
+        tildeΩ = get_tildeΩs(fiber, d, incField_wlf, array)
+        if incField_wlf == [(1, 1,  1), (1, -1,  1)]
+            push!(emissions, 1 + 3im*π*fiber.propagation_constant_derivative/(2*ωa^2)*sum( conj(tildeΩ).*σ ))
+        else
+            push!(emissions,     3im*π*fiber.propagation_constant_derivative/(2*ωa^2)*sum( conj(tildeΩ).*σ ))
+        end
+    end
+    return emissions
+end
+
+
+"""
+Calculates the emission amplitudes in each of the four guided modes (assuming a 'single-mode' fiber),
+assuming the driving to be in the (l=1,f=1)+(l=-1,f=1) mode (H-forward)
+"""
+function guidedEmissions(σ, Bα, fiber, d, ηα, array)
+    emissions = []
+    for incField_wlf in [[(1, 1,  1), (1, -1,  1)],
+                         [(1, 1, -1), (1, -1, -1)],
+                         [(1, 1,  1), (1,  1,  1)],
+                         [(1, 1, -1), (1,  1, -1)]]
+        tildeΩ, tildeΩα = get_tildeΩs(fiber, d, ηα, incField_wlf, array)
+        if incField_wlf == [(1, 1,  1), (1, -1,  1)]
+            push!(emissions, 1 + 3im*π*fiber.propagation_constant_derivative/(2*ωa^2)*sum( conj(tildeΩ).*σ + sum([conj(tildeΩα[α]).*di(Bα[α]) for α in 1:3]) ))
+        else
+            push!(emissions,     3im*π*fiber.propagation_constant_derivative/(2*ωa^2)*sum( conj(tildeΩ).*σ + sum([conj(tildeΩα[α]).*di(Bα[α]) for α in 1:3]) ))
+        end
+    end
+    return emissions
 end
 
 
