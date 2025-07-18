@@ -42,7 +42,7 @@ function define_SP_BerlinCs()
     να0_ul = να0/γ0 #unitless version of να0
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-2, 2, 300)
+    Δ_specs = (0.0, 0.4, 300)
     
     # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
     ΔvariDependence = "flat"
@@ -61,7 +61,7 @@ function define_SP_BerlinCs()
     arrayType = "1Dchain"
     
     # Set number of atomic sites 
-    N_sites = 100
+    N_sites = 2000
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
@@ -82,10 +82,10 @@ function define_SP_BerlinCs()
     
     # Atomic dipole moment
     # d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul, array)
-    # d = "chiral"
-    # dDescription = "chiral"
-    d = rightCircularDipoleMoment(array)
-    dDescription = "rgtCrc"
+    d = "chiral"
+    dDescription = "chiral"
+    # d = rightCircularDipoleMoment(array)
+    # dDescription = "rgtCrc"
     
     # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
     incField_wlf = [(1, 1, 1), (1, -1, 1)]
@@ -111,8 +111,8 @@ function define_SP_BerlinCs()
     # Ranges of z and x values to define r_fields for calculating the radiated E-field
     arrayL = (N_sites - 1)*a0_ul
     margin = 0.1*arrayL
-    z_range = range(-margin, arrayL + margin, 100)
-    x_range = range(-ρf0_ul - margin, ρf0_ul + ρa0_ul + margin, 100)
+    z_range = range(-margin, arrayL + margin, 30)
+    x_range = range(-ρf0_ul - margin, ρf0_ul + ρa0_ul + margin, 30)
     y_fix   = ρa0_ul
     
     # Get the interpolation function for the imaginary, transverse part of the radiation Green's function, if needed
@@ -165,7 +165,7 @@ function define_SP_BerlinCs_mod()
     να0_ul = να0/γ0 #unitless version of να0
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-0.5, 3.5, 300)
+    Δ_specs = (0.1, 0.4, 300)
     
     # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
     ΔvariDependence = "flat"
@@ -183,7 +183,7 @@ function define_SP_BerlinCs_mod()
     arrayType = "1Dchain"
     
     # Set number of atomic sites 
-    N_sites = 100
+    N_sites = 300
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
@@ -208,7 +208,6 @@ function define_SP_BerlinCs_mod()
     # d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul, array)
     d = "chiral"
     dDescription = "chiral"
-    # dDescription = "circXZ_left"
     
     # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
     incField_wlf = [(1, 1, 1), (1, -1, 1)]
@@ -233,7 +232,7 @@ function define_SP_BerlinCs_mod()
     
     # Ranges of z and x values to define r_fields for calculating the radiated E-field
     arrayL = (N_sites - 1)*a0_ul
-    margin = 4
+    margin = 0.1*arrayL
     z_range = range(-margin, arrayL + margin, 100)
     x_range = range(-ρf0_ul - margin, ρf0_ul + ρa0_ul + margin, 100)
     y_fix   = ρa0_ul
@@ -354,7 +353,7 @@ function define_SP_BerlinSr()
     
     # Ranges of z and x values to define r_fields for calculating the radiated E-field
     arrayL = (N_sites - 1)*a0_ul
-    margin = 4
+    margin = 0.1*arrayL
     z_range = range(-margin, arrayL + margin, 100)
     x_range = range(-ρf0_ul - margin, ρf0_ul + ρa0_ul + margin, 100)
     y_fix   = ρa0_ul
@@ -379,16 +378,19 @@ end
 
 function main()
     # Define system parameters
-    SP = define_SP_BerlinCs()
-    # SP = define_SP_BerlinCs_mod()
+    # SP = define_SP_BerlinCs()
+    SP = define_SP_BerlinCs_mod()
     # show(SP)
+    
+    
+    
     
     
     # plot_propConst_inOutMom(ωρfn_ranges)
     # plot_coupling_strengths(SP)
     # plot_arrayIn3D(SP)
     # plot_σBαTrajectories_σBαSS(SP)
-    plot_transmission_vs_Δ(SP)
+    # plot_transmission_vs_Δ(SP)
     # plot_imperfectArray_transmission_vs_Δ(SP)
     # plot_compareImperfectArray_transmission_vs_Δ(SP)
     # plot_steadyState_radiation_Efield(SP)
@@ -396,6 +398,7 @@ function main()
     # plot_GnmEigenModes(SP)
     # plot_emissionPatternOfGnmeigenModes(SP)
     # plot_GnmEigenEnergies(SP)
+    plot_GnmFourierTransformed(SP)
     # plot_compareGnmEigenEnergies(SP)
     # plot_lossWithGnmEigenEnergies(SP)
     
@@ -494,11 +497,9 @@ function plot_transmission_vs_Δ(SP)
     titl = prep_transmission_title(SP)
     fig_transmission_vs_Δ(SP.Δ_range, T, tPhase, titl)
         
-    # clear up function names, plot labels, and commit...
-    
-    r = calc_reflection.(Ref(SP), σBα_scan)
-    R, rPhase = prep_squaredNorm_phase(r)
-    fig_transmissionAndReflection_vs_Δ(SP.Δ_range, T, tPhase, R, rPhase, titl)
+    # r = calc_reflection.(Ref(SP), σBα_scan)
+    # R, rPhase = prep_squaredNorm_phase(r)
+    # fig_transmissionAndReflection_vs_Δ(SP.Δ_range, T, tPhase, R, rPhase, titl)
     
     # titl = L"$ N = %$(SP.N) $"
     # fig = fig_presentation_transmission_vs_Δ(SP.Δ_range, T, phase, titl)
@@ -511,7 +512,7 @@ function plot_imperfectArray_transmission_vs_Δ(SP)
     if SP.n_inst == 1 throw(ArgumentError("plot_imperfectArray_transmission_vs_Δ requires n_inst > 1")) end
     
     postfix = get_postfix_imperfectArray_transmission(SP.Δ_specs, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.incField_wlf, SP.n_inst, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix)
-    filename = "T_phase" * postfix
+    filename = "T_phase_" * postfix
     folder = "imperfectArray_T_phase/"
     
     if isfile(saveDir * folder * filename * ".txt") 
@@ -548,10 +549,10 @@ function plot_compareImperfectArray_transmission_vs_Δ(SP)
     # ff_list = [0.8, 0.85, 0.9, 0.95, 1.0]
     # ff_list = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
     # ff_list = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
-    ff_list = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7][1:5]
+    ff_list = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7]
     # ηαFactor_list = [0.0, 0.1, 0.4, 0.7, 1.0]
     ηαFactor_list = [1.0]
-    Nsites_list = [2000, 1000, 667, 500, 400, 334, 250, 200, 167, 143][1:5]
+    Nsites_list = [2000, 1000, 667, 500, 400, 334, 250, 200, 167, 143]
     # Nsites_list = [6000, 3000, 2000, 1500, 1200, 1000, 750, 600, 500, 429]
     arrayType_list = ["1Dchain", "randomZ"]
     for ηαFactor in ηαFactor_list
@@ -560,18 +561,18 @@ function plot_compareImperfectArray_transmission_vs_Δ(SP)
         labels = []
         # for ηαFactor in ηαFactor_list
         # for ff in ff_list
-        for (ff, N_sites) in zip(ff_list, Nsites_list)
+        # for (ff, N_sites) in zip(ff_list, Nsites_list)
         # for arrayType in arrayType_list, ff in ff_list
-        # for arrayType in arrayType_list, (ff, N_sites) in zip(ff_list, Nsites_list)
+        for arrayType in arrayType_list, (ff, N_sites) in zip(ff_list, Nsites_list)
         # for ff in ff_list, ηαFactor in ηαFactor_list
             ηα = SP.ηα * ηαFactor
             pos_unc = SP.pos_unc * ηαFactor
             # arrayDescription = arrayDescript(SP.arrayType, SP.N_sites, SP.ρa, SP.a, ff, pos_unc)
             # arrayDescription = arrayDescript(arrayType, SP.N_sites, SP.ρa, SP.a, ff, pos_unc)
-            arrayDescription = arrayDescript(SP.arrayType, N_sites, SP.ρa, SP.a, ff, pos_unc)
-            # arrayDescription = arrayDescript(arrayType, N_sites, SP.ρa, SP.a, ff, pos_unc)
+            # arrayDescription = arrayDescript(SP.arrayType, N_sites, SP.ρa, SP.a, ff, pos_unc)
+            arrayDescription = arrayDescript(arrayType, N_sites, SP.ρa, SP.a, ff, pos_unc)
             postfix = get_postfix_imperfectArray_transmission(SP.Δ_specs, SP.ΔvariDescription, SP.dDescription, SP.να, ηα, SP.incField_wlf, SP.n_inst, SP.tildeG_flags, arrayDescription, SP.fiber.postfix)
-            filename = "T_phase" * postfix
+            filename = "T_phase_" * postfix
             folder = "imperfectArray_T_phase/"
         
             if isfile(saveDir * folder * filename * ".txt") 
@@ -584,7 +585,7 @@ function plot_compareImperfectArray_transmission_vs_Δ(SP)
             end
         end
         
-        # Δ_index = 100
+        # Δ_index = 1
         # T_noRadInt, phase_noRadInt = [], []
         # for ff in ff_list
         #     ηα = SP.ηα * ηαFactor
@@ -593,7 +594,7 @@ function plot_compareImperfectArray_transmission_vs_Δ(SP)
         #     n_inst = 2
         #     tildeG_flags = (true, true, false)
         #     postfix = get_postfix_imperfectArray_transmission(SP.Δ_specs, SP.ΔvariDescription, SP.dDescription, SP.να, ηα, SP.incField_wlf, n_inst, tildeG_flags, arrayDescription, SP.fiber.postfix)
-        #     filename = "T_phase" * postfix
+        #     filename = "T_phase_" * postfix
         #     folder = "imperfectArray_T_phase/"
         
         #     if isfile(saveDir * folder * filename * ".txt") 
@@ -619,26 +620,43 @@ function plot_compareImperfectArray_transmission_vs_Δ(SP)
         # labels = ff_list
         # labels = ηαFactor_list
         # fig = fig_presentation_compareImperfectArray_transmission_vs_Δ(SP.Δ_range, T_meanss, T_stdss, phase_meanss, phase_stdss, labels, titl)
-        # save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Conferences and visits\\Berlin 2025\\talk\\figures\\compareff_eta1.0_NsitesFixed.png", fig, px_per_unit=2)
+        # save("C:\\Users\\Simon\\Downloads\\compareff_N100_random.png", fig, px_per_unit=2)
         
+        # titl = L"$ N = 100 $, $ Δ = %$(round(SP.Δ_range[Δ_index], digits=2)) $"
         # fig = fig_presentation_compareImperfectArray_transmission_vs_ffOrηα(ff_list, L"Filling fraction $$", T_means, T_stds, phase_means, phase_stds, T_noRadInt, phase_noRadInt, titl)
-        # save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Conferences and visits\\Berlin 2025\\talk\\figures\\compareff_eta1.0_NsitesFixed_vs_ff.png", fig, px_per_unit=2)
+        # save("C:\\Users\\Simon\\Downloads\\compareff_N100.png", fig, px_per_unit=2)
     end
 end
 
 
 function plot_steadyState_radiation_Efield(SP)
-    Δ = -0.5
-    zs = [site[3] for site in SP.array]
+    # Get steady state and its Fourier transform
+    # Δ = 0.1775
+    Δ = 0.201
     σBα_SS = calc_steadyState(SP, Δ)
     if SP.noPhonons σ_SS = σBα_SS else σ_SS = σBα_SS[1] end
-    ks, σ_SS_FT = discFourierTransform(σ_SS, SP.a, true, 1000)
+    ks, σ_SS_FT = discFourierTransform(σ_SS, SP.a)
     
+    # Get emission intensity pattern for plotting
     E = scan_radiation_Efield(SP, σBα_SS)
     intensity = norm.(E).^2
     
+    # Get parameter matrices (only considers the excitation part of the Hilbert space)
+    Δvari = get_Δvari(SP.ΔvariDependence, SP.Δvari_args, SP.array)
+    tildeG_gm, tildeG_rm = get_tildeGs_split(SP)
+    tildeG = tildeG_gm + tildeG_rm
+    
+    # Find eigenmodes etc.
+    eigenEnergies, dominant_ks, eigenModesMatrix, eigenModesMatrix_inv = spectrum_dominant_ks_basisMatrices(Δvari + tildeG, SP.a)
+    σ_SS_eigenModes = eigenModesMatrix_inv*σ_SS
+    
+    # Get separate expectation values and total eigenvalues
+    collΔ_gm, collΓ_gm, collΔ_rm, collΓ_rm = splitCollEnergies(eigenModesMatrix, tildeG_gm, tildeG_rm)
+    
+    
+    zs = [site[3] for site in SP.array]
     titl = prep_state_title(SP, Δ)
-    fig_state(zs, σ_SS, ks, σ_SS_FT, SP.z_range, SP.x_range, intensity, SP.ρf, SP.array, SP.fiber.propagation_constant, titl)
+    fig_state(zs, σ_SS, ks, σ_SS_FT, dominant_ks, collΓ_gm, collΓ_rm, σ_SS_eigenModes, SP.z_range, SP.x_range, intensity, SP.ρf, SP.array, SP.fiber.propagation_constant, titl)
     
     # fig = fig_presentation_state(zs, σ_SS, ks, σ_SS_FT, SP.z_range, SP.x_range, intensity, SP.ρf, SP.array, SP.fiber.propagation_constant, titl)
     # save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Conferences and visits\\Berlin 2025\\talk\\figures\\steadyState_N500_linear_positive.png", fig, px_per_unit=2)
@@ -663,29 +681,32 @@ function plot_GnmEigenModes(SP)
     
     if SP.noPhonons
         # Get coupling matrix and its spectrum
-        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP)
-        eigenEnergies, eigen_σs, dominant_ks = spectrum_dominant_ks(Δvari + tildeG, SP.a)
-        
+        Δvari = get_Δvari(SP.ΔvariDependence, SP.Δvari_args, SP.array)
+        tildeG_gm, tildeG_rm = get_tildeGs_split(SP)
+        tildeG = tildeG_gm + tildeG_rm
+        eigenEnergies, dominant_ks, eigenModesMatrix, eigenModesMatrix_inv = spectrum_dominant_ks_basisMatrices(Δvari + tildeG, SP.a)
+        eigen_σs = eachcol(eigenModesMatrix)
+        collΔ_gms, collΓ_gms, collΔ_rms, collΓ_rms = splitCollEnergies(eigenModesMatrix, tildeG_gm, tildeG_rm)
+        collΔs = collΔ_gms + collΔ_rms
+    
         # Pack the eigenmodes
-        # eigen_σs_FT = discFourierTransform.(eigen_σs, SP.a, true, 1000)
+        # eigen_σs_FT = discFourierTransform.(eigen_σs, SP.a)
         eigen_σs_FT = discFourierTransform.(eigen_σs, SP.a)
         
         # Prepare iteration list to facilitate sorting according to dominant_ks
-        iter_list = collect(zip(eigen_σs, eigen_σs_FT, eigenEnergies, dominant_ks))[sortperm(dominant_ks)]
+        iter_list = collect(zip(eigen_σs, eigen_σs_FT, collΔs, collΓ_gms, collΓ_rms, dominant_ks))[sortperm(dominant_ks)]
         
         # Plot
-        for (eigen_σ, (ks, eigen_σ_FT), eigenEnergy, dom_k) in iter_list
-            # collΔ, collΓ = collEnergies_from_eigenEnergies(eigenEnergy)
+        for (eigen_σ, (ks, eigen_σ_FT), collΔ, collΓ_gm, collΓ_rm, dom_k) in iter_list
             # if collΓ < 10^-2.7
-            if -5.5 < dom_k < -4
+            if -6.3 < dom_k < -5.5
                 E = scan_radiation_Efield(SP, eigen_σ)
                 intensity = norm.(E).^2
                 # intensity = zeros(size(SP.r_fields))
                 
                 titl = prep_GnmEigenModes_title(SP)
-                fig_GnmEigenModes(zs, eigen_σ, ks, eigen_σ_FT, SP.z_range, SP.x_range, intensity, SP.ρf, SP.array, eigenEnergy, SP.fiber.propagation_constant, titl)
+                fig_GnmEigenModes(zs, eigen_σ, ks, eigen_σ_FT, SP.z_range, SP.x_range, intensity, SP.ρf, SP.array, collΔ, collΓ_gm, collΓ_rm, SP.fiber.propagation_constant, titl)
                 
-                # collΔ, collΓ = collEnergies_from_eigenEnergies(eigenEnergy)
                 # titl = L"$ \tilde{Δ}_{i}/γ_{a} = %$(round(collΔ, digits=2)) $, $ \tilde{Γ}_{i}/γ_{a} = %$(round(collΓ, digits=4)) $, dominant $ λ_{a}k_z = %$(round(dom_k, digits=2)) $"
                 # fig = fig_presentation_GnmEigenModes(zs, eigen_σ, ks, eigen_σ_FT, SP.z_range, SP.x_range, intensity, SP.ρf, SP.array, eigenEnergy, SP.fiber.propagation_constant, titl)
                 # save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Conferences and visits\\Berlin 2025\\talk\\figures\\GnmEigenmode_N1000_$(round(dom_k, digits=2)).png", fig, px_per_unit=2)
@@ -705,8 +726,8 @@ function plot_GnmEigenModes(SP)
         eigen_diagBαs = [diag.(eigen_Bα) for eigen_Bα in eigen_Bαs]
         
         # Fourier transform
-        eigen_σs_FT      =   discFourierTransform.(eigen_σs, SP.a, true, 1000)
-        eigen_diagBαs_FT = [[discFourierTransform(eigen_diagBα[α], SP.a, true, 1000)[2] for α in 1:3] for eigen_diagBα in eigen_diagBαs]
+        eigen_σs_FT      =   discFourierTransform.(eigen_σs, SP.a)
+        eigen_diagBαs_FT = [[discFourierTransform(eigen_diagBα[α], SP.a)[2] for α in 1:3] for eigen_diagBα in eigen_diagBαs]
         
         # Plot
         for (eigen_σBα, eigen_σ, (ks, eigen_σ_FT), eigen_diagBα, eigen_diagBα_FT, eigenEnergy) in 
@@ -725,7 +746,7 @@ function plot_GnmEigenModes(SP)
         #     collΔ, collΓ = collEnergies_from_eigenEnergies(eigenEnergy)
         #     if collΓ < 10^-2.7
         #         for α in 1:3
-        #             eigen_Bα_FT = discFourierTransform(eigen_Bα[α], SP.a, true, 1000)
+        #             eigen_Bα_FT = discFourierTransform(eigen_Bα[α], SP.a)
         #             fig_fOnSquare(zs, eigen_Bα[α], eigen_Bα_FT...)
         #         end
         #     end
@@ -765,26 +786,22 @@ function plot_GnmEigenEnergies(SP)
     Δvari = get_Δvari(SP.ΔvariDependence, SP.Δvari_args, SP.array)
     if SP.noPhonons
         tildeΩ    = get_tildeΩs(SP.fiber, SP.d, SP.incField_wlf, SP.array)
-        tildeG_gm = get_tildeGs(SP.fiber, SP.d, SP.array, (true, false, true), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
-        tildeG_rm = get_tildeGs(SP.fiber, SP.d, SP.array, (false, true, true), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
     else 
-        tildeΩ, _       = get_tildeΩs(SP.fiber, SP.d, SP.ηα, SP.incField_wlf, SP.array)
-        tildeG_gm, _, _ = get_tildeGs(SP.fiber, SP.d, SP.ηα, SP.array, (true, false, true), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
-        tildeG_rm, _, _ = get_tildeGs(SP.fiber, SP.d, SP.ηα, SP.array, (false, true, true), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+        tildeΩ, _ = get_tildeΩs(SP.fiber, SP.d, SP.ηα, SP.incField_wlf, SP.array)
     end
+    tildeG_gm, tildeG_rm = get_tildeGs_split(SP)
     tildeG = tildeG_gm + tildeG_rm
     # tildeG = get_tildeG0(SP.fiber, SP.d, SP.array)
+    # Δvari, tildeΩ, tildeG = get_parameterMatrices(SP)
     
     # Find eigenmodes etc.
     eigenEnergies, dominant_ks, eigenModesMatrix, eigenModesMatrix_inv = spectrum_dominant_ks_basisMatrices(Δvari + tildeG, SP.a)
     
     # Get separate expectation values and total eigenvalues
-    eigenEnergies_gm   = [eigenmode'*tildeG_gm*eigenmode for eigenmode in eachcol(eigenModesMatrix)]
-    collΔ_gm, collΓ_gm = collEnergies_from_eigenEnergies(eigenEnergies_gm)
-    eigenEnergies_rm   = [eigenmode'*tildeG_rm*eigenmode for eigenmode in eachcol(eigenModesMatrix)]
-    collΔ_rm, collΓ_rm = collEnergies_from_eigenEnergies(eigenEnergies_rm)
+    collΔ_gm, collΓ_gm, collΔ_rm, collΓ_rm = splitCollEnergies(eigenModesMatrix, tildeG_gm, tildeG_rm)
     collΔ = collΔ_gm + collΔ_rm
     collΓ = collΓ_gm + collΓ_rm
+    # collΔ, collΓ = collEnergies(eigenEnergies)
     
     # Get weight and resonances
     weights, resonances = transmission_eigenmodes_weights_resonances(SP.Δ_range, tildeΩ, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, SP.fiber.propagation_constant_derivative)
@@ -796,13 +813,59 @@ function plot_GnmEigenEnergies(SP)
     fig_eigenEnergies_vs_k(dominant_ks, collΔ, abs.(collΓ), weights_abs, SP.fiber.propagation_constant, titl) 
     fig_eigenEnergies_vs_k(dominant_ks, collΔ_gm, collΓ_gm, weights_abs, SP.fiber.propagation_constant, titl * "\nGuided contribution") 
     fig_eigenEnergies_vs_k(dominant_ks, collΔ_rm, collΓ_rm, weights_abs, SP.fiber.propagation_constant, titl * "\nRadiated contribution") 
-    beta = collΓ_gm./abs.(collΓ)
-    fig_eigenEnergies_vs_k(dominant_ks, collΔ, beta, weights_abs, SP.fiber.propagation_constant, titl * "\nβ-factor") 
+    # beta = collΓ_gm./abs.(collΓ)
+    # fig_eigenEnergies_vs_k(dominant_ks, collΔ, beta, weights_abs, SP.fiber.propagation_constant, titl * "\nβ-factor") 
     
     # titl = L"$ N = %$(SP.N) $, including $ η_{α}^2 $ shift"
     # titl = L"$ N = %$(SP.N) $, without guided modes"
     # fig = fig_presentation_eigenEnergies_vs_k(dominant_ks, collΔ, abs.(collΓ), weights_abs, SP.fiber.propagation_constant, titl)
     # save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Conferences and visits\\Berlin 2025\\talk\\figures\\band_N200_log_shifted.png", fig, px_per_unit=2)
+end
+
+
+function plot_GnmFourierTransformed(SP)
+    # N = SP.N÷2
+    N = 1000
+    kz_range = range(-π/SP.a, π/SP.a, 1000)
+    ρ_field = SP.array[1][1:2]
+    ρ_source = ρ_field
+    zs = -N*SP.a:SP.a:N*SP.a
+    r_source = [ρ_source..., 0]
+    r_fields = [[ρ_field..., zn] for zn in zs]
+    
+    if typeof(SP.d) == String
+        if SP.d == "chiral"
+            d = chiralDipoleMoment(SP.fiber, SP.ρa)
+        else
+            throw(ArgumentError("plot_GnmFourierTransformed is not implemented for any String dipole moments other than 'chiral'"))
+        end
+    else
+        d = SP.d[1]
+    end
+        
+    # Guided part
+    Ggm_ = Ggm.(Ref(SP.fiber), r_fields, Ref(r_source))
+    Ggm_ = 3*π/ωa*(Ref(d').*Ggm_.*Ref(d))
+    Ggm_kz = [sum(Ggm_.*exp.(-1im*kz*zs)) for kz in kz_range]
+    
+    # Radiation part
+    Grm_ = Grm.(Ref(SP.fiber), ωa, r_fields, Ref(r_source), Ref((0, 0)), 1, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, Ref(SP.approx_Grm_trans), SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+    Grm_ = 3*π/ωa*(Ref(d').*Grm_.*Ref(d))
+    Grm_kz = [sum(Grm_.*exp.(-1im*kz*zs)) for kz in kz_range]
+    
+    # Get energies
+    collΔ_gm, collΓ_gm = collEnergies(Ggm_kz)
+    collΔ_rm, collΓ_rm = collEnergies(Grm_kz)
+    collΔ = collΔ_gm + collΔ_rm
+    collΓ = collΓ_gm + collΓ_rm
+    
+    
+    titl = prep_GnmEigenEnergies_title(SP)
+    titl = "Fourier transformed coupling\n" * titl
+    weights_abs = zeros(size(collΔ))
+    fig_eigenEnergies_vs_k(kz_range, collΔ, abs.(collΓ), weights_abs, SP.fiber.propagation_constant, titl) 
+    fig_eigenEnergies_vs_k(kz_range, collΔ_gm, collΓ_gm, weights_abs, SP.fiber.propagation_constant, titl * "\nGuided contribution") 
+    fig_eigenEnergies_vs_k(kz_range, collΔ_rm, collΓ_rm, weights_abs, SP.fiber.propagation_constant, titl * "\nRadiated contribution") 
 end
 
 
@@ -821,7 +884,7 @@ function plot_compareGnmEigenEnergies(SP)
         tildeG = get_tildeGs(SP.fiber, d, array, SP.tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
     
         eigenEnergies, eigenModes, dominant_ks = spectrum_dominant_ks(tildeG, SP.a)
-        collΔ, collΓ = collEnergies_from_eigenEnergies(eigenEnergies)
+        collΔ, collΓ = collEnergies(eigenEnergies)
         push!(collΔs, collΔ)
         push!(collΓs, collΓ)
         push!(dominant_kss, dominant_ks)
@@ -831,7 +894,7 @@ function plot_compareGnmEigenEnergies(SP)
     kz_range = range(-π/SP.a, π/SP.a, 300)
     d = chiralDipoleMoment(SP.fiber, SP.ρa)
     spectrum_infArray = Ref(d').*G0_1DFT.(ωa, SP.a, kz_range).*Ref(d)
-    collΔ_inf, collΓ_inf = collEnergies_from_eigenEnergies(spectrum_infArray)
+    collΔ_inf, collΓ_inf = collEnergies(spectrum_infArray)
     
     titl = prep_GnmEigenEnergies_title(SP)
     fig_compareEigenEnergies_vs_k(dominant_kss, collΔs, collΓs, kz_range, collΔ_inf, collΓ_inf, Ns, SP.fiber.propagation_constant, titl) 
@@ -841,6 +904,7 @@ end
 function plot_lossWithGnmEigenEnergies(SP)
     σBα_scan = scan_steadyState(SP)
     t = calc_transmission.(Ref(SP), σBα_scan)
+    r = calc_reflection.(Ref(SP), σBα_scan)
     
     if SP.noPhonons
         Δvari, tildeΩ, tildeG = get_parameterMatrices(SP)
@@ -853,10 +917,11 @@ function plot_lossWithGnmEigenEnergies(SP)
     end
     
     eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = spectrum_basisMatrices(fullCoupling)
-    collΔ, collΓ = collEnergies_from_eigenEnergies(eigenEnergies)
+    collΔ, collΓ = collEnergies(eigenEnergies)
+    
     weights, resonances = transmission_eigenmodes_weights_resonances(SP.Δ_range, drive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, SP.fiber.propagation_constant_derivative)
     
-    loss, weights_abs, resonances_abs = prep_loss_weights_resonances(t, weights, resonances)
+    loss, weights_abs, resonances_abs = prep_loss_weights_resonances(t, r, weights, resonances)
     titl = prep_transmissionWithGnmEigenEnergies_title(SP)
     # fig_loss_withGnmeigenEnergies(SP.Δ_range, loss, resonances_abs, collΔ, collΓ, weights_abs, titl)
     fig_loss_withGnmeigenEnergies(SP.Δ_range, loss, resonances_abs, collΔ, abs.(collΓ), weights_abs, titl)
@@ -883,6 +948,14 @@ end
 
 # TODO list:
 
+
+# Prepare for being away for a week
+    # i.e. clean up code more than write new
+    # Clean up todo list
+
+
+    
+    
 # Talk with Thomas about:
     # Arno presented an argument that the increase in decay rate due to ground state motion is due to suddenly having "which path"-information
         # The perfect subradiance of subwavelength arrays can be said to be due to not knowing which atom emits what light
@@ -890,10 +963,9 @@ end
         # And now, if some atom occasionally also generates a phonon when it emits a photon you would be able to know which atom emitted, by looking at where the phonon is
         # But I don't understand this "which path" stuff generally, and the calculation of the decay rates including the eta^2 shift does not involve the phonon part of the state space?
 
-
 # Understand peak in decay rate vs kz
     # Are these modes always "spread" into the light cone and that is why they can radiate?
-    # Could a mode that lives entirely outside of the light cone be radiating because of the finite size of the system and thus the breaking of translational symmetry? (yes, I think so...)
+    # Could a mode that lives entirely outside of the light cone be radiating because of the finite size of the system and thus the breaking of translational symmetry?
     # The plotted decay rates are the TOTAL decay rates - could it be that their decay into free space is small but their decay into the fiber is large?
     # Divide decay rate (and energies?) by taking expectation value of gm or rm part of Gnm with respect to eigenmodes of full Gnm
     # FT Im_Grm_trans in z?
@@ -902,13 +974,14 @@ end
     # Calculate emitted guided and radiation light through cylindrical surface around a collection of atoms? 
         # Intensity on surface or flux through surface or?
         # See if these quantities are related simply to the expectation value of the Im_Ggm and Im_Grm, i.e. do the split decay rates really tell us about the ratio of light emitted in the guided or radiated modes?
+    # Band structure quickly converges as N increases, but fraction that is from guided or radiation GF changes a lot?
 
 # Metrics of interaction strength
     # Slope of phase in area where T is close to 1
-    # Total amount of phase accumulated in area where T is close to 1
+    # Total amount of phase accumulated in area where T is close to 1 (look at unfolded phase plots)
     # T = e^(-OD) = e^(4*β_eff*N) - effective definition of β-factor?
     # Consider phase per atom
-        # IS the large accumulated phase we have simply due to lots of atoms? 
+        # Is the large accumulated phase we have simply due to lots of atoms? 
     # Read up on slow light (it comes from a lot of phase per atom?), maybe we have it here without three-level/EIT setup?
     # Compare with β-factor for a single atom or analytic expressions for independent atoms?
     # Winding number of phase?
@@ -967,6 +1040,12 @@ end
     # Is it consistent with expectations from Fourier transforming steady state?
     # Look at dynamics of kz components
     # Does the final state ever have significant components within the light cone?
+    # Writing state in terms of eigenmodes shows transmission is sum of eigenmode coefficients with weights given by driving and mode overlap
+        # Transmission is generally a sum of many significant contributions, giving some unremarkable transmission
+        # Changing detuning even slightly can bring in and out a narrow resonance that may thus locally change the transmission dramatically
+        # All other contributions are pretty much constant there, just giving some complex background for this single contribution to interfere with
+        # Thus even a very narrow, very subradiant, mode can suddenly change the transmission significantly
+        # Thus even though the steady as written in terms of the eigenmodes only changes one or two of its entries as the detuning is varied slightly, the transmission may change significantly
 
 # Is it relevant for our case that excitations with a certain kz (if this parameter even makes sense to use)
 # can "jump" to another kz' by creating a phonon with momentum kz - kz'?
@@ -977,6 +1056,13 @@ end
     # and then the bands of the bsigma blocks (diagonalizing the blocks without taking interaction between them into account)
     # Maybe this is a helpful way of imagining things?
     # Coupling between blocks is small because it scales with eta
+    # The bsigma block is given by the sigma block plus a shift and a Kronecker product with the identity
+        # so, naively, the band structure is identical but shifted by the trap frequencies
+        # and the states are identical but Kronecker multiplied with any basis of phonon states, fx simply having a phonon at site n
+        # Hence, the eigenstates and -energies of the full coupling matrix, will indeed generally just show the original spectrum
+        # plus a shifted state for each x,y,z
+        # and a small perturbation due to the interaction between the excitation sector and the phonon sector,
+        # which is small as it scales with eta
 
 # Figure out T>1 error for doubleChain 
     # Something with the coupling..?

@@ -290,28 +290,28 @@ function fig_presentation_compareImperfectArray_transmission_vs_Δ(Δ_range, T_m
     # colors = [colors[5]]
     
     # Start figure 
-    # fig = Figure(size=(700, 300), fontsize=24)
-    fig = Figure(size=(500, 300), fontsize=24)
+    fig = Figure(size=(900, 300), fontsize=24)
+    # fig = Figure(size=(500, 300), fontsize=12)
     
     # Make title and axis
-    # Label(fig[1, 1:2], titl, tellwidth=false)
-    Label(fig[1, 1], titl, tellwidth=false)
+    Label(fig[1, 1:2], titl, tellwidth=false)
+    # Label(fig[1, 1], titl, tellwidth=false)
     ax1 = Axis(fig[2, 1], limits=(extrema(Δ_range)..., 0, 1), 
                xlabel=L"$ \Delta/γ_{a} $",
                ylabel=L"$ |t|^2 $")
-    # ax2 = Axis(fig[2, 2], limits=(extrema(Δ_range)..., -π, π),
-    #            yticks=([-π, -π/2, 0, π/2, π], [L"$ -π $", L"$ -π/2 $", L"$ 0 $", L"$ π/2 $", L"$ π $"]),
-    #            xlabel=L"$ \Delta/γ_{a} $",
-    #            ylabel=L"arg$ (t) $")
+    ax2 = Axis(fig[2, 2], limits=(extrema(Δ_range)..., -π, π),
+               yticks=([-π, -π/2, 0, π/2, π], [L"$ -π $", L"$ -π/2 $", L"$ 0 $", L"$ π/2 $", L"$ π $"]),
+               xlabel=L"$ \Delta/γ_{a} $",
+               ylabel=L"arg$ (t) $")
     
     # Plot magnitude squared and the phase of the transmission with bands for standard deviations
     for (i, label) in enumerate(labels)
         # lines!(ax1, Δ_range, T_meanss[i], color=colors[i])
         lines!(ax1, Δ_range, T_meanss[i], color=colors[i], label=L"$ %$(label) $")
         band!( ax1, Δ_range, T_meanss[i] + T_stdss[i], T_meanss[i] - T_stdss[i], color=(colors[i], 0.35))
-        # lines!(ax2, Δ_range, phase_meanss[i], color=colors[i], label=label)
+        lines!(ax2, Δ_range, phase_meanss[i], color=colors[i], label=label)
         # lines!(ax2, Δ_range, phase_meanss[i], color=colors[i], label=L"$ %$(label) $")
-        # band!( ax2, Δ_range, phase_meanss[i] + phase_stdss[i], phase_meanss[i] - phase_stdss[i], color=(colors[i], 0.35))
+        band!( ax2, Δ_range, phase_meanss[i] + phase_stdss[i], phase_meanss[i] - phase_stdss[i], color=(colors[i], 0.35))
     end
     
     # Finish figure
@@ -319,7 +319,8 @@ function fig_presentation_compareImperfectArray_transmission_vs_Δ(Δ_range, T_m
     # axislegend(ax2, L"$ ff = \dots $", position=:lb, titlesize=16, labelsize=16)
     # axislegend(ax2, L"$ ff = \dots $", position=:lb, titlesize=16, labelsize=16, nbanks=2)
     # axislegend(ax2, L"$ r = \dots $", position=:rt, titlesize=16, labelsize=16)
-    Legend(fig[2, 2], ax1, L"$ ff = \dots $", titlesize=16, labelsize=16, nbanks=2)
+    # Legend(fig[2, 2], ax1, L"$ ff = \dots $", titlesize=12, labelsize=12, nbanks=2)
+    Legend(fig[2, 3], ax1, L"$ ff = \dots $", titlesize=12, labelsize=12, nbanks=2)
     display(GLMakie.Screen(), fig)
     return fig
 end
@@ -338,7 +339,7 @@ function fig_presentation_compareImperfectArray_transmission_vs_ffOrηα(xs, x_l
     # Make title and axis
     Label(fig[1, 1:2], titl, tellwidth=false)
     # ax1 = Axis(fig[2, 1], limits=(0.0, 0.8, 0, 1), 
-    ax1 = Axis(fig[2, 1], limits=(0.0, 0.8, nothing, 1), 
+    ax1 = Axis(fig[2, 1], limits=(0.0, 0.8, nothing, nothing), 
                xlabel=x_label,
                ylabel=L"$ |t|^2 $")
     # ax2 = Axis(fig[2, 2], limits=(0.0, 0.8, -π, π),
@@ -348,14 +349,14 @@ function fig_presentation_compareImperfectArray_transmission_vs_ffOrηα(xs, x_l
                ylabel=L"arg$ (t) $")
     
     # Add line or scatter for independent decay calculation
-    # t2 = 0.4507100477120275
-    # argt = 0.797941863152475
-    # hlines!(ax1, t2, color=:black, label=L"Ind. decay $$")
-    # hlines!(ax2, argt, color=:black, label=L"Ind. decay $$")
+    t2 = 0.4507100477120275 #N=100, Δ=-1
+    argt = 0.797941863152475
+    hlines!(ax1, t2, color=:black, label=L"Ind. decay $$")
+    hlines!(ax2, argt, color=:black, label=L"Ind. decay $$")
     # t2s = [0.889, 0.791, 0.704, 0.626, 0.557, 0.495, 0.392, 0.310, 0.245, 0.194]
     # argts = [0.237, 0.469, 0.704, 0.939, 1.173, 1.408, 1.878, 2.346, 2.816, -2.999]
-    scatter!(ax1, xs, T_noRadInt, color=:black, label=L"Ind. decay $$")
-    scatter!(ax2, xs, phase_noRadInt, color=:black, label=L"Ind. decay $$")
+    # scatter!(ax1, xs, T_noRadInt, color=:black, label=L"Ind. decay $$")
+    # scatter!(ax2, xs, phase_noRadInt, color=:black, label=L"Ind. decay $$")
     
     # Plot magnitude squared and the phase of the transmission 
     x_n = length(xs)
@@ -370,8 +371,8 @@ function fig_presentation_compareImperfectArray_transmission_vs_ffOrηα(xs, x_l
     end
     
     # Finish figure
-    # axislegend(ax1, position=:lt, titlesize=16, labelsize=16)
-    axislegend(ax2, position=:lb, titlesize=16, labelsize=16)
+    # axislegend(ax1, position=:lt, labelsize=16)
+    axislegend(ax2, position=:lb, labelsize=16)
     display(GLMakie.Screen(), fig)
     return fig
 end

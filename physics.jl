@@ -539,7 +539,7 @@ function Im_Grm_trans_(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, sa
         
         # Set up the integrand and the integral domain
         integrand(x, args) = Erm(fiber, ω, x, args..., r_field , derivOrder[1], α)*
-                            Erm(fiber, ω, x, args..., r_source, derivOrder[2], α)'
+                             Erm(fiber, ω, x, args..., r_source, derivOrder[2], α)'
         domain = (-ω + eps(1.0), ω - eps(1.0))
         
         # Perform the combined sum and integration
@@ -568,6 +568,61 @@ function Im_Grm_trans_(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, sa
         if save_Im_Grm_trans save_as_txt(Im_Grm_trans, saveDir * folder, filename) end
         return Im_Grm_trans
     end
+end
+
+
+"""
+Calculates the Fourier transform in z of the imaginary part of the transverse part of 
+radiation mode Green's function or its (x and y) derivatives 
+
+Uses the normalization convention of Kien, Rauschenbeutel 2017
+"""
+function Im_Grm_trans_FT(fiber, a, ω, ρ_field, ρ_source, kz, derivOrder=(0, 0), α=1, save_Im_Grm_trans=true, abstol=1e-5)
+    if α == 3 throw(ArgumentError("Im_Grm_trans_FT cannot calculate a derivative in z, as it is Fourier transformed in z")) end
+    if a > 1/2 throw(ArgumentError("Im_Grm_trans_FT is only implemented for subwavelength lattice spacings a < 1/2")) end
+    # For distances greater than 100 times the wavelength, the coupling is effectively zero (the calculation below just yields random small values)
+    # We should be careful with this cut-off if we ever do calculations that truly depend on long-distance interactions
+    # For a kz outside the light cone the result is zero, assuming a subwavelength array 
+    if norm(ρ_field - ρ_source) > 100 || abs(kz) > ω
+        return zeros(ComplexF64, 3, 3)
+    else
+        coords = ro.(vcat(ρ_field, ρ_source, kz))
+        postfix = get_postfix_Im_Grm_trans(ω, coords, derivOrder, α, abstol, fiber.postfix)
+        filename = "IGrmtFT_" * postfix
+        folder = "Im_Grm_trans/"
+        
+        if isfile(saveDir * folder * filename * ".txt") return load_as_txt(saveDir * folder, filename) end
+        
+        # Set up the integrand and the integral domain
+        summand(args) = Erm(fiber, ω, kz, args..., [ρ_field..., 0] , derivOrder[1], α)*
+                        Erm(fiber, ω, kz, args..., [ρ_source..., 0], derivOrder[2], α)' 
+        
+        # Perform the combined sum and integration
+        Im_Grm_trans_FT = zeros(ComplexF64, 3, 3)
+        summand_m = ones(ComplexF64, 3, 3)
+        m = 0
+        while maximum(abs.(summand_m)) > abstol
+            summand_m .= 0
+            for l in (-1, 1)
+                args = (m, l)
+                summand_m += summand(args)
+                if m != 0
+                    args = (-m, l)
+                    summand_m += summand(args)
+                end
+            end
+            Im_Grm_trans_FT += summand_m * π/(2*ω*a)
+            m += 1
+        end
+        
+        # if save_Im_Grm_trans save_as_txt(Im_Grm_trans_FT, saveDir * folder, filename) end
+        return Im_Grm_trans_FT
+    end
+    
+    
+    # Im_Grm_FT = Im_Grm_trans_FT.(Ref(SP.fiber), SP.a, ωa, Ref(ρ_field), Ref(ρ_source), kz_range)
+    # Γkz = 2*real.(3*π/ωa*(Ref(d').*Im_Grm_FT.*Ref(d)))
+    # display(GLMakie.Screen(), plot(kz_range, Γkz))
 end
 
 
@@ -1094,10 +1149,25 @@ end
 
 
 """
-Calculate collective energies from eigen energies of a coupling matrix
+Calculate collective energies from eigenenergies of a coupling matrix
 
 Shallow function, but allows for a good abstraction
 """
-function collEnergies_from_eigenEnergies(eigenEnergies)
+function collEnergies(eigenEnergies)
     return -real(eigenEnergies), 2*imag(eigenEnergies)
 end
+
+
+"""
+Calculate split collective energies from eigenmodes energies and split coupling matrix
+
+Shallow function, but allows for a good abstraction
+"""
+function splitCollEnergies(eigenModesMatrix, tildeG_gm, tildeG_rm)
+    eigenEnergies_gm   = [eigenmode'*tildeG_gm*eigenmode for eigenmode in eachcol(eigenModesMatrix)]
+    eigenEnergies_rm   = [eigenmode'*tildeG_rm*eigenmode for eigenmode in eachcol(eigenModesMatrix)]
+    collΔ_gm, collΓ_gm = collEnergies(eigenEnergies_gm)
+    collΔ_rm, collΓ_rm = collEnergies(eigenEnergies_rm)
+    return collΔ_gm, collΓ_gm, collΔ_rm, collΓ_rm
+end
+

@@ -444,13 +444,13 @@ end
 Plot the eigenvectors of a coupling matrix in real space, as well as their Fourier transform.
 Furthermore, plot the emission pattern of that mode.
 """
-function fig_GnmEigenModes(zs, eigen_σ, ks, eigen_σ_FT, z_range, x_range, intensity, ρf, array, eigval, κ, titl)
+function fig_GnmEigenModes(zs, eigen_σ, ks, eigen_σ_FT, z_range, x_range, intensity, ρf, array, collΔ, collΓ_gm, collΓ_rm, κ, titl)
     # Start figure 
     fig = Figure(size=(800, 700))
     
     # Make title and axis
     Label(fig[1, 1:3], titl, tellwidth=false)
-    Label(fig[2, 2:3], latexstring(L"Eigval. $ = " * format_Complex_to_String(eigval) * L"$"), tellwidth=false)
+    Label(fig[2, 2:3], L"$ Δ_{i}/γ_{a} $, $ Γ_{i, gm}/γ_{a} $, $ Γ_{i, rm}/γ_{a} $ = %$(round(collΔ, digits=3)), %$(round(collΓ_gm, digits=3)), %$(round(collΓ_rm, digits=3)), ", tellwidth=false)
     Label(fig[3, 2], L"Real space$$", tellwidth=false)
     Label(fig[3, 3], L"Momentum space$$", tellwidth=false)
     Label(fig[4, 1], L"Magnitude$$", rotation = pi/2, tellheight=false)
@@ -472,7 +472,7 @@ function fig_GnmEigenModes(zs, eigen_σ, ks, eigen_σ_FT, z_range, x_range, inte
     # Mark the light cone and position of propagation constant
     vlines!(ax2, [-ωa, ωa], color=:black, linestyle=:dash, linewidth=1, label=L"Light cone$$")
     vlines!(ax2, [κ], color=:red, linestyle=:dash, linewidth=1, label=L"$ \kappa $")
-    axislegend(ax2)
+    axislegend(ax2, position=:ct)
     
     # Plot the E-field intensity
     hm = heatmap!(ax5, z_range, x_range, intensity, colormap=:viridis)
@@ -678,21 +678,30 @@ end
 Plot the magnitude and phase of the coherences of a state, as well as it discrete
 Fourier transform and its emission pattern
 """
-function fig_state(rs, v, ks, vFT, z_range, x_range, intensity, ρf, array, κ, titl)
+function fig_state(rs, v, ks, vFT, dom_ks, collΓ_gm, collΓ_rm, v_eigenModes, z_range, x_range, intensity, ρf, array, κ, titl)
     # Start figure 
-    fig = Figure(size=(800, 900))
+    fig = Figure(size=(1600, 900))
     
     # Make title and axis
     Label(fig[1, 1:3], titl, tellwidth=false)
     Label(fig[2, 2], L"Real space$$", tellwidth=false)
     Label(fig[2, 3], L"Momentum space$$", tellwidth=false)
+    Label(fig[2, 4], L"In terms of eigenmodes, vs. dominant $ k_{z} $", tellwidth=false)
+    Label(fig[2, 5], L"In terms of eigenmodes, vs. $ \tilde{Γ}_{i, gm} $", tellwidth=false)
+    Label(fig[2, 6], L"In terms of eigenmodes, vs. $ \tilde{Γ}_{i, rm} $", tellwidth=false)
     Label(fig[3, 1], L"Magnitude$$", rotation = pi/2, tellheight=false)
     Label(fig[4, 1], L"Phase$$", rotation = pi/2, tellheight=false)
     ax1 = Axis(fig[3, 2])
     ax2 = Axis(fig[3, 3])
     ax3 = Axis(fig[4, 2], xlabel=L"$ z/λ_{a} $")
     ax4 = Axis(fig[4, 3], xlabel=L"$ λ_{a}k_z $")
-    ax5 = Axis(fig[5, 2:3], aspect=DataAspect(), xlabel=L"$ z/λ_{a} $", ylabel=L"$ x/λ_{a} $")
+    ax5 = Axis(fig[5, 2:3][1, 1], aspect=DataAspect(), xlabel=L"$ z/λ_{a} $", ylabel=L"$ x/λ_{a} $")
+    ax6 = Axis(fig[3, 4])
+    ax7 = Axis(fig[4, 4], xlabel=L"dominant $ λ_{a}k_{z} $")
+    ax8 = Axis(fig[3, 5])
+    ax9 = Axis(fig[4, 5], xlabel=L"$ \tilde{Γ}_{i. gm}/γ_{a} $")
+    ax10 = Axis(fig[3, 6])
+    ax11 = Axis(fig[4, 6], xlabel=L"$ \tilde{Γ}_{i, rm}/γ_{a} $")
     
     # Plot the real space function
     lines!(ax1, rs, abs.(v)  , color=:blue)
@@ -705,17 +714,34 @@ function fig_state(rs, v, ks, vFT, z_range, x_range, intensity, ρf, array, κ, 
     # Mark the light cone and position of propagation constant
     vlines!(ax2, [-ωa, ωa], color=:black, linestyle=:dash, linewidth=1, label=L"Light cone$$")
     vlines!(ax2, [κ], color=:red, linestyle=:dash, linewidth=1, label=L"$ \kappa $")
-    axislegend(ax2)
+    axislegend(ax2, position=:ct)
     
     # Plot the E-field intensity
-    hm = heatmap!(ax5, z_range, x_range, intensity, colormap=:viridis)
-    Colorbar(fig[5, 4], hm)
+    hm = heatmap!(ax5, z_range, x_range, intensity, colormap=:viridis)#, colorrange = (0, 0.05))
+    Colorbar(fig[5, 2:3][1, 2], hm)
     
     # Plot a representation of the fiber
     poly!(ax5, [(z_range[1], -ρf), (z_range[end], -ρf), (z_range[end], ρf), (z_range[1], ρf)], color=(:gray, 0.3))
     
     # Plot a representation of the atomic array
     scatter!(ax5, [site[3] for site in array], [site[1] for site in array], color=:black, marker=:circle, markersize=10)
+    
+    # Plot the eigenmodes function vs dominant kz
+    sortInds = sortperm(dom_ks)
+    lines!(ax6, dom_ks[sortInds], abs.(v_eigenModes)[sortInds]  , color=:purple)
+    lines!(ax7, dom_ks[sortInds], angle.(v_eigenModes)[sortInds], color=:purple)
+    vlines!(ax6, [-ωa, ωa], color=:black, linestyle=:dash, linewidth=1)
+    vlines!(ax6, [κ], color=:red, linestyle=:dash, linewidth=1)
+    
+    # Plot the eigenmodes function vs guided decay rate
+    sortInds = sortperm(collΓ_gm)
+    lines!(ax8, collΓ_gm[sortInds], abs.(v_eigenModes)[sortInds]  , color=:black)
+    lines!(ax9, collΓ_gm[sortInds], angle.(v_eigenModes)[sortInds], color=:black)
+    
+    # Plot the eigenmodes function vs radiation decay rate
+    sortInds = sortperm(collΓ_rm)
+    lines!(ax10, collΓ_rm[sortInds], abs.(v_eigenModes)[sortInds]  , color=:black)
+    lines!(ax11, collΓ_rm[sortInds], angle.(v_eigenModes)[sortInds], color=:black)
     
     # Finish figure
     display(GLMakie.Screen(), fig)

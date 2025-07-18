@@ -69,8 +69,8 @@ end
 """
 Prepare the loss, absolute value of weights, and absolute value of resonances
 """
-function prep_loss_weights_resonances(t, weights, resonances)
-    loss = 1 .- abs2.(t)
+function prep_loss_weights_resonances(t, r, weights, resonances)
+    loss = 1 .- abs2.(t) .- abs2.(r)
     weights_abs = abs.(weights)
     resonances_abs = broadcast(x -> abs.(x), resonances)
     return loss, weights_abs, resonances_abs

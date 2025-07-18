@@ -436,6 +436,30 @@ function get_tildeGs(fiber, d, ηα, array, tildeG_flags, save_Im_Grm_trans, abs
 end
 
 
+function get_tildeGs_split(SP)
+    if SP.noPhonons
+        tildeG_gm, tildeG_rm = get_tildeGs_split(SP.fiber, SP.d, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+    else 
+        tildeG_gm, tildeGα1_gm, tildeGα2_gm, tildeG_rm, tildeGα1_gm, tildeGα2_gm = get_tildeGs_split(SP.fiber, SP.d, SP.ηα, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+    end
+    return tildeG_gm, tildeG_rm
+end
+
+
+function get_tildeGs_split(fiber, d, array, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+    tildeG_gm = get_tildeGs(fiber, d, array, (true, false, true), save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+    tildeG_rm = get_tildeGs(fiber, d, array, (false, true, true), save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+    return tildeG_gm, tildeG_rm
+end
+
+
+function get_tildeGs_split(fiber, d, ηα, array, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+    tildeG_gm, tildeGα1_gm, tildeGα2_gm = get_tildeGs(fiber, d, ηα, array, (true, false, true), save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+    tildeG_rm, tildeGα1_gm, tildeGα2_gm = get_tildeGs(fiber, d, ηα, array, (false, true, true), save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+    return tildeG_gm, tildeGα1_gm, tildeGα2_gm, tildeG_rm, tildeGα1_gm, tildeGα2_gm
+end
+
+
 function get_tildeFα(tildeG, να)
     return [tildeG - να[α]*I for α in 1:3]
 end
@@ -827,11 +851,21 @@ Calculate the reflection of light through the fiber, assuming dipole moments in 
 The function assumes that σBα contains only σ if the Lamb-Dicke parameters are zero
 """
 function calc_reflection(SP, σBα)
+    if typeof(SP.d) == String
+        if SP.d == "chiral"
+            d = chiralDipoleMoment(SP.fiber, SP.ρa, SP.array)
+        else
+            throw(ArgumentError("calc_reflection is not implemented for any String dipole moments other than 'chiral'"))
+        end
+    else
+        d = SP.d
+    end
+    
     if SP.noPhonons
-        tildeΩ_refl = get_tildeΩs(SP.fiber, SP.d, [(1, 1, -1), (1, -1, -1)], SP.array)
+        tildeΩ_refl = get_tildeΩs(SP.fiber, d, [(1, 1, -1), (1, -1, -1)], SP.array)
         return reflection(σBα, tildeΩ_refl, SP.fiber)
     else
-        tildeΩ_refl, tildeΩα_refl = get_tildeΩs(SP.fiber, SP.d, SP.ηα, [(1, 1, -1), (1, -1, -1)], SP.array)
+        tildeΩ_refl, tildeΩα_refl = get_tildeΩs(SP.fiber, d, SP.ηα, [(1, 1, -1), (1, -1, -1)], SP.array)
         return reflection(σBα..., tildeΩ_refl, tildeΩα_refl, SP.fiber)
     end
 end
