@@ -101,8 +101,8 @@ function imperfectArray_transmission_vs_Δ(SP)
     ts = MPI.gather(ts, comm, root=root)
     
     if myRank == root
-        postfix = get_postfix_imperfectArray_transmission(SP.Δ_specs, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.incField_wlf, SP.n_inst, SP.arrayDescription, SP.fiber.postfix)
-        filename = "T_phase" * postfix
+        postfix = get_postfix_imperfectArray_transmission(SP.Δ_specs, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.incField_wlf, SP.n_inst, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix)
+        filename = "T_phase_" * postfix
         folder = "imperfectArray_T_phase/"
         
         # Prepare means and standard deviations of (squared) magnitudes and phases
