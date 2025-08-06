@@ -57,13 +57,15 @@ a set of imperfect atomic arrays
 """
 function prep_imperfectArray_transmission(ts)
     Ts     = [abs2.(t) for t in ts]
-    phases = [vcat([angle(t[1])], angle(t[1]) .+ cumsum(angle.(t[2:end]./t[1:end-1]))) for t in ts]
+    phases = [angle.(t) for t in ts]
+    # phases = [vcat([angle(t[1])], angle(t[1]) .+ cumsum(angle.(t[2:end]./t[1:end-1]))) for t in ts]
     
     T_mat      = vectorOfRows2Matrix(Ts)
     phases_mat = vectorOfRows2Matrix(phases)
     return           squeeze(mean(T_mat, dims=1)), 
                      squeeze( std(T_mat, dims=1)), 
-           wrapPhase(squeeze(mean(phases_mat, dims=1))), 
+                     squeeze(mean(phases_mat, dims=1)), 
+        #    wrapPhase(squeeze(mean(phases_mat, dims=1))), 
                      squeeze( std(phases_mat, dims=1))
 end
 
