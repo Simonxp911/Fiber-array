@@ -29,10 +29,25 @@ end
 
 
 """
-Prepare the squared magnitude and phase of the transmission
+Prepare the squared magnitude and phase of some vector
 """
 function prep_squaredNorm_phase(t)
     return abs2.(t), angle.(t)
+end
+
+
+
+"""
+Prepare the squared magnitude, phase, unwrapped phase, phase per atom, and slope of phase
+with respect to Δ_range of some vector
+"""
+function prep_squaredNorm_phase_unwrappedPhase_phasePerAtom_phaseSlope(SP, t)
+    absSquared = abs2.(t)
+    phase = angle.(t)
+    unwrappedPhase = vcat([angle(t[1])], angle(t[1]) .+ cumsum(angle.(t[2:end]./t[1:end-1])))
+    phasePerAtom = unwrappedPhase/SP.N
+    phaseSlope = diff(unwrappedPhase)./diff(SP.Δ_range)   
+    return absSquared, phase, unwrappedPhase, phasePerAtom, phaseSlope
 end
 
 
@@ -57,12 +72,14 @@ end
 Prepare the means and standard deviations of the transmission as calculated over
 a set of imperfect atomic arrays
 """
-function prep_compareImperfectArray_transmission_vs_ffOrηα(Δ_index, T_meanss, T_stdss, phase_meanss, phase_stdss)
+function prep_compareImperfectArray_transmission_vs_X(Δ_index, T_meanss, T_stdss, phase_meanss, phase_stdss, T_indepDecayss, phase_indepDecayss)
     T_means     = [T_means[Δ_index]     for T_means     in T_meanss]
     T_stds      = [T_stds[Δ_index]      for T_stds      in T_stdss]
     phase_means = [phase_means[Δ_index] for phase_means in phase_meanss]
     phase_stds  = [phase_stds[Δ_index]  for phase_stds  in phase_stdss]
-    return T_means, T_stds, phase_means, phase_stds
+    T_indepDecays = [T_indepDecays[Δ_index] for T_indepDecays in T_indepDecayss]
+    phase_indepDecays  = [phase_indepDecays[Δ_index]  for phase_indepDecays  in phase_indepDecayss]
+    return T_means, T_stds, phase_means, phase_stds, T_indepDecays, phase_indepDecays
 end
 
 

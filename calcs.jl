@@ -846,6 +846,92 @@ end
 
 
 """
+Calculate the transmission of light through the fiber in the chosen driving mode for parameters given by SP
+for the case of independent decay
+"""
+function calc_transmission_indepDecay(SP, Δ)
+    if SP.noPhonons
+        if SP.arrayType ∈ ("1Dchain", "randomZ")
+            γ_gm = 2*diag(imag(get_tildeGs(SP.fiber, SP.d, SP.array[1:1], (true, false, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)))
+            γ_rm = 2*diag(imag(get_tildeGs(SP.fiber, SP.d, SP.array[1:1], (false, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)))
+            return transmission_indepDecay(Δ, γ_gm, γ_rm, SP.N)
+        else
+            γ_gms = 2*diag(imag(get_tildeGs(SP.fiber, SP.d, SP.array, (true, false, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)))
+            γ_rms = 2*diag(imag(get_tildeGs(SP.fiber, SP.d, SP.array, (false, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)))
+            return transmission_indepDecay(Δ, γ_gms, γ_rms)
+        end
+    else
+        if SP.arrayType ∈ ("1Dchain", "randomZ")
+            Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array[1:1], (true, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+            σBα = calc_steadyState(Δ, (Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2), "", SP.noPhonons, false)
+            t1 = transmission(σBα..., tildeΩ, tildeΩα, SP.fiber)
+            return t1^SP.N
+        else
+            Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, (true, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+            ts = []
+            for i in 1:SP.N
+                ind = i + (i-1)*SP.N
+                Δvari_i    = Δvari[ind:ind]
+                tildeΩ_i   = tildeΩ[ind:ind]
+                tildeΩα_i  = [tildeΩα[α][ind:ind] for α in 1:3]
+                tildeG_i   = tildeG[ind:ind]
+                tildeFα_i  = [tildeFα[α][ind:ind] for α in 1:3]
+                tildeGα1_i = [tildeGα1[α][ind:ind] for α in 1:3]
+                tildeGα2_i = [tildeGα2[α][ind:ind] for α in 1:3]
+                σBα = calc_steadyState(Δ, (Δvari_i, tildeΩ_i, tildeΩα_i, tildeG_i, tildeFα_i, tildeGα1_i, tildeGα2_i), "", SP.noPhonons, false)
+                push!(ts, transmission(σBα..., tildeΩ_i, tildeΩα_i, SP.fiber))
+            end
+            return prod(ts)
+        end
+    end
+end
+
+
+"""
+Scan the transmission of light through the fiber in the chosen driving mode for parameters given by SP
+for the case of independent decay
+"""
+function scan_transmission_indepDecay(SP)
+    if SP.noPhonons
+        if SP.arrayType ∈ ("1Dchain", "randomZ")
+            γ_gm = 2*diag(imag(get_tildeGs(SP.fiber, SP.d, SP.array[1:1], (true, false, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)))
+            γ_rm = 2*diag(imag(get_tildeGs(SP.fiber, SP.d, SP.array[1:1], (false, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)))
+            return transmission_indepDecay.(SP.Δ_range, γ_gm, γ_rm, SP.N)
+        else
+            γ_gms = 2*diag(imag(get_tildeGs(SP.fiber, SP.d, SP.array, (true, false, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)))
+            γ_rms = 2*diag(imag(get_tildeGs(SP.fiber, SP.d, SP.array, (false, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)))
+            return transmission_indepDecay.(SP.Δ_range, Ref(γ_gms), Ref(γ_rms))
+        end
+    else
+        # Analytical expressions could be found for this and a transmission_indepDecay could be defined,
+        # but most likely it would not reduce complexity much (though it would maybe read a bit cleaner)
+        if SP.arrayType ∈ ("1Dchain", "randomZ")
+            Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array[1:1], (true, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+            σBα = calc_steadyState.(SP.Δ_range, Ref((Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2)), "", SP.noPhonons, false)
+            t1 = [transmission(σBα_..., tildeΩ, tildeΩα, SP.fiber) for σBα_ in σBα]
+            return t1.^SP.N
+        else
+            Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, (true, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+            ts = []
+            for i in 1:SP.N
+                ind = i + (i-1)*SP.N
+                Δvari_i    =  reshape(Δvari[ind:ind], 1, 1)
+                tildeΩ_i   =  tildeΩ[i:i]
+                tildeΩα_i  = [tildeΩα[α][i:i] for α in 1:3]
+                tildeG_i   =  reshape(tildeG[ind:ind], 1, 1)
+                tildeFα_i  = [reshape(tildeFα[α][ind:ind], 1, 1) for α in 1:3]
+                tildeGα1_i = [reshape(tildeGα1[α][ind:ind], 1, 1) for α in 1:3]
+                tildeGα2_i = [reshape(tildeGα2[α][ind:ind], 1, 1) for α in 1:3]
+                σBα = calc_steadyState.(SP.Δ_range, Ref((Δvari_i, tildeΩ_i, tildeΩα_i, tildeG_i, tildeFα_i, tildeGα1_i, tildeGα2_i)), "", SP.noPhonons, false)
+                push!(ts, [transmission(σBα_..., tildeΩ_i, tildeΩα_i, SP.fiber) for σBα_ in σBα])
+            end
+            return reduce(.*, ts)
+        end
+    end
+end
+
+
+"""
 Calculate the reflection of light through the fiber, assuming dipole moments in the xz plane for parameters given by SP
 
 The function assumes that σBα contains only σ if the Lamb-Dicke parameters are zero

@@ -185,7 +185,7 @@ Take a vector of phases that have been calculated modulo 2π and unwrap these,
 i.e. whenever the phase jumps by close to 2π remove the jump and return a vector
 that is close to continous
 """
-function unwrapPhase(phases, jumpTolerance=2π*0.75)
+function unwrapPhase(phases, jumpTolerance=π)
     jumps = diff(phases)
     phases_unwrap = deepcopy(phases)
     for (i, jump) in enumerate(jumps)
@@ -593,4 +593,21 @@ function interpolation1D_Im_Grm_trans(fiber, N_sites, ρa, a, noPhonons)
     end
     
     return itp
+end
+
+
+# ================================================
+#   Functions pertaining to fitting
+# ================================================
+"""
+Given vectors xdata and ydata (i.e. matching points of independent and dependent variables respectively),
+and a model function with signature model(x, p), where p is a collection of parameters, returns the optimal
+set of parameters pmin that minimize the sum of absolute squared differences between the data and the model,
+with p0 as an initial guess
+"""
+function fitComplexData(xdata, ydata, model, p0)
+    sumOfSquares(p) = sum(abs2.(ydata .- model.(xdata, Ref(p))))
+    # sumOfSquares(p) = sum([abs2(ydata[i] - model(x, p)) for (i, x) in enumerate(xdata)])
+    res = optimize(sumOfSquares, p0)
+    return Optim.minimizer(res)
 end

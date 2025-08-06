@@ -202,13 +202,62 @@ function fig_transmission_vs_Δ(Δ_range, T, phase, titl)
     ax1 = Axis(fig[3, 1], limits=(extrema(Δ_range)..., 0, 1), 
                xlabel=L"$ \Delta/γ_{a} $")
     Label(fig[2, 2], L"Transmission phase, arg$ (t) $", tellwidth=false)
-    ax2 = Axis(fig[3, 2], limits=(extrema(Δ_range)..., -π, π),
-               yticks=([-π, -π/2, 0, π/2, π], [L"$ -π $", L"$ -π/2 $", L"$ 0 $", L"$ π/2 $", L"$ π $"]),
-               xlabel=L"$ \Delta/γ_{a} $")
+    if all(-π .<= phase .<= π)
+        ax2 = Axis(fig[3, 2], limits=(extrema(Δ_range)..., -π, π),
+                yticks=([-π, -π/2, 0, π/2, π], [L"$ -π $", L"$ -π/2 $", L"$ 0 $", L"$ π/2 $", L"$ π $"]),
+                xlabel=L"$ \Delta/γ_{a} $")
+    else
+        ax2 = Axis(fig[3, 2], limits=(extrema(Δ_range)..., nothing, nothing),
+                xlabel=L"$ \Delta/γ_{a} $")
+    end
                
     # Plot magnitude squared and the phase of the transmission 
     lines!(ax1, Δ_range, T    , color=:blue)
     lines!(ax2, Δ_range, phase, color=:red)
+    
+    # Finish figure
+    display(GLMakie.Screen(), fig)
+end
+
+
+"""
+Plot magnitude, phase, unfolded phase, unfolded phase divided by N, and slope of phase
+of transmission amplitude as a function of detuning
+"""
+function fig_transmission_vs_Δ_phaseDetails(Δ_range, T, phase, unwrappedPhase, phasePerAtom, phaseSlope, titl)
+    # Start figure 
+    fig = Figure(size=(800, 600))
+    
+    # Make title and axis
+    Label(fig[1, 1:2], titl, tellwidth=false)
+    Label(fig[2, 1], L"Transmission coefficient, $ |t|^2 $", tellwidth=false)
+    ax1 = Axis(fig[3, 1], limits=(extrema(Δ_range)..., 0, 1), 
+               xlabel=L"$ \Delta/γ_{a} $")
+    Label(fig[2, 2], L"Transmission phase, arg$ (t) $", tellwidth=false)
+    ax2 = Axis(fig[3, 2], limits=(extrema(Δ_range)..., -π, π),
+            yticks=([-π, -π/2, 0, π/2, π], [L"$ -π $", L"$ -π/2 $", L"$ 0 $", L"$ π/2 $", L"$ π $"]),
+            xlabel=L"$ \Delta/γ_{a} $")
+    
+    Label(fig[4, 1], L"Unwrapped phase, arg$ (t) $", tellwidth=false)
+    ax3 = Axis(fig[5, 1], limits=(extrema(Δ_range)..., nothing, nothing),
+            xlabel=L"$ \Delta/γ_{a} $")
+    # ax4 = Axis(fig[5, 1], limits=(extrema(Δ_range)..., nothing, nothing),
+    #         ylabel=L"Phase per atom, arg$ (t)/N $",
+    #         yaxisposition=:right)
+    # hidespines!(ax4)
+    # hidexdecorations!(ax4)
+    Label(fig[4, 2], L"Phase slope, arg$ '(t) $", tellwidth=false)
+    ax5 = Axis(fig[5, 2], limits=(extrema(Δ_range)..., nothing, nothing),
+            xlabel=L"$ \Delta/γ_{a} $")
+               
+    # Plot magnitude squared and the phase of the transmission 
+    lines!(ax1, Δ_range, T    , color=:blue)
+    lines!(ax2, Δ_range, phase, color=:red)
+    
+    # Plot unwrapped phase, phase per atom, and slope of phase
+    lines!(ax3, Δ_range, unwrappedPhase, color=:red)
+    # lines!(ax4, Δ_range, phasePerAtom, color=:purple)
+    lines!(ax5, Δ_range[1:end-1] .+ diff(Δ_range)./2, phaseSlope, color=:black)
     
     # Finish figure
     display(GLMakie.Screen(), fig)
@@ -313,30 +362,135 @@ end
 
 
 """
-Plot mean magnitude and phase of transmission amplitude as a function for a specific detuning
-as a function of ff or ηα
+Plot mean magnitude and phase of transmission amplitude for a specific detuning
+as a function of any quantity x
 with error bars given by the standard deviation
 """
-function fig_compareImperfectArray_transmission_vs_ffOrηα(xs, x_label, T_means, T_stds, phase_means, phase_stds, titl)
+function fig_compareImperfectArray_transmission_vs_X(xs, x_label, T_means, T_stds, phase_means, phase_stds, T_indepDecays, phase_indepDecays, titl)
     # Start figure 
     fig = Figure(size=(800, 600))
     
     # Make title and axis
     Label(fig[1, 1:2], titl, tellwidth=false)
     Label(fig[2, 1], "Transmission coefficient", tellwidth=false)
-    ax1 = Axis(fig[3, 1], limits=(nothing, nothing, 0, 1), 
-               xlabel=x_label)
+    # ax1 = Axis(fig[3, 1], limits=(nothing, nothing, 0, 1), 
+    #            xlabel=x_label)
+    ax1 = Axis(fig[3, 1], xlabel=x_label, yscale=log10)
     Label(fig[2, 2], "Transmission phase", tellwidth=false)
     ax2 = Axis(fig[3, 2], limits=(nothing, nothing, -π, π), 
                yticks=([-π, -π/2, 0, π/2, π], [L"$ -π $", L"$ -π/2 $", L"$ 0 $", L"$ π/2 $", L"$ π $"]),
                xlabel=x_label)
     
     # Plot magnitude squared and the phase of the transmission with bands for standard deviations
-    errorbars!(ax1, xs, T_means, T_stds, color=:black, whiskerwidth=10)
+    errorbars!(ax1, xs, T_means, T_stds, color=:black, whiskerwidth=10, label=L"Incl. inter.$$")
     errorbars!(ax2, xs, phase_means, phase_stds, color=:black, whiskerwidth=10)
     
+    # Compare with independent decay case
+    lines!(ax1, xs, T_indepDecays, color=:red, label=L"Indep. decay$$")
+    lines!(ax2, xs, phase_indepDecays, color=:red)
+    
     # Finish figure
+    axislegend(ax1, position=:rt)
     display(GLMakie.Screen(), fig)
+end
+
+
+"""
+Plot mean magnitude and phase of transmission amplitude for a specific detuning and multiple ff
+as a function of N
+with error bars given by the standard deviation
+"""
+function fig_compareImperfectArray_transmission_vs_N(Ns, labels, T_means, T_stds, phase_means, phase_stds, T_indepDecays, phase_indepDecays, T_fits, phase_fits, titl)
+    # Prepare colors
+    colors = distinguishable_colors(length(labels), [RGB(1,1,1), RGB(0,0,0)], dropseed=true)
+    
+    # Start figure 
+    fig = Figure(size=(800, 600))
+    
+    # Make title and axis
+    Label(fig[1, 1:2], titl, tellwidth=false)
+    Label(fig[2, 1], L"Transmission coefficient$$", tellwidth=false)
+    ax1 = Axis(fig[3, 1], xlabel=L"$ N $", yscale=log10)
+    Label(fig[2, 2], L"Transmission phase$$", tellwidth=false)
+    ax2 = Axis(fig[3, 2], xlabel=L"$ N $")
+    
+    # Compare with independent decay case
+    lines!(ax1, Ns, T_indepDecays, color=:black, label=L"Indep. decay$$")
+    lines!(ax2, Ns, phase_indepDecays, color=:black)
+    
+    # Plot magnitude squared and the phase of the transmission with bands for standard deviations
+    for (i, label) in enumerate(labels)
+        errorbars!(ax1, Ns, T_means[i, :], T_stds[i, :], color=colors[i], whiskerwidth=10, label=label)
+        lines!(ax1, Ns, T_fits[i, :], color=colors[i])
+        errorbars!(ax2, Ns, phase_means[i, :], phase_stds[i, :], color=colors[i], whiskerwidth=10)
+        lines!(ax2, Ns, phase_fits[i, :], color=colors[i])
+    end
+    
+    # Finish figure
+    axislegend(ax1, position=:lb)
+    display(GLMakie.Screen(), fig)
+end
+
+
+"""
+Plot the effective β-factor as a function of detuning for multiple ff
+"""
+function fig_βfactor_vs_Δ(Δ_range, labels, βs, β_indepDecay, titl)
+    # Prepare colors
+    colors = distinguishable_colors(length(labels), [RGB(1,1,1), RGB(0,0,0)], dropseed=true)
+    
+    # Start figure 
+    fig = Figure(size=(800, 600))
+    
+    # Make title and axis
+    Label(fig[1, 1], titl, tellwidth=false)
+    ax1 = Axis(fig[2, 1], xlabel=L"$ Δ/γ_{a} $", ylabel=L"$ β $-factor")
+    
+    # Compare with independent decay case
+    hlines!(ax1, β_indepDecay, color=:black, label=L"Indep. decay$$")
+    
+    # Plot magnitude squared and the phase of the transmission with bands for standard deviations
+    for (i, label) in enumerate(labels)
+        lines!(ax1, Δ_range, βs[i, :], color=colors[i], label=label)
+    end
+    
+    # Finish figure
+    axislegend(ax1, position=:lb)
+    display(GLMakie.Screen(), fig)
+end
+
+
+"""
+Plot the effective decay rates as a function of detuning for multiple ff
+"""
+function fig_effectiveDecayRates_vs_Δ(Δ_range, labels, γ_gm_effs, γ_rm_effs, γ_gm, γ_rm, titl)
+    # Prepare colors
+    colors = distinguishable_colors(length(labels), [RGB(1,1,1), RGB(0,0,0)], dropseed=true)
+    
+    # Start figure 
+    fig = Figure(size=(800, 600))
+    
+    # Make title and axis
+    Label(fig[1, 1:2], titl, tellwidth=false)
+    Label(fig[2, 1], L"$ γ_{gm, eff} $", tellwidth=false)
+    ax1 = Axis(fig[3, 1], xlabel=L"$ Δ/γ_{a} $")
+    Label(fig[2, 2], L"$ γ_{rm, eff} $", tellwidth=false)
+    ax2 = Axis(fig[3, 2], xlabel=L"$ Δ/γ_{a} $")
+    
+    # Compare with independent decay case
+    hlines!(ax1, γ_gm, color=:black, label=L"Indep. decay$$")
+    hlines!(ax2, γ_rm, color=:black, label=L"Indep. decay$$")
+    
+    # Plot magnitude squared and the phase of the transmission with bands for standard deviations
+    for (i, label) in enumerate(labels)
+        lines!(ax1, Δ_range, γ_gm_effs[i, :], color=colors[i], label=label)
+        lines!(ax2, Δ_range, γ_rm_effs[i, :], color=colors[i])
+    end
+    
+    # Finish figure
+    axislegend(ax1, position=:lb)
+    display(GLMakie.Screen(), fig)
+    
 end
 
 

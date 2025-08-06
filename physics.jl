@@ -1018,6 +1018,26 @@ end
 
 
 """
+Calculates the transmission through the guided mode (in the case of no phonons)
+for the case of independent decay
+"""
+function transmission_indepDecay(Δ, γ_gm, γ_rm, N)
+    t1 = 1 - 1im*γ_gm/(Δ + 1im*(γ_gm + γ_rm)/2)
+    return t1^N
+end
+
+
+"""
+Calculates the transmission through the guided mode (in the case of no phonons)
+for the case of independent decay
+"""
+function transmission_indepDecay(Δ, γ_gms, γ_rms)
+    ts = @. 1 - 1im*γ_gms/(Δ + 1im*(γ_gms + γ_rms)/2)
+    return prod(ts)
+end
+
+
+"""
 Calculates the emission amplitude for the H-backward mode, corresponding to the reflection
 assuming the atoms to be polarized in xz plane,
 assuming the driving to be in the (l=1,f=1)+(l=-1,f=1) mode (H forward)
@@ -1163,11 +1183,13 @@ Calculate split collective energies from eigenmodes energies and split coupling 
 
 Shallow function, but allows for a good abstraction
 """
-function splitCollEnergies(eigenModesMatrix, tildeG_gm, tildeG_rm)
+function splitCollEnergies(eigenModesMatrix, Δvari, tildeG_gm, tildeG_rm)
+    eigenEnergies_Δv   = [eigenmode'*Δvari*eigenmode for eigenmode in eachcol(eigenModesMatrix)]
     eigenEnergies_gm   = [eigenmode'*tildeG_gm*eigenmode for eigenmode in eachcol(eigenModesMatrix)]
     eigenEnergies_rm   = [eigenmode'*tildeG_rm*eigenmode for eigenmode in eachcol(eigenModesMatrix)]
+    collΔ_Δv, collΓ_Δv = collEnergies(eigenEnergies_Δv)
     collΔ_gm, collΓ_gm = collEnergies(eigenEnergies_gm)
     collΔ_rm, collΓ_rm = collEnergies(eigenEnergies_rm)
-    return collΔ_gm, collΓ_gm, collΔ_rm, collΓ_rm
+    return collΔ_Δv, collΓ_Δv, collΔ_gm, collΓ_gm, collΔ_rm, collΓ_rm
 end
 
