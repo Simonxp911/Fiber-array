@@ -607,7 +607,6 @@ with p0 as an initial guess
 """
 function fitComplexData(xdata, ydata, model, p0)
     sumOfSquares(p) = sum(abs2.(ydata .- model.(xdata, Ref(p))))
-    # sumOfSquares(p) = sum([abs2(ydata[i] - model(x, p)) for (i, x) in enumerate(xdata)])
     res = optimize(sumOfSquares, p0)
     return Optim.minimizer(res)
 end

@@ -460,6 +460,43 @@ function get_tildeGs_split(fiber, d, ηα, array, save_Im_Grm_trans, abstol_Im_G
 end
 
 
+function get_γs(SP)
+    if SP.n_inst == 1
+        site = SP.array[1]
+    else
+        site = SP.array[1][1]
+    end
+    
+    if SP.d == "chiral"
+        ρa = abs(site[1])
+        d = chiralDipoleMoment(SP.fiber, ρa, [site])[1]
+    else
+        if SP.n_inst == 1
+            d = SP.d[1]
+        else
+            d = SP.d[1][1]
+        end
+    end
+    
+    return get_γs(SP.fiber, d, site, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+end
+
+
+function get_γs(fiber, d, site, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+    if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
+    !
+    # Calculate the guided and radiation mode Green's functions
+    Ggm_ = Ggm(fiber, site, site)
+    Grm_ = Grm(fiber, ωa, site, site, (0, 0), 1, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+    
+    # Get the decay rates by appropriately multiplying with the dipole moment and some constants (these are always real and we want to return them as real floats)
+    γ_gm = real(2*3*π/ωa*(d'*imag(Ggm_)*d))
+    γ_rm = real(2*3*π/ωa*(d'*imag(Grm_)*d))
+    
+    return γ_gm, γ_rm
+end
+
+
 function get_tildeFα(tildeG, να)
     return [tildeG - να[α]*I for α in 1:3]
 end

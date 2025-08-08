@@ -339,10 +339,10 @@ function fig_compareImperfectArray_transmission_vs_Δ(Δ_range, T_meanss, T_stds
     
     # Make title and axis
     Label(fig[1, 1:2], titl, tellwidth=false)
-    Label(fig[2, 1], "Transmission coefficient", tellwidth=false)
+    Label(fig[2, 1], L"Transmission coefficient, $ |t|^2 $", tellwidth=false)
     ax1 = Axis(fig[3, 1], limits=(extrema(Δ_range)..., 0, 1), 
                xlabel=L"$ \Delta/γ_{a} $")
-    Label(fig[2, 2], "Transmission phase", tellwidth=false)
+    Label(fig[2, 2], L"Transmission phase, arg$ (t) $", tellwidth=false)
     ax2 = Axis(fig[3, 2], limits=(extrema(Δ_range)..., -π, π), 
                yticks=([-π, -π/2, 0, π/2, π], [L"$ -π $", L"$ -π/2 $", L"$ 0 $", L"$ π/2 $", L"$ π $"]),
                xlabel=L"$ \Delta/γ_{a} $")
@@ -372,11 +372,11 @@ function fig_compareImperfectArray_transmission_vs_X(xs, x_label, T_means, T_std
     
     # Make title and axis
     Label(fig[1, 1:2], titl, tellwidth=false)
-    Label(fig[2, 1], "Transmission coefficient", tellwidth=false)
+    Label(fig[2, 1], L"Transmission coefficient, $ |t|^2 $", tellwidth=false)
     # ax1 = Axis(fig[3, 1], limits=(nothing, nothing, 0, 1), 
     #            xlabel=x_label)
     ax1 = Axis(fig[3, 1], xlabel=x_label, yscale=log10)
-    Label(fig[2, 2], "Transmission phase", tellwidth=false)
+    Label(fig[2, 2], L"Transmission phase, arg$ (t) $", tellwidth=false)
     ax2 = Axis(fig[3, 2], limits=(nothing, nothing, -π, π), 
                yticks=([-π, -π/2, 0, π/2, π], [L"$ -π $", L"$ -π/2 $", L"$ 0 $", L"$ π/2 $", L"$ π $"]),
                xlabel=x_label)
@@ -400,22 +400,22 @@ Plot mean magnitude and phase of transmission amplitude for a specific detuning 
 as a function of N
 with error bars given by the standard deviation
 """
-function fig_compareImperfectArray_transmission_vs_N(Ns, labels, T_means, T_stds, phase_means, phase_stds, T_indepDecays, phase_indepDecays, T_fits, phase_fits, titl)
+function fig_compareImperfectArray_transmission_vs_N(Ns, T_means, T_stds, phase_means, phase_stds, T_indepDecays, phase_indepDecays, T_fits, phase_fits, β_indepDecay, labels, titl)
     # Prepare colors
     colors = distinguishable_colors(length(labels), [RGB(1,1,1), RGB(0,0,0)], dropseed=true)
     
     # Start figure 
-    fig = Figure(size=(800, 600))
+    fig = Figure(size=(1200, 700))
     
     # Make title and axis
     Label(fig[1, 1:2], titl, tellwidth=false)
-    Label(fig[2, 1], L"Transmission coefficient$$", tellwidth=false)
+    Label(fig[2, 1], L"Transmission coefficient, $ |t|^2 $", tellwidth=false)
     ax1 = Axis(fig[3, 1], xlabel=L"$ N $", yscale=log10)
-    Label(fig[2, 2], L"Transmission phase$$", tellwidth=false)
+    Label(fig[2, 2], L"Transmission phase, arg$ (t) $", tellwidth=false)
     ax2 = Axis(fig[3, 2], xlabel=L"$ N $")
     
     # Compare with independent decay case
-    lines!(ax1, Ns, T_indepDecays, color=:black, label=L"Indep. decay$$")
+    lines!(ax1, Ns, T_indepDecays, color=:black, label=L"Indep. decay, $ β = %$(round(β_indepDecay, digits=3)) $")
     lines!(ax2, Ns, phase_indepDecays, color=:black)
     
     # Plot magnitude squared and the phase of the transmission with bands for standard deviations
@@ -435,7 +435,7 @@ end
 """
 Plot the effective β-factor as a function of detuning for multiple ff
 """
-function fig_βfactor_vs_Δ(Δ_range, labels, βs, β_indepDecay, titl)
+function fig_βfactor_vs_Δ(Δ_range, βs, β_indepDecay, labels, titl)
     # Prepare colors
     colors = distinguishable_colors(length(labels), [RGB(1,1,1), RGB(0,0,0)], dropseed=true)
     
@@ -463,7 +463,7 @@ end
 """
 Plot the effective decay rates as a function of detuning for multiple ff
 """
-function fig_effectiveDecayRates_vs_Δ(Δ_range, labels, γ_gm_effs, γ_rm_effs, γ_gm, γ_rm, titl)
+function fig_effectiveDecayRates_vs_Δ(Δ_range, γ_gm_effs, γ_rm_effs, γ_gm, γ_rm, labels, titl)
     # Prepare colors
     colors = distinguishable_colors(length(labels), [RGB(1,1,1), RGB(0,0,0)], dropseed=true)
     
@@ -716,8 +716,7 @@ function fig_eigenEnergies_vs_k(dominant_ks, collΔ, collΓ, weights_abs, κ, ti
     Label(fig[end+1, 1], L"Collective energies, $ Δ_\text{coll}/γ_{a} $", tellwidth=false)
     ax1 = Axis(fig[end+1, 1])
     Label(fig[end+1, 1], L"Collective decay rates, $ Γ_\text{coll}/γ_{a} $", tellwidth=false)
-    ax2 = Axis(fig[end+1, 1])
-            #    yscale=log10)
+    ax2 = Axis(fig[end+1, 1], yscale=log10)
     Label(fig[end+1, 1], L"Resonance weights, $ |w| $", tellwidth=false)
     ax3 = Axis(fig[end+1, 1], 
                xlabel=L"$ λ_{a}k_z $",
@@ -902,4 +901,4 @@ function fig_state(rs, v, ks, vFT, dom_ks, collΓ_gm, collΓ_rm, v_eigenModes, z
 end
 
 
-# save("C:\\Users\\Simon\\Downloads\\compareImperfectArrayTransmissionN100_eta$(labels[1][end-16:end-14]).png", fig)
+# save("C:\\Users\\Simon\\Downloads\\FILENAME.png", fig)

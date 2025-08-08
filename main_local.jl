@@ -42,7 +42,7 @@ function define_SP_BerlinCs()
     να0_ul = να0/γ0 #unitless version of να0
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-1.0, 1.0, 300)
+    Δ_specs = (-2.0, 2.0, 300)
     
     # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
     ΔvariDependence = "flat"
@@ -67,7 +67,7 @@ function define_SP_BerlinCs()
     ff = 1.0
     pos_unc = 0.0
     # pos_unc = ηα0/ωa
-    n_inst = 1
+    n_inst = 100
     
     # Generate the array, its description, and the number of atoms
     array, arrayDescription, N = get_array(arrayType, N_sites, ρa0_ul, a0_ul, ff, pos_unc, n_inst)
@@ -86,6 +86,8 @@ function define_SP_BerlinCs()
     # dDescription = "chiral"
     d = rightCircularDipoleMoment(array)
     dDescription = "rgtCrc"
+    # d = [[1, 0, 0] for site in array]
+    # dDescription = "xPol"
     
     # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
     incField_wlf = [(1, 1, 1), (1, -1, 1)]
@@ -261,14 +263,15 @@ function main()
     # show(SP)
     
     
+    
     # plot_propConst_inOutMom(ωρfn_ranges)
     # plot_coupling_strengths(SP)
     # plot_arrayIn3D(SP)
     # plot_σBαTrajectories_σBαSS(SP)
-    plot_transmission_vs_Δ(SP)
+    # plot_transmission_vs_Δ(SP)
     # plot_imperfectArray_transmission_vs_Δ(SP)
     # plot_compareImperfectArray_transmission_vs_Δ(SP)
-    # plot_effectiveBetaFactor(SP)
+    plot_effectiveBetaFactor(SP)
     # plot_steadyState_radiation_Efield(SP)
     # plot_radiation_Efield(SP)
     # plot_GnmEigenModes(SP)
@@ -477,8 +480,7 @@ function plot_compareImperfectArray_transmission_vs_Δ(SP)
                 push!(labels, L"$ N_{sites} = %$(N_sites) $, $ ff = %$(ff) $")
                 # push!(labels, L"$ η_{α} = %$(ηαFactor) \cdot η_{α}^{(0)} $")                
                 
-                γ_gm = 2*diag(imag(get_tildeGs(SP.fiber, SP.d, SP.array[1][1:1], (true, false, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)))
-                γ_rm = 2*diag(imag(get_tildeGs(SP.fiber, SP.d, SP.array[1][1:1], (false, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)))
+                γ_gm, γ_rm = get_γs(SP)
                 N = Int(floor(N_sites*ff))
                 t_indepDecay = transmission_indepDecay.(SP.Δ_range, γ_gm, γ_rm, N)
                 push!.([T_indepDecayss, phase_indepDecayss], prep_squaredNorm_phase(t_indepDecay))
@@ -528,13 +530,12 @@ function plot_effectiveBetaFactor(SP)
                            572  667   800  1000  1334  1600  2000  2667  4000   8000;
                            715  834  1000  1250  1667  2000  2500  3334  5000  10000], dims=2) # N = 10, 40, 70, 100, 200, 300, 400, 500
     Ns = [10, 40, 70, 100, 200, 300, 400, 500]
-    arrayType_list = ["1Dchain", "randomZ"]
+    arrayType_list = ["1Dchain", "randomZ"][1:1]
     
     # Get independent decay transmissions
     T_indepDecays = zeros(length(Ns), length(SP.Δ_range))
     phase_indepDecays = deepcopy(T_indepDecays)
-    γ_gm = 2*imag(get_tildeGs(SP.fiber, SP.d, SP.array[1][1:1], (true, false, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)[1])
-    γ_rm = 2*imag(get_tildeGs(SP.fiber, SP.d, SP.array[1][1:1], (false, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)[1])
+    γ_gm, γ_rm = get_γs(SP)
     for (i, N) in enumerate(Ns)
         t_indepDecay = transmission_indepDecay.(SP.Δ_range, γ_gm, γ_rm, N)
         # t_indepDecay = scan_transmission_indepDecay(SP)
@@ -575,31 +576,31 @@ function plot_effectiveBetaFactor(SP)
     βs = γ_gm_effs./(γ_gm_effs + γ_rm_effs)
     
     # Unwrap phase for clarity in plots
-    phase_means = mapslices(unwrapPhase, phase_means, dims=4)
-    phase_indepDecays = mapslices(unwrapPhase, phase_indepDecays, dims=2)
+    phase_means = mapslices(unwrapPhase, phase_means, dims=3)
+    phase_indepDecays = mapslices(unwrapPhase, phase_indepDecays, dims=1)
     phase_fits = mapslices(unwrapPhase, phase_fits, dims=3)
     
     # Plot example of fits
     Δ_index = 75
+    β_indepDecay = γ_gm/(γ_gm + γ_rm)
     for (i, arrayType) in enumerate(arrayType_list)
         labels = [L" ff$ = %$(ff) $, $ β = %$(round(βs[i, j, Δ_index], digits=3)) $" for (j, ff) in enumerate(ff_list)]
         titl = prep_imperfectArray_transmission_title(SP) * "\narrayType: $arrayType" * "\nΔ = $(SP.Δ_range[Δ_index])"
-        fig_compareImperfectArray_transmission_vs_N(Ns, labels, T_means[i, :, :, Δ_index], T_stds[i, :, :, Δ_index], phase_means[i, :, :, Δ_index], phase_stds[i, :, :, Δ_index], T_indepDecays[:, Δ_index], phase_indepDecays[:, Δ_index], T_fits[i, :, :, Δ_index], phase_fits[i, :, :, Δ_index], titl)
+        fig_compareImperfectArray_transmission_vs_N(Ns, T_means[i, :, :, Δ_index], T_stds[i, :, :, Δ_index], phase_means[i, :, :, Δ_index], phase_stds[i, :, :, Δ_index], T_indepDecays[:, Δ_index], phase_indepDecays[:, Δ_index], T_fits[i, :, :, Δ_index], phase_fits[i, :, :, Δ_index], β_indepDecay, labels, titl)
     end
     
     # Plot β-factors
-    β_indepDecay = γ_gm/(γ_gm + γ_rm)
     for (i, arrayType) in enumerate(arrayType_list)
         labels = [L" ff$ = %$(ff) $" for (j, ff) in enumerate(ff_list)]
         titl = prep_imperfectArray_transmission_title(SP) * "\narrayType: $arrayType"
-        fig_βfactor_vs_Δ(SP.Δ_range, labels, βs[i, :, :], β_indepDecay, titl)
+        fig_βfactor_vs_Δ(SP.Δ_range, βs[i, :, :], β_indepDecay, labels, titl)
     end
     
     # Plot effective decay rates
     for (i, arrayType) in enumerate(arrayType_list)
         labels = [L" ff$ = %$(ff) $" for (j, ff) in enumerate(ff_list)]
         titl = prep_imperfectArray_transmission_title(SP) * "\narrayType: $arrayType"
-        fig_effectiveDecayRates_vs_Δ(SP.Δ_range, labels, γ_gm_effs[i, :, :], γ_rm_effs[i, :, :], γ_gm, γ_rm, titl)
+        fig_effectiveDecayRates_vs_Δ(SP.Δ_range, γ_gm_effs[i, :, :], γ_rm_effs[i, :, :], γ_gm, γ_rm, labels, titl)
     end
 end
 
@@ -840,9 +841,9 @@ function plot_GnmFourierTransformed(SP)
     titl = prep_GnmEigenEnergies_title(SP)
     titl = "Fourier transformed coupling\n" * titl
     weights_abs = zeros(size(collΔ))
-    fig_eigenEnergies_vs_k(kz_range, collΔ, abs.(collΓ), weights_abs, SP.fiber.propagation_constant, titl) 
+    # fig_eigenEnergies_vs_k(kz_range, collΔ, abs.(collΓ), weights_abs, SP.fiber.propagation_constant, titl) 
     fig_eigenEnergies_vs_k(kz_range, collΔ_gm, collΓ_gm, weights_abs, SP.fiber.propagation_constant, titl * "\nGuided contribution") 
-    fig_eigenEnergies_vs_k(kz_range, collΔ_rm, collΓ_rm, weights_abs, SP.fiber.propagation_constant, titl * "\nRadiated contribution") 
+    # fig_eigenEnergies_vs_k(kz_range, collΔ_rm, collΓ_rm, weights_abs, SP.fiber.propagation_constant, titl * "\nRadiated contribution") 
 end
 
 
@@ -923,16 +924,6 @@ end
 
 
 
-# TODO list:
-
-# Make trans vs. ff plots for right circular dipole moments
-
-# Metric of interaction strength
-# Quantum motion regime
-# Pulse driving
-# Strontium parameters
-# Write notes with plots
-
 
 # Talk with Thomas about:
     # Arno presented an argument that the increase in decay rate due to ground state motion is due to suddenly having "which path"-information
@@ -940,85 +931,21 @@ end
         # If you somehow get information of where light is emitted, the perfect destructive interference disappears
         # And now, if some atom occasionally also generates a phonon when it emits a photon you would be able to know which atom emitted, by looking at where the phonon is
         # But I don't understand this "which path" stuff generally, and the calculation of the decay rates including the eta^2 shift does not involve the phonon part of the state space?
-
-# Understand peak in decay rate vs kz
-    # Are these modes always "spread" into the light cone and that is why they can radiate?
-    # Could a mode that lives entirely outside of the light cone be radiating because of the finite size of the system and thus the breaking of translational symmetry?
-    # The plotted decay rates are the TOTAL decay rates - could it be that their decay into free space is small but their decay into the fiber is large?
-    # Divide decay rate (and energies?) by taking expectation value of gm or rm part of Gnm with respect to eigenmodes of full Gnm
-    # FT Im_Grm_trans in z?
-    # Understand kink in decay rate band at negative light cone boundary
-    # Plot bands for non-chiral case or at least sigma+ dipole moment 
-    # Calculate emitted guided and radiation light through cylindrical surface around a collection of atoms? 
-        # Intensity on surface or flux through surface or?
-        # See if these quantities are related simply to the expectation value of the Im_Ggm and Im_Grm, i.e. do the split decay rates really tell us about the ratio of light emitted in the guided or radiated modes?
-    # Band structure quickly converges as N increases, but fraction that is from guided or radiation GF changes a lot?
-
+        
+        
+### Major things TODO:
 # Metrics of interaction strength
-    # Slope of phase in area where T is close to 1
-    # Total amount of phase accumulated in area where T is close to 1 (look at unfolded phase plots)
-    # T = e^(-OD) = e^(4*β_eff*N) - effective definition of β-factor?
-        # Here, the β-factor becomes larger when there is a lot of loss?
-        # Also, this expression must be only for a certain regime - namely small β, as e^(4*β_eff*N) easily becomes greater than 1 otherwise
-    # Consider phase per atom
-        # Is the large accumulated phase we have simply due to lots of atoms? 
     # Read up on slow light (it comes from a lot of phase per atom?), maybe we have it here without three-level/EIT setup?
-    # Compare with β-factor for a single atom or analytic expressions for independent atoms?
-    # Winding number of phase?
-    # Compare transmission of N and N+1 atoms - deduce an effective single-atom β-factor from this, and compare with actual β-factor?
-        # Derive how transmission for independent decay is power of single atom transmission, and how this transmission depends on β - from this we can define a β from the ratio of transmissions for N and N+1 atoms
+    # t = exp(χN), look at ratio of imaginary and real part of susceptibility χ (these give the phase and loss, depending on whether an i is included in the exponent)
+    # Calculate phase per loss for transmission vs. N?
+    # Alternative metrics: Slope of phase close to T=1, phase per loss, phase per atom close to T=1, integral of phase over interval with T=1
     
-        # See what factor you get each time you add an atom
-        # For independent atoms you get a constant factor on the transmission for each atom
-        # Calculate that number when including the motion and ff and show that the number is better than independent case
-        # I.e. you have less loss per phase
-        # Fix ff and change number of sites, make transmission vs. ff as before
-        # t = exp(χN)
-        # Fix ff, change N, see if χ converges to something
-        # Look at ratio of imaginary and real part (these give the phase and loss)
-        # Look at independent case whether this ratio is "best" on resonance Δ = 0 (it's not. at Δ = 0, the phase is zero. best ratio is found slightly off resonance)
-        # Compare with independent case, analytically
-        # Fit transmission (inlc. motion and ff) with the expression from independent case to get a effective beta
-        # Try to plot χ vs detuning instead of t?
-    
-    # ... Compare with independent atoms
-
-# Consider a = 500 nm - make t vs ff plots and talk to Philip because he thought that it explained some change in beta?
-
-# Try to calculate with circular dipole moment (circular in xz plane) - it's closer to the experiment
-    # Also calculate reflection (emission in all four guided modes)
-
-# Consider small lattice spacing to see if holes matter less? (For small lattice spacing a single hole is not resolved by the wavelength)
-
-# Zoom in on resonances in T (for no motion or imperfections) and consider phase shift across these
-    # To see what could be achieved in the ideal case (in terms of a narrow resonance with near unity transmission and strong light-matter coupling)
-
-# Make randomZ array but with a minimum distance allowed (use the lattice spacing as minimum distance? Then it would only be different from 1Dchain for low ff)
-    # Maybe t vs ff plots will level out/find a plateau 
-    # This is relevant for comparing with the ordered case, where there is a minimum distance allowed
-
-# Look at modes of Gnm with only eta^2 corrections to Hamiltonian but without bsigma part of Hilbert space (find eigenbasis of only first block of coupling matrix with eta^2 included)
-    # Make notes about the pleateu'ing of the decay rate
-    # See how plateau scales with eta^2? I guess it's obvious that is scales as eta^2
-
 # Look at gamma much smaller than trap frequencies (presently we have gamma 50 times greater than the traps)
     # With gamma much greater than trap frequencies, the atoms decay before they move, so it should match with classical disorder (which is indeed what we see)
     # If gamma is smaller we will see more quantum effects due to motion, and ther should be a difference between the phonon calculation and simply including classical disorder
-    # Make notes about the phonon modes moving away and becoming irrelevant due to weak driving
-
-# Plot total "population" in sigma part of wave function and in bsigma part of wave function - find some metric for how much weight each wave function has
-    # plot this weight when doing loss and eigenmodes - maybe color markers of decay rate or have another line of plotting
-
-# When looking at loss spectrum, and we have extra significant peaks appearing when including phonons, 
-    # these are exactly polaron modes which actually have an effect on the transmission
-    # whereas for smaller gamma the phonon modes (polaron modes) are pushed far away
-
-# Effect of individual eta - scale each individually to see their effect
-    # We previously tentatively concluded that axial eta is the most significant
-    # Argue which of the ηα is the most significant by looking at the parameter matrices
-        # If certain derivatives of tildeΩ or tildeG are large, the corresponding ηα would have a greater effect
-        # With this we can say which aspect of the atomic trap is the most important (radial, azimuthal, or axial trapping)
-        # Six curves for Ωnα and Ωnαα, twelve heatmaps for Gnmα1, Gnmα2, Gnmαα11, and Gnmαα22 (potentially Gnmα1 and Gnmα2 will show the same plot and likewise for Gnmαα11 and Gnmαα22 - so only six heatmaps)
+    # When looking at loss spectrum, and we have extra significant peaks appearing when including phonons, 
+        # these are exactly polaron modes which actually have an effect on the transmission
+        # whereas for smaller gamma the phonon modes (polaron modes) are pushed far away
 
 # Consider a pulse/localized excitation in a very long chain to see their dynamics before they reach the ends of the chain, do they decay before the it hits the end?
     # Use transmission spectrum to predict the dynamics of a pulse that is narrow enough in momentum to live within the range of detuning where the transmission is close to 1 when doing Δvari
@@ -1027,22 +954,33 @@ end
     # Maybe a pulse will not see the narrow loss resonances, because they take a long time to populate?
     # Somehow calculate the loss of the pulse? I.e. does the pulse stay in the chain more than steady state light..?
 
-# Decompose state in terms of eigenmodes
-    # Decompose steady state
-    # See how the steady state distribution is over momentum, energies, decay rates, and weights
-    # Does it make sense?
-    # Is it consistent with expectations from Fourier transforming steady state?
-    # Look at dynamics of kz components
-    # Does the final state ever have significant components within the light cone?
-    # Writing state in terms of eigenmodes shows transmission is sum of eigenmode coefficients with weights given by driving and mode overlap
-        # Transmission is generally a sum of many significant contributions, giving some unremarkable transmission
-        # Changing detuning even slightly can bring in and out a narrow resonance that may thus locally change the transmission dramatically
-        # All other contributions are pretty much constant there, just giving some complex background for this single contribution to interfere with
-        # Thus even a very narrow, very subradiant, mode can suddenly change the transmission significantly
-        # Thus even though the steady as written in terms of the eigenmodes only changes one or two of its entries as the detuning is varied slightly, the transmission may change significantly
+# Calculate with Strontium parameters
+
+
+
+### Minor things TODO:
+# Consider a = 500 nm - make t vs ff plots and talk to Philip because he thought that it explained some change in beta?
+
+# Consider small lattice spacing to see if holes matter less? (For small lattice spacing a single hole is not resolved by the wavelength)
+
+# Band structure quickly converges as N increases, but fraction that is from guided or radiation GF changes a lot?
+
+# Zoom in on resonances in T (for no motion or imperfections) and consider phase shift across these
+    # To see what could be achieved in the ideal case (in terms of a narrow resonance with near unity transmission and strong light-matter coupling)
+
+# Make randomZ array but with a minimum distance allowed (use the lattice spacing as minimum distance? Then it would only be different from 1Dchain for low ff)
+    # Maybe t vs ff plots will level out/find a plateau 
+    # This is relevant for comparing with the ordered case, where there is a minimum distance allowed
+
+# Effect of individual eta - scale each individually to see their effect
+    # We previously tentatively concluded that axial eta is the most significant
+    # Argue which of the ηα is the most significant by looking at the parameter matrices
+        # If certain derivatives of tildeΩ or tildeG are large, the corresponding ηα would have a greater effect
+        # With this we can say which aspect of the atomic trap is the most important (radial, azimuthal, or axial trapping)
+        # Six curves for Ωnα and Ωnαα, twelve heatmaps for Gnmα1, Gnmα2, Gnmαα11, and Gnmαα22 (potentially Gnmα1 and Gnmα2 will show the same plot and likewise for Gnmαα11 and Gnmαα22 - so only six heatmaps)
 
 # Is it relevant for our case that excitations with a certain kz (if this parameter even makes sense to use)
-# can "jump" to another kz' by creating a phonon with momentum kz - kz'?
+    # can "jump" to another kz' by creating a phonon with momentum kz - kz'?
     # If the kz excitation mode has an energy that matches that of kz' plus the phonon mode this jump is resonant
     # But we only have momentum at kappa, or?
 
@@ -1058,6 +996,25 @@ end
         # and a small perturbation due to the interaction between the excitation sector and the phonon sector,
         # which is small as it scales with eta
 
+# Figure out the calculation of Ggm in the limit of z1=z2
+    # an overall sign depending on the sign of Δz = ±eps?
+    # if the limit depends on from which direction you approach it, that is problematic?
+
+# Implement the correct real part of the radiation GF
+    # But maybe not relevant since atoms are far-ish from the fiber, such that using vacuum-approximation should be good
+
+
+
+### Fixes and new features TODO:
+# Consider doing statistics on t instead of T and arg(t)
+    # Calculate T and arg(t) after taking the mean and std
+    # Asymmetric interval of confidence for T, since it has to be positive?
+
+# Look at calculation of reflection/emission in other guided modes - is it working properly? Plot all four emissions
+    
+# Plot total "population" in sigma part of wave function and in bsigma part of wave function - find some metric for how much weight each wave function has
+    # plot this weight when doing loss and eigenmodes - maybe color markers of decay rate or have another line of plotting
+
 # Figure out T>1 error for doubleChain 
     # Something with the coupling..?
     # Or dipole moment cannot be such that both sides of the fiber couple to the same mode?
@@ -1065,19 +1022,12 @@ end
     # The atoms are driven by the guided light, so they enter a state that matches the polarization of that light
     # so they should indeed be sigma+ and sigma- polarized above and below respectively
 
-# Find out why transmission phase sometimes has an extra dip/swing..? (i.e. whether the winding number is different for some random instantiations)
-
-# Implement analytic calculation of steady state and transmission for the case of no radiation interactions
-
 # Plot the Poynting vector instead of the radiation intensity to see where the light is leaked out of the atomic array
 
 # We include terms that go as eta^3 in terms like tildeG*B_α or tildeGα1*σ
     # Removing them can be messy (the eta^2 contribution in σ is not easily removed...)
     # By construction this error should be negligible
-
-# Figure out the calculation of Ggm in the limit of z1=z2
-    # an overall sign depending on the sign of Δz = ±eps?
-    # if the limit depends on from which direction you approach it, that is problematic?
+    # Use only zeroth order tildeFα in steadyState? Reduce to second order in eta in other ways (i.e. calculate for eta=0 and eta≠0 to extract exact dependencies)? Time evolution anyways also finds results that are effectively higher order
 
 # Optimize calculation of Im_Grm_trans for the case of classical disorder
 
@@ -1096,9 +1046,6 @@ end
 # Implement saving and loading of the parameter matrices?
 
 # Clean up and split up files? physics.jl and utility.jl in particular
-
-# Implement the correct real part of the radiation GF
-    # But maybe not relevant since atoms are far-ish from the fiber, such that using vacuum-approximation should be good
     
 # When calculating Im_Grm_trans, exploit that some entries appear to be zero depending on derivOrder and α,
     # presumably because of the simple array structure
@@ -1107,8 +1054,6 @@ end
     # In some optimal way calculate all things needed for the scan
     # Put in a struct and use as input for scan
     # To optimize calculation time when scanning
-
-# Use only zeroth order tildeFα in steadyState? Reduce to second order in eta in other ways (i.e. calculate for eta=0 and eta≠0 to extract exact dependencies)? Time evolution anyways also finds results that are effectively higher order
 
 # Update interface comments and make a description of notation/conventions somewhere
 
