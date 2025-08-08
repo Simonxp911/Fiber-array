@@ -56,17 +56,36 @@ Prepare the means and standard deviations of the transmission as calculated over
 a set of imperfect atomic arrays
 """
 function prep_imperfectArray_transmission(ts)
-    Ts     = [abs2.(t) for t in ts]
-    phases = [angle.(t) for t in ts]
-    # phases = [vcat([angle(t[1])], angle(t[1]) .+ cumsum(angle.(t[2:end]./t[1:end-1]))) for t in ts]
+    ts_mat = vectorOfRows2Matrix(ts)
+    return squeeze(mean(real.(ts_mat), dims=1)),
+           squeeze( std(real.(ts_mat), dims=1)), 
+           squeeze(mean(imag.(ts_mat), dims=1)),
+           squeeze( std(imag.(ts_mat), dims=1))
     
-    T_mat      = vectorOfRows2Matrix(Ts)
-    phases_mat = vectorOfRows2Matrix(phases)
-    return           squeeze(mean(T_mat, dims=1)), 
-                     squeeze( std(T_mat, dims=1)), 
-                     squeeze(mean(phases_mat, dims=1)), 
-        #    wrapPhase(squeeze(mean(phases_mat, dims=1))), 
-                     squeeze( std(phases_mat, dims=1))
+    # Ts     = [abs2.(t) for t in ts]
+    # phases = [angle.(t) for t in ts]
+    # # phases = [vcat([angle(t[1])], angle(t[1]) .+ cumsum(angle.(t[2:end]./t[1:end-1]))) for t in ts]
+    
+    # T_mat      = vectorOfRows2Matrix(Ts)
+    # phases_mat = vectorOfRows2Matrix(phases)
+    # return           squeeze(mean(T_mat, dims=1)), 
+    #                  squeeze( std(T_mat, dims=1)), 
+    #                  squeeze(mean(phases_mat, dims=1)), 
+    #     #    wrapPhase(squeeze(mean(phases_mat, dims=1))), 
+    #                  squeeze( std(phases_mat, dims=1))
+end
+
+
+"""
+Prepare the means and standard deviations of T and arg(t) from the same quantities of t
+"""
+function prep_T_argt_statistics(t_real_means, t_real_stds, t_imag_means, t_imag_stds)
+    T_means     = @. t_real_means^2 + t_imag_means^2
+    T_stds      = @. sqrt(4*t_real_means^2*t_real_stds^2 + 4*t_imag_means^2*t_imag_stds^2)
+    phase_means = @. atan(t_imag_means, t_real_means)
+    phase_stds  = @. sqrt(  (-t_imag_means/(t_real_means^2 + t_imag_means^2))^2*t_real_stds^2
+                          + ( t_real_means/(t_real_means^2 + t_imag_means^2))^2*t_imag_stds^2 )
+    return T_means, T_stds, phase_means, phase_stds
 end
 
 

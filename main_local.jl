@@ -270,8 +270,8 @@ function main()
     # plot_σBαTrajectories_σBαSS(SP)
     # plot_transmission_vs_Δ(SP)
     # plot_imperfectArray_transmission_vs_Δ(SP)
-    # plot_compareImperfectArray_transmission_vs_Δ(SP)
-    plot_effectiveBetaFactor(SP)
+    plot_compareImperfectArray_transmission_vs_Δ(SP)
+    # plot_effectiveBetaFactor(SP)
     # plot_steadyState_radiation_Efield(SP)
     # plot_radiation_Efield(SP)
     # plot_GnmEigenModes(SP)
@@ -400,7 +400,7 @@ function plot_imperfectArray_transmission_vs_Δ(SP)
     folder = "imperfectArray_T_phase/"
     
     if isfile(saveDir * folder * filename * ".txt") 
-        T_means, T_stds, phase_means, phase_stds = eachrow(load_as_txt(saveDir * folder, filename))
+        t_real_means, t_real_stds, t_imag_means, t_imag_stds = eachrow(load_as_txt(saveDir * folder, filename))
     else
         ts = []
         if typeof(SP.d) == String
@@ -416,11 +416,12 @@ function plot_imperfectArray_transmission_vs_Δ(SP)
         end
         
         # Prepare means and standard deviations of (squared) magnitudes and phases
-        T_means, T_stds, phase_means, phase_stds = prep_imperfectArray_transmission(ts)
-        formattedResult = vectorOfRows2Matrix([T_means, T_stds, phase_means, phase_stds])
+        t_real_means, t_real_stds, t_imag_means, t_imag_stds = prep_imperfectArray_transmission(ts)
+        formattedResult = vectorOfRows2Matrix([t_real_means, t_real_stds, t_imag_means, t_imag_stds])
         save_as_txt(formattedResult, saveDir * folder, filename)
     end
     
+    T_means, T_stds, phase_means, phase_stds = prep_T_argt_statistics(t_real_means, t_real_stds, t_imag_means, t_imag_stds)
     titl = prep_imperfectArray_transmission_title(SP)
     fig_imperfectArray_transmission_vs_Δ(SP.Δ_range, T_means, T_stds, phase_means, phase_stds, titl)
 end
@@ -474,7 +475,7 @@ function plot_compareImperfectArray_transmission_vs_Δ(SP)
             folder = "imperfectArray_T_phase/"
         
             if isfile(saveDir * folder * filename * ".txt") 
-                push!.([T_meanss, T_stdss, phase_meanss, phase_stdss], eachrow(load_as_txt(saveDir * folder, filename)))
+                push!.([T_meanss, T_stdss, phase_meanss, phase_stdss], prep_T_argt_statistics(eachrow(load_as_txt(saveDir * folder, filename))...))
                 # push!(labels, L"$ ff = %$(ff) $, $ ηα = %$(ηαFactor) \cdot ηα0 $")
                 # push!(labels, L"$ ff = %$(ff) $")
                 push!(labels, L"$ N_{sites} = %$(N_sites) $, $ ff = %$(ff) $")
@@ -543,8 +544,8 @@ function plot_effectiveBetaFactor(SP)
     end
     
     # Load pre-calculated transmissions
-    T_means = zeros(length(arrayType_list), length(ff_list), length(Ns), length(SP.Δ_range))
-    T_stds, phase_means, phase_stds = deepcopy(T_means), deepcopy(T_means), deepcopy(T_means)
+    t_real_means = zeros(length(arrayType_list), length(ff_list), length(Ns), length(SP.Δ_range))    
+    t_real_stds, t_imag_means, t_imag_stds, T_means, T_stds, phase_means, phase_stds = deepcopy(T_means), deepcopy(T_means), deepcopy(T_means), deepcopy(T_means), deepcopy(T_means), deepcopy(T_means), deepcopy(T_means)
     for (i, arrayType) in enumerate(arrayType_list), (j, ff) in enumerate(ff_list), (k, N_sites) in enumerate(Nsites_list[:, j])
         arrayDescription = arrayDescript(arrayType, N_sites, SP.ρa, SP.a, ff, SP.pos_unc)
         postfix = get_postfix_imperfectArray_transmission(SP.Δ_specs, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.incField_wlf, SP.n_inst, SP.tildeG_flags, arrayDescription, SP.fiber.postfix)
@@ -552,7 +553,8 @@ function plot_effectiveBetaFactor(SP)
         folder = "imperfectArray_T_phase/"
     
         if isfile(saveDir * folder * filename * ".txt")
-            T_means[i, j, k, :], T_stds[i, j, k, :], phase_means[i, j, k, :], phase_stds[i, j, k, :] = eachrow(load_as_txt(saveDir * folder, filename))
+            t_real_means[i, j, k, :], t_real_stds[i, j, k, :], t_imag_means[i, j, k, :], t_imag_stds[i, j, k, :] = eachrow(load_as_txt(saveDir * folder, filename))
+            T_means[i, j, k, :], T_stds[i, j, k, :], phase_means[i, j, k, :], phase_stds[i, j, k, :] = prep_T_argt_statistics(t_real_means[i, j, k, :], t_real_stds[i, j, k, :], t_imag_means[i, j, k, :], t_imag_stds[i, j, k, :])
         else
             throw(ArgumentError("The following file can not be found: " * filename))
         end
@@ -566,7 +568,7 @@ function plot_effectiveBetaFactor(SP)
     for (i, arrayType) in enumerate(arrayType_list), (j, ff) in enumerate(ff_list), (l, Δ) in enumerate(SP.Δ_range)
         if l < 100
             model(x, p) = transmission_indepDecay(Δ, p..., x)
-            ydata = sqrt.(T_means[i, j, :, l]).*exp.(1im*phase_means[i, j, :, l])
+            ydata = t_real_means[i, j, :, l] + 1im*t_imag_means[i, j, :, l]
             pmin = fitComplexData(Ns, ydata, model, [γ_gm, γ_rm])
             
             T_fits[i, j, :, l], phase_fits[i, j, :, l] = prep_squaredNorm_phase(model.(Ns, Ref(pmin)))
