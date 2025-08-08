@@ -520,7 +520,7 @@ function interpolation1D_baseInterpolation(Fs_known)
             itp[i] = interpolation1D_baseInterpolation(Fs_known_i)
         end
     else
-        itp = interpolate(Fs_known, BSpline(Cubic(Flat(OnGrid()))))
+        itp = interpolate(Fs_known, BSpline(Cubic(Interpolations.Flat(OnGrid()))))
     end
     return itp
 end
