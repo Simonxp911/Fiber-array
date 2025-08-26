@@ -124,7 +124,8 @@ function prep_transmission_title(SP)
         "Array: " * SP.arrayDescription,
         "tildeG flags: $(join(SP.tildeG_flags, ", "))",
         "να = $(ro.(SP.να)), ηα = $(ro.(SP.ηα)),",
-        "Dipole moments: " * SP.dDescription
+        "Dipole moments: " * SP.dDescription,
+        "No phonons: " * string(SP.noPhonons)
     ]
     return join(title_components, "\n")
 end
@@ -140,7 +141,8 @@ function prep_imperfectArray_transmission_title(SP)
         "tildeG flags: $(join(SP.tildeG_flags, ", "))",
         "n_inst: $(SP.n_inst)",
         "να = $(ro.(SP.να)), ηα = $(ro.(SP.ηα)),",
-        "Dipole moments: " * SP.dDescription
+        "Dipole moments: " * SP.dDescription,
+        "No phonons: " * string(SP.noPhonons)
     ]
     return join(title_components, "\n")
 end
@@ -156,6 +158,7 @@ function prep_state_title(SP, Δ)
         "tildeG flags: $(join(SP.tildeG_flags, ", "))",
         "να = $(ro.(SP.να)), ηα = $(ro.(SP.ηα)),",
         "Dipole moments: " * SP.dDescription,
+        "No phonons: " * string(SP.noPhonons),
         "Δ = $(ro(Δ))"
     ]
     return join(title_components, "\n")
@@ -171,7 +174,8 @@ function prep_GnmEigenModes_title(SP)
         "Array: " * SP.arrayDescription,
         "tildeG flags: $(join(SP.tildeG_flags, ", "))",
         "να = $(ro.(SP.να)), ηα = $(ro.(SP.ηα)),",
-        "Dipole moments: " * SP.dDescription
+        "Dipole moments: " * SP.dDescription,
+        "No phonons: " * string(SP.noPhonons)
     ]
     return join(title_components, "\n")
 end
@@ -186,7 +190,8 @@ function prep_GnmEigenEnergies_title(SP)
         "Array: " * SP.arrayDescription,
         "tildeG flags: $(join(SP.tildeG_flags, ", "))",
         "να = $(ro.(SP.να)), ηα = $(ro.(SP.ηα)),",
-        "Dipole moments: " * SP.dDescription
+        "Dipole moments: " * SP.dDescription,
+        "No phonons: " * string(SP.noPhonons)
     ]
     return join(title_components, "\n")
 end
@@ -201,7 +206,8 @@ function prep_transmissionWithGnmEigenEnergies_title(SP)
         "Array: " * SP.arrayDescription,
         "tildeG flags: $(join(SP.tildeG_flags, ", "))",
         "να = $(ro.(SP.να)), ηα = $(ro.(SP.ηα)),",
-        "Dipole moments: " * SP.dDescription
+        "Dipole moments: " * SP.dDescription,
+        "No phonons: " * string(SP.noPhonons)
     ]
     return join(title_components, "\n")
 end

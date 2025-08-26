@@ -383,7 +383,9 @@ function fig_compareImperfectArray_transmission_vs_X(xs, x_label, T_means, T_std
     
     # Plot magnitude squared and the phase of the transmission with bands for standard deviations
     errorbars!(ax1, xs, T_means, T_stds, color=:black, whiskerwidth=10, label=L"Incl. inter.$$")
+    scatter!(ax1, xs, T_means, color=:black, markersize=6)
     errorbars!(ax2, xs, phase_means, phase_stds, color=:black, whiskerwidth=10)
+    scatter!(ax2, xs, phase_means, color=:black, markersize=6)
     
     # Compare with independent decay case
     lines!(ax1, xs, T_indepDecays, color=:red, label=L"Indep. decay$$")
@@ -420,9 +422,19 @@ function fig_compareImperfectArray_transmission_vs_N(Ns, T_means, T_stds, phase_
     
     # Plot magnitude squared and the phase of the transmission with bands for standard deviations
     for (i, label) in enumerate(labels)
-        errorbars!(ax1, Ns, T_means[i, :], T_stds[i, :], color=colors[i], whiskerwidth=10, label=label)
+        # Sometimes the errorbar reaches into the negative domain, which the logplot cannot handle, so instead the lower error is set at T*0.001
+        lowerrors = T_stds[i, :]
+        for (j, error) in enumerate(lowerrors)
+            if T_means[i, j] - error < 0
+                lowerrors[j] = T_means[i, j]*0.999
+            end
+        end
+        
+        errorbars!(ax1, Ns, T_means[i, :], lowerrors, T_stds[i, :], color=colors[i], whiskerwidth=10, label=label)
+        scatter!(ax1, Ns, T_means[i, :], color=colors[i], markersize=6)
         lines!(ax1, Ns, T_fits[i, :], color=colors[i])
         errorbars!(ax2, Ns, phase_means[i, :], phase_stds[i, :], color=colors[i], whiskerwidth=10)
+        scatter!(ax2, Ns, phase_means[i, :], color=colors[i], markersize=6)
         lines!(ax2, Ns, phase_fits[i, :], color=colors[i])
     end
     
@@ -463,7 +475,7 @@ end
 """
 Plot the effective decay rates as a function of detuning for multiple ff
 """
-function fig_effectiveDecayRates_vs_Δ(Δ_range, γ_gm_effs, γ_rm_effs, γ_gm, γ_rm, labels, titl)
+function fig_effectiveβΔ_vs_Δ(Δ_range, β_effs, Δ_effs, β_indepDecay, labels, titl)
     # Prepare colors
     colors = distinguishable_colors(length(labels), [RGB(1,1,1), RGB(0,0,0)], dropseed=true)
     
@@ -472,25 +484,24 @@ function fig_effectiveDecayRates_vs_Δ(Δ_range, γ_gm_effs, γ_rm_effs, γ_gm, 
     
     # Make title and axis
     Label(fig[1, 1:2], titl, tellwidth=false)
-    Label(fig[2, 1], L"$ γ_{gm, eff} $", tellwidth=false)
+    Label(fig[2, 1], L"$ β_{eff} $", tellwidth=false)
     ax1 = Axis(fig[3, 1], xlabel=L"$ Δ/γ_{a} $")
-    Label(fig[2, 2], L"$ γ_{rm, eff} $", tellwidth=false)
+    Label(fig[2, 2], L"$ [Δ/(γ_{gm} + γ_{rm})]_{eff} $", tellwidth=false)
     ax2 = Axis(fig[3, 2], xlabel=L"$ Δ/γ_{a} $")
     
     # Compare with independent decay case
-    hlines!(ax1, γ_gm, color=:black, label=L"Indep. decay$$")
-    hlines!(ax2, γ_rm, color=:black, label=L"Indep. decay$$")
+    hlines!(ax1, β_indepDecay, color=:black, label=L"Indep. decay$$")
+    lines!(ax2, Δ_range, Δ_range, color=:black)
     
     # Plot magnitude squared and the phase of the transmission with bands for standard deviations
     for (i, label) in enumerate(labels)
-        lines!(ax1, Δ_range, γ_gm_effs[i, :], color=colors[i], label=label)
-        lines!(ax2, Δ_range, γ_rm_effs[i, :], color=colors[i])
+        lines!(ax1, Δ_range, β_effs[i, :], color=colors[i], label=label)
+        lines!(ax2, Δ_range, Δ_effs[i, :], color=colors[i])
     end
     
     # Finish figure
-    axislegend(ax1, position=:lb)
+    axislegend(ax1, position=:lt)
     display(GLMakie.Screen(), fig)
-    
 end
 
 
@@ -716,7 +727,7 @@ function fig_eigenEnergies_vs_k(dominant_ks, collΔ, collΓ, weights_abs, κ, ti
     Label(fig[end+1, 1], L"Collective energies, $ Δ_\text{coll}/γ_{a} $", tellwidth=false)
     ax1 = Axis(fig[end+1, 1])
     Label(fig[end+1, 1], L"Collective decay rates, $ Γ_\text{coll}/γ_{a} $", tellwidth=false)
-    ax2 = Axis(fig[end+1, 1], yscale=log10)
+    ax2 = Axis(fig[end+1, 1]) #, yscale=log10)
     Label(fig[end+1, 1], L"Resonance weights, $ |w| $", tellwidth=false)
     ax3 = Axis(fig[end+1, 1], 
                xlabel=L"$ λ_{a}k_z $",

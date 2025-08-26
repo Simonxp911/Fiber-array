@@ -63,11 +63,11 @@ end
 #   Functions pertaining to calculating the driving and couplings of the system
 # ================================================
 function get_parameterMatrices(SP)
-    return get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+    return get_parameterMatrices(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
 end
 
 
-function get_parameterMatrices(ΔvariDependence, Δvari_args, fiber, d, να, ηα, incField_wlf, array, tildeG_flags, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+function get_parameterMatrices(noPhonons, ΔvariDependence, Δvari_args, fiber, d, να, ηα, incField_wlf, array, tildeG_flags, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
     Δvari = get_Δvari(ΔvariDependence, Δvari_args, array)
     if all(ηα .== 0)
         tildeΩ = get_tildeΩs(fiber, d, incField_wlf, array)
@@ -77,7 +77,11 @@ function get_parameterMatrices(ΔvariDependence, Δvari_args, fiber, d, να, η
         tildeΩ, tildeΩα            = get_tildeΩs(fiber, d, ηα, incField_wlf, array)
         tildeG, tildeGα1, tildeGα2 = get_tildeGs(fiber, d, ηα, array, tildeG_flags, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
         tildeFα                    = get_tildeFα(tildeG, να)
-        return Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2
+        if noPhonons
+            return Δvari, tildeΩ, tildeG
+        else
+            return Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2
+        end
     end
 end
 
@@ -437,7 +441,7 @@ end
 
 
 function get_tildeGs_split(SP)
-    if SP.noPhonons
+    if all(SP.ηα .== 0)
         tildeG_gm, tildeG_rm = get_tildeGs_split(SP.fiber, SP.d, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
     else 
         tildeG_gm, tildeGα1_gm, tildeGα2_gm, tildeG_rm, tildeGα1_gm, tildeGα2_gm = get_tildeGs_split(SP.fiber, SP.d, SP.ηα, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
@@ -478,21 +482,37 @@ function get_γs(SP)
         end
     end
     
-    return get_γs(SP.fiber, d, site, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+    return get_γs(SP.fiber, d, SP.ηα, site, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
 end
 
 
-function get_γs(fiber, d, site, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+function get_γs(fiber, d, ηα, site, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
     if fiber.frequency != ωa fiber = Fiber(fiber.radius, fiber.refractive_index, ωa) end #atoms always interact at frequency ω = ωa
-    !
-    # Calculate the guided and radiation mode Green's functions
-    Ggm_ = Ggm(fiber, site, site)
-    Grm_ = Grm(fiber, ωa, site, site, (0, 0), 1, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
     
-    # Get the decay rates by appropriately multiplying with the dipole moment and some constants (these are always real and we want to return them as real floats)
-    γ_gm = real(2*3*π/ωa*(d'*imag(Ggm_)*d))
-    γ_rm = real(2*3*π/ωa*(d'*imag(Grm_)*d))
-    
+    if all(ηα .== 0)
+        # Calculate the guided and radiation mode Green's functions
+        Ggm_ = Ggm(fiber, site, site)
+        Grm_ = Grm(fiber, ωa, site, site, (0, 0), 1, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+        
+        # Get the decay rates by appropriately multiplying with the dipole moment and some constants (these are always real and we want to return them as real floats)
+        γ_gm = real(2*3*π/ωa*(d'*imag(Ggm_)*d))
+        γ_rm = real(2*3*π/ωa*(d'*imag(Grm_)*d))
+    else
+        # Calculate the guided and radiation mode Green's functions
+        Ggm_     =  Ggm(fiber, site, site)
+        Ggm_αα11 = [Ggm(fiber, site, site, (2, 0), α) for α in 1:3]
+        Ggm_αα22 = [transpose(Ggm_αα11[α]) for α in 1:3]
+        Ggm_αα12 = [Ggm(fiber, site, site, (1, 1), α) for α in 1:3]
+        
+        Grm_     =  Grm(fiber, ωa, site, site, (0, 0), 1, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+        Grm_αα11 = [Grm(fiber, ωa, site, site, (2, 0), α, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans) for α in 1:3]
+        Grm_αα22 = [transpose(Grm_αα11[α]) for α in 1:3]
+        Grm_αα12 = [Grm(fiber, ωa, site, site, (1, 1), α, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans) for α in 1:3]
+        
+        # Get the decay rates by appropriately multiplying with the dipole moment and some constants (these are always real and we want to return them as real floats)
+        γ_gm = real(2*3*π/ωa*(d'*imag( Ggm_ + sum(@. ηα^2*(Ggm_αα11 + Ggm_αα22 + 2*Ggm_αα12))/(2*ωa^2) )*d))
+        γ_rm = real(2*3*π/ωa*(d'*imag( Grm_ + sum(@. ηα^2*(Grm_αα11 + Grm_αα22 + 2*Grm_αα12))/(2*ωa^2) )*d))
+    end
     return γ_gm, γ_rm
 end
 
@@ -508,7 +528,7 @@ function get_tildeG0(fiber, d::String, array)
         d = chiralDipoleMoment(fiber, ρa, array)
         return get_tildeG0(fiber, d, array)
     else
-        throw(ArgumentError("get_tildeGs(d::String) is only implemented for d = 'chiral'"))
+        throw(ArgumentError("get_tildeG0(d::String) is only implemented for d = 'chiral'"))
     end
 end
 
@@ -712,7 +732,7 @@ Scan the steady state values of atomic coherences σ and the atom-phonon correla
 for a given array (and dipole moments)
 """
 function scan_steadyState(SP, d, array)
-    params = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, d, SP.να, SP.ηα, SP.incField_wlf, array, SP.tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+    params = get_parameterMatrices(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, d, SP.να, SP.ηα, SP.incField_wlf, array, SP.tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
     return calc_steadyState.(SP.Δ_range, Ref(params), "", SP.noPhonons, false)
 end
 
@@ -889,22 +909,22 @@ for the case of independent decay
 function calc_transmission_indepDecay(SP, Δ)
     if SP.noPhonons
         if SP.arrayType ∈ ("1Dchain", "randomZ")
-            γ_gm = 2*diag(imag(get_tildeGs(SP.fiber, SP.d, SP.array[1:1], (true, false, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)))
-            γ_rm = 2*diag(imag(get_tildeGs(SP.fiber, SP.d, SP.array[1:1], (false, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)))
+            γ_gm, γ_rm = get_γs(SP)
             return transmission_indepDecay(Δ, γ_gm, γ_rm, SP.N)
         else
-            γ_gms = 2*diag(imag(get_tildeGs(SP.fiber, SP.d, SP.array, (true, false, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)))
-            γ_rms = 2*diag(imag(get_tildeGs(SP.fiber, SP.d, SP.array, (false, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)))
+            γs = [get_γs(SP.fiber, SP.d, SP.ηα, site, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans) for site in SP.array]
+            γ_gms = [γ_gm for (γ_gm, γ_rm) in γs]
+            γ_rms = [γ_rm for (γ_gm, γ_rm) in γs]
             return transmission_indepDecay(Δ, γ_gms, γ_rms)
         end
     else
         if SP.arrayType ∈ ("1Dchain", "randomZ")
-            Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array[1:1], (true, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+            Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array[1:1], (true, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
             σBα = calc_steadyState(Δ, (Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2), "", SP.noPhonons, false)
             t1 = transmission(σBα..., tildeΩ, tildeΩα, SP.fiber)
             return t1^SP.N
         else
-            Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, (true, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+            Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, (true, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
             ts = []
             for i in 1:SP.N
                 ind = i + (i-1)*SP.N
@@ -931,24 +951,24 @@ for the case of independent decay
 function scan_transmission_indepDecay(SP)
     if SP.noPhonons
         if SP.arrayType ∈ ("1Dchain", "randomZ")
-            γ_gm = 2*diag(imag(get_tildeGs(SP.fiber, SP.d, SP.array[1:1], (true, false, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)))
-            γ_rm = 2*diag(imag(get_tildeGs(SP.fiber, SP.d, SP.array[1:1], (false, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)))
+            γ_gm, γ_rm = get_γs(SP)
             return transmission_indepDecay.(SP.Δ_range, γ_gm, γ_rm, SP.N)
         else
-            γ_gms = 2*diag(imag(get_tildeGs(SP.fiber, SP.d, SP.array, (true, false, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)))
-            γ_rms = 2*diag(imag(get_tildeGs(SP.fiber, SP.d, SP.array, (false, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)))
+            γs = [get_γs(SP.fiber, SP.d, SP.ηα, site, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans) for site in SP.array]
+            γ_gms = [γ_gm for (γ_gm, γ_rm) in γs]
+            γ_rms = [γ_rm for (γ_gm, γ_rm) in γs]
             return transmission_indepDecay.(SP.Δ_range, Ref(γ_gms), Ref(γ_rms))
         end
     else
         # Analytical expressions could be found for this and a transmission_indepDecay could be defined,
         # but most likely it would not reduce complexity much (though it would maybe read a bit cleaner)
         if SP.arrayType ∈ ("1Dchain", "randomZ")
-            Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array[1:1], (true, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+            Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array[1:1], (true, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
             σBα = calc_steadyState.(SP.Δ_range, Ref((Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2)), "", SP.noPhonons, false)
             t1 = [transmission(σBα_..., tildeΩ, tildeΩα, SP.fiber) for σBα_ in σBα]
             return t1.^SP.N
         else
-            Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, (true, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+            Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, (true, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
             ts = []
             for i in 1:SP.N
                 ind = i + (i-1)*SP.N

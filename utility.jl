@@ -181,15 +181,22 @@ end
 
 
 """
-Take a vector of phases that have been calculated modulo 2π and unwrap these, 
-i.e. whenever the phase jumps by close to 2π remove the jump and return a vector
-that is close to continous
+Take a vector of phases that have been calculated modulo 2π and unwrap these. 
+There are different approaches: 'minimizeDiff' minimizes differences between
+data points (the default); 'forcePositiveSlope' ensures increasing phases; 
+'forceNegativeSlope' ensures decreasing phases.
 """
-function unwrapPhase(phases, jumpTolerance=π)
+function unwrapPhase(phases, approach="minimizeDiff")
+    if approach ∉ ("minimizeDiff", "forcePositiveSlope", "forceNegativeSlope")
+        throw(ArgumentError("approach = $approach has not been implemented in unwrapPhase"))
+    end
+    
     jumps = diff(phases)
     phases_unwrap = deepcopy(phases)
     for (i, jump) in enumerate(jumps)
-        if abs(jump) > jumpTolerance
+        if (approach == "minimizeDiff"       && abs(jump) > π) ||
+           (approach == "forcePositiveSlope" && jump < 0) ||
+           (approach == "forceNegativeSlope" && jump > 0)
             phases_unwrap[i+1:end] .-= sign(jump)*2π
         end
     end
@@ -603,10 +610,12 @@ end
 Given vectors xdata and ydata (i.e. matching points of independent and dependent variables respectively),
 and a model function with signature model(x, p), where p is a collection of parameters, returns the optimal
 set of parameters pmin that minimize the sum of absolute squared differences between the data and the model,
-with p0 as an initial guess
+with p0 as an initial guess. A vector ydataDeviations can be given for the uncertainties of the ydata, which
+will be used as weigths in the minimization. The parameters can be constrained by setting lowerConstr and 
+upperConstr.
 """
-function fitComplexData(xdata, ydata, model, p0)
-    sumOfSquares(p) = sum(abs2.(ydata .- model.(xdata, Ref(p))))
-    res = optimize(sumOfSquares, p0)
+function fitComplexData(xdata, ydata, model, p0; ydataDeviations=ones(size(ydata)), lowerConstr=fill(-Inf, length(p0)), upperConstr=fill(Inf, length(p0)))
+    sumOfSquares(p) = sum(abs2.( (ydata .- model.(xdata, Ref(p)))./ydataDeviations ))
+    res = optimize(sumOfSquares, lowerConstr, upperConstr, p0)
     return Optim.minimizer(res)
 end
