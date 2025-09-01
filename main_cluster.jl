@@ -107,8 +107,7 @@ function imperfectArray_transmission_vs_Δ(SP)
         
         # Prepare means and standard deviations of (squared) magnitudes and phases
         ts = vcat(ts...)
-        T_means, T_stds, phase_means, phase_stds = prep_imperfectArray_transmission(ts)
-        formattedResult = vectorOfRows2Matrix([T_means, T_stds, phase_means, phase_stds])
+        formattedResult = vectorOfRows2Matrix([prep_imperfectArray_transmission(ts)...])
         save_as_txt(formattedResult, saveDir * folder, filename)
     end
 end
