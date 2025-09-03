@@ -1193,3 +1193,17 @@ function splitCollEnergies(eigenModesMatrix, Δvari, tildeG_gm, tildeG_rm)
     return collΔ_Δv, collΓ_Δv, collΔ_gm, collΓ_gm, collΔ_rm, collΓ_rm
 end
 
+
+"""
+Calculate the weight ('population') in the excitation and excitation+phonon sectors respectively,
+taking a vectorized version of the system state as input
+"""
+function statePopulations(σBαVec, noPhonons)
+    if noPhonons return 1.0, 0.0 end
+    
+    N = Int((sqrt(12*length(σBαVec) + 1) - 1)/6) #if length(σBαVec) = N + 3N^2, then 12*length(x) + 1 = (6N + 1)^2, and N is equal to the following
+    if norm(σBαVec) != 1
+        σBαVec /= norm(σBαVec)
+    end
+    return norm(σBαVec[1:N])^2, norm(σBαVec[N+1:end])^2
+end

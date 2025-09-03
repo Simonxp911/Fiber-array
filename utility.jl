@@ -391,8 +391,8 @@ end
 """
 Round off to a standard number (4) of significant digits
 """
-function ro(x, sigdigits=4)
-    return round(x, sigdigits=sigdigits)
+function ro(x, digits=4)
+    return round(x, digits=digits)
 end
 
 
@@ -614,8 +614,16 @@ with p0 as an initial guess. A vector ydataDeviations can be given for the uncer
 will be used as weigths in the minimization. The parameters can be constrained by setting lowerConstr and 
 upperConstr.
 """
-function fitComplexData(xdata, ydata, model, p0; ydataDeviations=ones(size(ydata)), lowerConstr=fill(-Inf, length(p0)), upperConstr=fill(Inf, length(p0)))
+function fitComplexData(xdata, ydata, model, p0; ydataDeviations=ones(size(ydata)))
     sumOfSquares(p) = sum(abs2.( (ydata .- model.(xdata, Ref(p)))./ydataDeviations ))
-    res = optimize(sumOfSquares, lowerConstr, upperConstr, p0)
+    res = optimize(sumOfSquares, p0)
     return Optim.minimizer(res)
 end
+# function fitComplexData(xdata, ydata, model, p0; ydataDeviations=ones(size(ydata)), lowerConstr=fill(-Inf, length(p0)), upperConstr=fill(Inf, length(p0)))
+#     sumOfSquares(p) = sum(abs2.( (ydata .- model.(xdata, Ref(p)))./ydataDeviations ))
+#     # res = optimize(sumOfSquares, lowerConstr, upperConstr, p0)
+#     # res = optimize(sumOfSquares, lowerConstr, upperConstr, p0, BFGS(linesearch=LineSearches.BackTracking()))
+#     res = optimize(sumOfSquares, lowerConstr, upperConstr, p0, LBFGS())
+#     # res = optimize(sumOfSquares, p0)
+#     return Optim.minimizer(res)
+# end

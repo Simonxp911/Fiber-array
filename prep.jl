@@ -116,6 +116,19 @@ end
 
 
 """
+Prepare the loss, absolute value of resonances, maximum absolute value of resonances, 
+and excitation-sector populations
+"""
+function prep_loss_resonances_pops(t, r, resonances, eigenModesMatrix, noPhonons)
+    loss = 1 .- abs2.(t) .- abs2.(r)
+    resonances_abs = broadcast(x -> abs.(x), resonances)
+    resonances_abs_max = maximum.(resonances_abs)
+    exci_pops = [x[1] for x in statePopulations.(eachcol(eigenModesMatrix), Ref(noPhonons))]
+    return loss, resonances_abs, resonances_abs_max, exci_pops
+end
+
+
+"""
 Prepare title for the transmission plot
 """
 function prep_transmission_title(SP)
