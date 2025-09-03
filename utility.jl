@@ -391,8 +391,8 @@ end
 """
 Round off to a standard number (4) of significant digits
 """
-function ro(x, digits=4)
-    return round(x, digits=digits)
+function ro(x, sigdigits=4)
+    return round(x, sigdigits=sigdigits)
 end
 
 

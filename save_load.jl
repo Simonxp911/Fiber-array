@@ -31,7 +31,7 @@ For calculation of steady state σ and Bα
 """
 function get_postfix_steadyState(Δ, ΔvariDescription, dDescription, να, ηα, incField_wlf, tildeG_flags, arrayDescription, fiberPostfix)
     postfix_components = [
-        "Delta_$(ro(Δ))",
+        "Delta_$(ro(Δ, 4 + ceil(log10(floor(ceil(Δ))))))",
         ΔvariDescription,
         dDescription,
         "trapFreqs_$(join(ro.(να), ","))",
@@ -70,7 +70,7 @@ For time evolution
 """
 function get_postfix_timeEvolution(Δ, ΔvariDescription, dDescription, να, ηα, incField_wlf, tildeG_flags, arrayDescription, fiberPostfix, initialStateDescription, tspan, dtmax)
     postfix_components = [
-        "Delta_$(ro(Δ))",
+        "Delta_$(ro(Δ, Int(4 + ceil(log10(ceil(abs(Δ)))))))",
         ΔvariDescription,
         dDescription,
         "trapFreqs_$(join(ro.(να), ","))",
