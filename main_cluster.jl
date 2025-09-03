@@ -22,8 +22,8 @@ function main()
     # Define system parameters
     SP = define_SP()
     MPI.Barrier(comm)
-    if myRank == root show(SP) end
-    MPI.Barrier(comm)
+    # if myRank == root show(SP) end
+    # MPI.Barrier(comm)
     
     
     task = ARGS[3]
@@ -31,6 +31,8 @@ function main()
         prepare_Im_Grm_trans(SP)
     elseif task == "imperfectArray_transmission_vs_Δ"
         imperfectArray_transmission_vs_Δ(SP)
+    elseif task == "steadyState_vs_Δ"
+        steadyState_vs_Δ(SP)
     end
     return nothing
 end
@@ -109,6 +111,27 @@ function imperfectArray_transmission_vs_Δ(SP)
         ts = vcat(ts...)
         formattedResult = vectorOfRows2Matrix([prep_imperfectArray_transmission(ts)...])
         save_as_txt(formattedResult, saveDir * folder, filename)
+    end
+end
+
+
+function steadyState_vs_Δ(SP)
+    if myRank == root
+        postfixes = get_postfix_steadyState.(SP.Δ_range, SP.ΔvariDescription, SP.dDescription, Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), Ref(SP.tildeG_flags), SP.arrayDescription, SP.fiber.postfix)
+        params    = get_parameterMatrices(SP)
+    else
+        postfixes = nothing
+        params    = nothing
+    end
+    
+    postfixes = MPI.bcast(postfixes, root, comm)
+    params    = MPI.bcast(params   , root, comm)
+    
+    totalNumberOfJobs = SP.Δ_specs[3]
+    myStartIndex, myEndIndex = myStartIndex_and_myEndIndex(totalNumberOfJobs)
+    for index in myStartIndex:myEndIndex
+        println("My rank is $myRank, I am working on index = $index")
+        calc_steadyState(SP.Δ_range[index], params, postfixes[index], SP.noPhonons, SP.save_steadyState)
     end
 end
 
