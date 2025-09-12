@@ -40,17 +40,17 @@ function define_SP_BerlinCs()
     να0_ul = να0/γ0 #unitless version of να0, [0.0209, 0.0119, 0.0266]
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-2.0, 2.0, 300)
+    Δ_specs = (-1, 0.0, 300)
     
     # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
-    ΔvariDependence = "flat"
+    ΔvariDependence = "Gaussian"
     Δvari_args = -3, 50*a0_ul
     ΔvariDescription = ΔvariDescript(ΔvariDependence, Δvari_args)
     
     # Lamb-Dicke parameters
-    ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
+    # ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
     # ηα = ηα0 * 0.4
-    # ηα = [0., 0., 0.]
+    ηα = [0., 0., 0.]
     
     # Whether phonons are excluded or not from the calculations (a finite ηα but noPhonons = true will result in including ground state motion into tildeG)
     noPhonons = all(ηα .== 0)
@@ -60,7 +60,7 @@ function define_SP_BerlinCs()
     arrayType = "1Dchain"
     
     # Set number of atomic sites 
-    N_sites = 100
+    N_sites = 750
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
@@ -81,10 +81,10 @@ function define_SP_BerlinCs()
     
     # Atomic dipole moment
     # d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul, array)
-    # d = "chiral"
-    # dDescription = "chiral"
-    d = rightCircularDipoleMoment(array)
-    dDescription = "rgtCrc"
+    d = "chiral"
+    dDescription = "chiral"
+    # d = rightCircularDipoleMoment(array)
+    # dDescription = "rgtCrc"
     # d = [[1, 0, 0] for site in array]
     # dDescription = "xPol"
     
@@ -136,9 +136,9 @@ end
 
 function define_SP_BerlinSr()
     # Fiber specs 
-    λ0  = 689       #nm, guided mode wavelength, transition frequency of sr
+    λ0  = 689       #nm, guided mode wavelength, transition frequency of Sr
     ω0  = 2π/λ0     #nm^-1, guided mode angular frequency
-    γ0  = 2π*7.4    #kHz, free decay rate of Sr87
+    γ0  = 2π*7.4    #kHz, free decay rate of Sr88
     ρf0 = 115       #nm, fiber radius
     n0  = 1.45      #unitless, index of refraction
     
@@ -153,12 +153,10 @@ function define_SP_BerlinSr()
     να0 = [ν0_radial, ν0_azimuthal, ν0_axial] #trap frequencies in a Cartesian basis (x, y, z) which matches with (radial, azimuthal, axial) if the position is taken to be on the x-axis
     
     # Recoil energy
-    νR0 = 2π*3.47 #kHz, recoil energy of strontium atoms (as an angular frequency)
-    # THIS VALUE MAY BE WRONG - calculate from transition wavelength and mass (ask which isotope of Strontium is used, maybe 87?)
-    # k0 = 2π/689e-9; m = 1.443e-25; hbar*k0^2/(2*m) = 2π*4.838 ???
+    νR0 = 2π*4.775 #kHz, recoil energy of strontium atoms (as an angular frequency)
     
     # Lamb-Dicke parameters in a Cartesian basis (x, y, z)
-    ηα0 = @. sqrt(νR0/να0) # [0.1784, 0.2366, 0.1580]
+    ηα0 = @. sqrt(νR0/να0) # [0.2093, 0.2775, 0.1853]
     
     # Unitless versions
     ρf0_ul = ρf0/λ0 #unitless version of ρf0, 0.1669
@@ -167,7 +165,7 @@ function define_SP_BerlinSr()
     να0_ul = να0/γ0 #unitless version of να0, [14.7297, 8.3784, 18.7838]
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-2.0, 2.0, 300)
+    Δ_specs = (18.0, 20.0, 300)
     
     # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
     ΔvariDependence = "flat"
@@ -176,7 +174,7 @@ function define_SP_BerlinSr()
     
     # Lamb-Dicke parameters
     ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
-    # ηα = ηα0 * 0.0
+    # ηα = ηα0 * 0.8
     
     # Whether phonons are excluded or not from the calculations (a finite ηα but noPhonons = true will result in including ground state motion into tildeG)
     noPhonons = all(ηα .== 0)
@@ -186,13 +184,13 @@ function define_SP_BerlinSr()
     arrayType = "1Dchain"
     
     # Set number of atomic sites 
-    N_sites = 300
+    N_sites = 50
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
     pos_unc = 0.0
     # pos_unc = ηα0/ωa
-    n_inst = 100
+    n_inst = 1
     
     # Generate the array, its description, and the number of atoms
     array, arrayDescription, N = get_array(arrayType, N_sites, ρa0_ul, a0_ul, ff, pos_unc, n_inst)
@@ -225,6 +223,7 @@ function define_SP_BerlinSr()
     # Whether to approximate transverse part of radiation GF (real part and imaginary part respectively, usually (true, false))
     approx_Grm_trans = (true, false)
     
+    
     # Whether to interpolate Im_Grm_trans
     interpolate_Im_Grm_trans = arrayType == "randomZ"
     
@@ -254,21 +253,21 @@ function define_SP_BerlinSr()
                   interpolate_Im_Grm_trans, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans,
                   save_steadyState, save_timeEvol,
                   interpolation_Im_Grm_trans,
-                  z_range, x_range, y_fix) 
+                  z_range, x_range, y_fix)
 end
 
 
 function define_SP_artificial()
     # Fiber and array parameters
     n  = 1.45
-    ρf = 0.4
+    ρf = 0.2347
     ρa = 0.6455 - 0.2347 + ρf
     a  = 0.352112676056
-    να = [0.0209, 0.0119, 0.0266]
-    # να = [10, 12, 15]
+    # να = [0.0209, 0.0119, 0.0266]
+    να = [5, 12, 7]
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-0.5, 0.5, 3000)
+    Δ_specs = (6.5, 7.5, 300)
     
     # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
     ΔvariDependence = "flat"
@@ -276,18 +275,20 @@ function define_SP_artificial()
     ΔvariDescription = ΔvariDescript(ΔvariDependence, Δvari_args)
     
     # Lamb-Dicke parameters
-    ηα = [0.1377, 0.1826, 0.1219]
+    # ηα = [0.1377, 0.1826, 0.1219] #Cs
+    # ηα = [0.2093, 0.2775, 0.1853] #Sr
+    ηα = [0.1784, 0.2366, 0.1580]
     # ηα = [0.0, 0.0, 0.0]
     
     # Whether phonons are excluded or not from the calculations (a finite ηα but noPhonons = true will result in including ground state motion into tildeG)
-    # noPhonons = all(ηα .== 0)
-    noPhonons = true
+    noPhonons = all(ηα .== 0)
+    # noPhonons = false
     
     # Set which kind of array to use ("1Dchain", "doubleChain", "randomZ")
     arrayType = "1Dchain"
     
     # Set number of atomic sites 
-    N_sites = 100
+    N_sites = 500
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
@@ -308,10 +309,10 @@ function define_SP_artificial()
     
     # Atomic dipole moment
     # d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul, array)
-    # d = "chiral"
-    # dDescription = "chiral"
-    d = rightCircularDipoleMoment(array)
-    dDescription = "rgtCrc"
+    d = "chiral"
+    dDescription = "chiral"
+    # d = rightCircularDipoleMoment(array)
+    # dDescription = "rgtCrc"
     
     # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
     incField_wlf = [(1, 1, 1), (1, -1, 1)]
@@ -355,43 +356,27 @@ function define_SP_artificial()
                   interpolate_Im_Grm_trans, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans,
                   save_steadyState, save_timeEvol,
                   interpolation_Im_Grm_trans,
-                  z_range, x_range, y_fix) 
+                  z_range, x_range, y_fix)
 end
 
 
 function main()
     # Define system parameters
     # SP = define_SP_BerlinCs()
-    # SP = define_SP_BerlinSr()
-    SP = define_SP_artificial()
+    SP = define_SP_BerlinSr()
+    # SP = define_SP_artificial()
     # show(SP)
-    
-    
-    
-    # look at quantum motion
-    # possible use extrapolation to speed up calculations (prepare a set of pre-calculated Im_Grm_trans or use the existing)
-    
-    # Calculate population of excitations and phonons in eigenstates/any state  
-        # Norm of state vectors is unity?
-        # Calculate norm of exc part and phonon part - use as population/weight
-    # Plot transmission as a function of \Delta in complex plane? 
-        # Curve as \Delta is varied
-        # Plot Lorentz resonance in complex plane to get an idea of its shape
-    # Indicate whether a resonance adds or subtracts from transmission (e.g. in loss with resonances plot)
-        # Check if T is greater with or without that particular resonance
-        # Or whether t without resonance and resonance are on opposite sides of the origin
-    # Find out if phonon-heavy resonances ever contribute significantly to transmission
-    
     
     
     # plot_propConst_inOutMom(ωρfn_ranges)
     # plot_coupling_strengths(SP)
     # plot_arrayIn3D(SP)
     # plot_σBαTrajectories_σBαSS(SP)
-    plot_transmission_vs_Δ(SP)
+    # plot_transmission_vs_Δ(SP)
     # plot_imperfectArray_transmission_vs_Δ(SP)
     # plot_compareImperfectArray_transmission_vs_Δ(SP)
-    # plot_effectiveBetaFactor(SP)
+    plot_effectiveBetaFactor(SP)
+    # plot_effectiveBetaFactor_perfectArray(SP)
     # plot_steadyState_radiation_Efield(SP)
     # plot_radiation_Efield(SP)
     # plot_GnmEigenModes(SP)
@@ -478,7 +463,9 @@ function plot_transmission_vs_Δ(SP)
     # fig_transmission_vs_Δ(SP.Δ_range, T, tPhase, titl)
     
     T, tPhase, unwrappedPhase, phasePerAtom, phaseSlope = prep_squaredNorm_phase_unwrappedPhase_phasePerAtom_phaseSlope(SP, t)
-    fig_transmission_vs_Δ_phaseDetails(SP.Δ_range, T, tPhase, unwrappedPhase, phasePerAtom, phaseSlope, titl)
+    # fig_transmission_vs_Δ_phaseDetails(SP.Δ_range, T, tPhase, unwrappedPhase, phasePerAtom, phaseSlope, titl)
+    # fig_transmission_polar(SP.Δ_range, t, titl)
+    fig_transmission_vs_Δ_phaseDetails_polar(SP.Δ_range, T, tPhase, t, unwrappedPhase, phaseSlope, titl)
     
     # r = calc_reflection.(Ref(SP), σBα_scan)
     # R, rPhase = prep_squaredNorm_phase(r)
@@ -534,19 +521,31 @@ function plot_compareImperfectArray_transmission_vs_Δ(SP)
     # ff_list = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
     # ff_list = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
     ff_list = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7]
+    # ff_list = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     # ηαFactor_list = [0.0, 0.1, 0.4, 0.7, 1.0]
     ηαFactor_list = [1.0]
     # Nsites_list = [2000, 1000, 667, 500, 400, 334, 250, 200, 167, 143] # N = 100
     # Nsites_list = [6000, 3000, 2000, 1500, 1200, 1000, 750, 600, 500, 429] # N = 300
-    Nsites_list = reverse([ 15   17    20    25    34    40    50    67   100    200;
-                            58   67    80   100   134   160   200   267   400    800;
-                           100  117   140   175   234   280   350   467   700   1400;
-                           143  167   200   250   334   400   500   667  1000   2000;
-                           286  334   400   500   667   800  1000  1334  2000   4000;
-                           429  500   600   750  1000  1200  1500  2000  3000   6000;
-                           572  667   800  1000  1334  1600  2000  2667  4000   8000;
-                           715  834  1000  1250  1667  2000  2500  3334  5000  10000], dims=2) # N = 10, 40, 70, 100, 200, 300, 400, 500
+    Nsites_list = [ 200   100    67    50    40    34    25    20   17   15
+                    800   400   267   200   160   134   100    80   67   58
+                   1400   700   467   350   280   234   175   140  117  100
+                   2000  1000   667   500   400   334   250   200  167  143
+                   4000  2000  1334  1000   800   667   500   400  334  286
+                   6000  3000  2000  1500  1200  1000   750   600  500  429
+                   8000  4000  2667  2000  1600  1334  1000   800  667  572
+                  10000  5000  3334  2500  2000  1667  1250  1000  834  715]
+    # Nsites_list = [ 200   100   67   50   40   34   25   20   17   15   13   12   10;
+    #                 400   200  134  100   80   67   50   40   34   29   25   23   20;
+    #                 600   300  200  150  120  100   75   60   50   43   38   34   30;
+    #                 800   400  267  200  160  134  100   80   67   58   50   45   40;
+    #                1000   500  334  250  200  167  125  100   84   72   63   56   50;
+    #                1200   600  400  300  240  200  150  120  100   86   75   67   60;
+    #                1400   700  467  350  280  234  175  140  117  100   88   78   70;
+    #                1600   800  534  400  320  267  200  160  134  115  100   89   80;
+    #                1800   900  600  450  360  300  225  180  150  129  113  100   90;
+    #                2000  1000  667  500  400  334  250  200  167  143  125  112  100]
     Ns = [10, 40, 70, 100, 200, 300, 400, 500]
+    # Ns = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
     arrayType_list = ["1Dchain", "randomZ"]
     # for ηαFactor in ηαFactor_list
     for ηαFactor in ηαFactor_list, (i, ff) in enumerate(ff_list)
@@ -616,19 +615,32 @@ end
 
 
 function plot_effectiveBetaFactor(SP)
-    if SP.n_inst == 1 throw(ArgumentError("plot_imperfectArray_transmission_vs_Δ requires n_inst > 1")) end
+    if SP.n_inst == 1 throw(ArgumentError("plot_effectiveBetaFactor requires n_inst > 1")) end
     
     # Parameters
-    ff_list = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7]
-    Nsites_list = reverse([ 15   17    20    25    34    40    50    67   100    200;
-                            58   67    80   100   134   160   200   267   400    800;
-                           100  117   140   175   234   280   350   467   700   1400;
-                           143  167   200   250   334   400   500   667  1000   2000;
-                           286  334   400   500   667   800  1000  1334  2000   4000;
-                           429  500   600   750  1000  1200  1500  2000  3000   6000;
-                           572  667   800  1000  1334  1600  2000  2667  4000   8000;
-                           715  834  1000  1250  1667  2000  2500  3334  5000  10000], dims=2) # N = 10, 40, 70, 100, 200, 300, 400, 500
-    Ns = [10, 40, 70, 100, 200, 300, 400, 500]
+    # ff_list = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7]
+    # Nsites_list = [ 200   100    67    50    40    34    25    20   17   15
+    #                 800   400   267   200   160   134   100    80   67   58
+    #                1400   700   467   350   280   234   175   140  117  100
+    #                2000  1000   667   500   400   334   250   200  167  143
+    #                4000  2000  1334  1000   800   667   500   400  334  286
+    #                6000  3000  2000  1500  1200  1000   750   600  500  429
+    #                8000  4000  2667  2000  1600  1334  1000   800  667  572
+    #               10000  5000  3334  2500  2000  1667  1250  1000  834  715]
+    # Ns = [10, 40, 70, 100, 200, 300, 400, 500]
+    ff_list = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    Nsites_list = [ 200   100   67   50   40   34   25   20   17   15   13   12   10;
+                    400   200  134  100   80   67   50   40   34   29   25   23   20;
+                    600   300  200  150  120  100   75   60   50   43   38   34   30;
+                    800   400  267  200  160  134  100   80   67   58   50   45   40;
+                   1000   500  334  250  200  167  125  100   84   72   63   56   50;
+                   1200   600  400  300  240  200  150  120  100   86   75   67   60;
+                   1400   700  467  350  280  234  175  140  117  100   88   78   70;
+                   1600   800  534  400  320  267  200  160  134  115  100   89   80;
+                   1800   900  600  450  360  300  225  180  150  129  113  100   90;
+                   2000  1000  667  500  400  334  250  200  167  143  125  112  100]
+    Ns = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+    
     arrayType_list = ["1Dchain", "randomZ"][1:1]
     
     # Get independent decay transmissions
@@ -666,10 +678,12 @@ function plot_effectiveBetaFactor(SP)
     Δ_effs  = deepcopy(β_effs)
     for (i, arrayType) in enumerate(arrayType_list), (j, ff) in enumerate(ff_list), (l, Δ) in enumerate(SP.Δ_range)
         if l < 400
+            # println("i = ", i, ", j = ", j, ", l = ", l)
             model(x, (β_eff, Δ_eff)) = (1 - 2*β_eff/(1 - 2im*Δ_eff))^x
-            ydata = t_real_means[i, j, :, l] + 1im*t_imag_means[i, j, :, l]
-            ydataDeviations = t_real_stds[i, j, :, l] + 1im*t_imag_stds[i, j, :, l]
-            pmin = fitComplexData(Ns, ydata, model, [β_indepDecay, Δ]; ydataDeviations=ydataDeviations)
+            t           = t_real_means[i, j, :, l] + 1im*t_imag_means[i, j, :, l]
+            tDeviations = t_real_stds[i, j, :, l]  + 1im*t_imag_stds[i, j, :, l]
+            # pmin = fitComplexData(Ns, t, model, [β_indepDecay*(1 + 5*ff^2), Δ*(1 + 5*ff^2)]; ydataDeviations=tDeviations)
+            pmin = fitComplexData(Ns, t, model, [β_indepDecay*(1 + 5*ff^2), Δ*(1 + 5*ff^2)])
             
             T_fits[i, j, :, l], phase_fits[i, j, :, l] = prep_squaredNorm_phase(model.(Ns, Ref(pmin)))
             β_effs[i, j, l], Δ_effs[i, j, l] = pmin
@@ -682,7 +696,7 @@ function plot_effectiveBetaFactor(SP)
     phase_fits        = mapslices(x -> unwrapPhase(x, "forcePositiveSlope"), phase_fits       , dims=3)
     
     # Plot example of fits
-    Δ_index = 50
+    Δ_index = 75
     for (i, arrayType) in enumerate(arrayType_list)
         labels = [L" ff$ = %$(ff) $, $ β = %$(round(β_effs[i, j, Δ_index], digits=3)) $" for (j, ff) in enumerate(ff_list)]
         titl = prep_imperfectArray_transmission_title(SP) * "\narrayType: $arrayType" * "\nΔ = $(SP.Δ_range[Δ_index])"
@@ -695,6 +709,82 @@ function plot_effectiveBetaFactor(SP)
         titl = prep_imperfectArray_transmission_title(SP) * "\narrayType: $arrayType"
         fig_effectiveβΔ_vs_Δ(SP.Δ_range, β_effs[i, :, :], Δ_effs[i, :, :], β_indepDecay, labels, titl)
     end
+end
+
+
+function plot_effectiveBetaFactor_perfectArray(SP)
+    Ns = 200:50:750
+    
+    # Load pre-calculated steady states and calculate transmissions
+    ts = zeros(ComplexF64, length(Ns), length(SP.Δ_range))
+    Ts, phases = zeros(size(ts)), zeros(size(ts))
+    for (i, N) in enumerate(Ns)
+        array = get_array(SP.arrayType, N, SP.ρa, SP.a, 1.0, 0.0)
+        arrayDescription = arrayDescript(SP.arrayType, N, SP.ρa, SP.a, 1.0, 0.0)
+        postfixes = get_postfix_steadyState.(SP.Δ_range, SP.ΔvariDescription, SP.dDescription, Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), Ref(SP.tildeG_flags), arrayDescription, SP.fiber.postfix)
+        for (j, postfix) in enumerate(postfixes)
+            if SP.noPhonons filename = "sigma_" * postfix else filename = "sigmaBalpha_" * postfix end
+            folder = "steadyStates/"
+            if isfile(saveDir * folder * filename * ".jld2")
+                σBα = load_as_jld2(saveDir * folder, filename)
+                
+                if SP.noPhonons
+                    tildeΩ = get_tildeΩs(SP.fiber, SP.d, SP.incField_wlf, array)
+                    ts[i, j] = transmission(σBα, tildeΩ, SP.fiber)
+                else
+                    tildeΩ, tildeΩα = get_tildeΩs(SP.fiber, SP.d, SP.ηα, SP.incField_wlf, array)
+                    ts[i, j] = transmission(σBα..., tildeΩ, tildeΩα, SP.fiber)
+                end
+                Ts[i, j], phases[i, j] = prep_squaredNorm_phase(ts[i, j])
+            else
+                throw(ArgumentError("The following file can not be found: " * filename))
+            end
+        end
+    end
+    
+    # Fit effective decay rates
+    T_fits          = fill(NaN, length(Ns), length(SP.Δ_range))
+    phase_fits      = deepcopy(T_fits)
+    β_effs          = fill(NaN, length(SP.Δ_range))
+    Δ_effs, As, ϕ0s = deepcopy(β_effs), deepcopy(β_effs), deepcopy(β_effs)
+    for (j, Δ) in enumerate(SP.Δ_range)
+        t = ts[:, j]
+        
+        # Fit with β, Δ, overall attenuation, and overall phase as fitting parameters
+        model(x, (β_eff, Δ_eff, A, ϕ0)) = (1 - 2*β_eff/(1 - 2im*Δ_eff))^x * A*exp(1im*ϕ0)
+        if j == 1
+            pmin = fitComplexData(Ns, t, model, [0.9999, 7.5*Δ, 0.999, 5.8])
+        else
+            pmin = fitComplexData(Ns, t, model, [β_effs[j - 1], Δ_effs[j - 1], As[j - 1], ϕ0s[j - 1]])
+        end
+        β_effs[j], Δ_effs[j], As[j], ϕ0s[j] = pmin[1], pmin[2], pmin[3], mod2pi(pmin[4])
+        
+        # # Fit with Δ and overall phase as fitting parameters
+        # model(x, (Δ_eff, ϕ0)) = (1 - 2/(1 - 2im*Δ_eff))^x * exp(1im*ϕ0)
+        # if j == 1
+        #     pmin = fitComplexData(Ns, t, model, [7.5*Δ, 5.8])
+        # else
+        #     pmin = fitComplexData(Ns, t, model, [Δ_effs[j - 1], ϕ0s[j - 1]])
+        # end
+        # β_effs[j], Δ_effs[j], As[j], ϕ0s[j] = 1.0, pmin[1], 1.0, mod2pi(pmin[2])
+        
+        T_fits[:, j], phase_fits[:, j] = prep_squaredNorm_phase(model.(Ns, Ref(pmin)))
+    end
+    
+    # Unwrap phase for clarity in plots
+    phases     = mapslices(x -> unwrapPhase(x, "forcePositiveSlope"), phases    , dims=1)
+    phase_fits = mapslices(x -> unwrapPhase(x, "forcePositiveSlope"), phase_fits, dims=1)
+    
+    # Plot example of fits
+    Δ_index = 100
+    label = [L"$ β_{eff} = %$(round(β_effs[Δ_index], digits=5)) $, $ Δ_{eff} = %$(round(Δ_effs[Δ_index], digits=3)) $, $ A = %$(round(As[Δ_index], digits=5)) $, $ ϕ_{0} = %$(round(ϕ0s[Δ_index], digits=3)) $"]
+    # label = [L"$ β = 1.0 $, $ Δ = %$(round(Δ_effs[Δ_index], digits=3)) $, $ ϕ_{0} = %$(round(ϕ0s[Δ_index], digits=3)) $"]
+    titl = prep_transmission_title(SP) * "\nΔ = $(SP.Δ_range[Δ_index])"
+    fig_transmission_vs_N(Ns, Ts[:, Δ_index], phases[:, Δ_index], T_fits[:, Δ_index], phase_fits[:, Δ_index], label, titl)
+    
+    # Plot effective β-factors and detunings
+    titl = prep_transmission_title(SP)
+    fig_effectiveβΔ_vs_Δ_perfectArray(SP.Δ_range, β_effs, Δ_effs, titl)
 end
 
 
@@ -758,8 +848,7 @@ function plot_GnmEigenModes(SP)
         collΔs = collΔ_Δvs + collΔ_gms + collΔ_rms
     
         # Pack the eigenmodes
-        # eigen_σs_FT = discFourierTransform.(eigen_σs, SP.a)
-        eigen_σs_FT = discFourierTransform.(eigen_σs, SP.a)
+        eigen_σs_FT = discFourierTransform.(collect.(eigen_σs), SP.a)
         
         # Prepare iteration list to facilitate sorting according to dominant_ks
         iter_list = collect(zip(eigen_σs, eigen_σs_FT, collΔs, collΓ_gms, collΓ_rms, dominant_ks))[sortperm(dominant_ks)]
@@ -767,7 +856,7 @@ function plot_GnmEigenModes(SP)
         # Plot
         for (eigen_σ, (ks, eigen_σ_FT), collΔ, collΓ_gm, collΓ_rm, dom_k) in iter_list
             # if collΓ < 10^-2.7
-            if -6.3 < dom_k < -5.5
+            # if -6.3 < dom_k < -5.5
                 E = scan_radiation_Efield(SP, eigen_σ)
                 intensity = norm.(E).^2
                 # intensity = zeros(size(SP.r_fields))
@@ -778,7 +867,7 @@ function plot_GnmEigenModes(SP)
                 # titl = L"$ \tilde{Δ}_{i}/γ_{a} = %$(round(collΔ, digits=2)) $, $ \tilde{Γ}_{i}/γ_{a} = %$(round(collΓ, digits=4)) $, dominant $ λ_{a}k_z = %$(round(dom_k, digits=2)) $"
                 # fig = fig_presentation_GnmEigenModes(zs, eigen_σ, ks, eigen_σ_FT, SP.z_range, SP.x_range, intensity, SP.ρf, SP.array, eigenEnergy, SP.fiber.propagation_constant, titl)
                 # save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Conferences and visits\\Berlin 2025\\talk\\figures\\GnmEigenmode_N1000_$(round(dom_k, digits=2)).png", fig, px_per_unit=2)
-            end
+            # end
         end
         
     else
@@ -801,17 +890,17 @@ function plot_GnmEigenModes(SP)
         for (eigen_σBα, eigen_σ, (ks, eigen_σ_FT), eigen_diagBα, eigen_diagBα_FT, eigenEnergy) in 
             zip(eigen_σBαs, eigen_σs, eigen_σs_FT, eigen_diagBαs, eigen_diagBαs_FT, eigenEnergies)
             # collect(zip(eigen_σBαs, eigen_σs, eigen_σs_FT, eigen_diagBαs, eigen_diagBαs_FT, eigenEnergies))[1:30]
-            collΔ, collΓ = collEnergies_from_eigenEnergies(eigenEnergy)
-            if collΓ < 10^-2.7
+            collΔ, collΓ = collEnergies(eigenEnergy)
+            # if collΓ < 10^-2.7
                 E = scan_radiation_Efield(SP, eigen_σBα)
                 intensity = norm.(E).^2
                 
                 titl = prep_GnmEigenModes_title(SP)
-                fig_GnmEigenModes(zs, eigen_σ, eigen_diagBα, ks, eigen_σ_FT, eigen_diagBα_FT, SP.z_range, SP.x_range, intensity, SP.ρf, SP.array, eigenEnergy, SP.fiber.propagation_constant, titl)
-            end
+                # fig_GnmEigenModes(zs, eigen_σ, eigen_diagBα, ks, eigen_σ_FT, eigen_diagBα_FT, SP.z_range, SP.x_range, intensity, SP.ρf, SP.array, collΔ, collΓ_gm, collΓ_rm, SP.fiber.propagation_constant, titl)
+            # end
         end
         # for (eigen_Bα, eigenEnergy) in zip(eigen_Bαs, eigenEnergies)
-        #     collΔ, collΓ = collEnergies_from_eigenEnergies(eigenEnergy)
+        #     collΔ, collΓ = collEnergies(eigenEnergy)
         #     if collΓ < 10^-2.7
         #         for α in 1:3
         #             eigen_Bα_FT = discFourierTransform(eigen_Bα[α], SP.a)
@@ -991,19 +1080,18 @@ function plot_lossWithGnmEigenEnergies(SP)
     collΔ, collΓ = collEnergies(eigenEnergies)
     
     weights, resonances = transmission_eigenmodes_weights_resonances(SP.Δ_range, drive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, SP.fiber.propagation_constant_derivative)
-    
-    loss, weights_abs, resonances_abs = prep_loss_weights_resonances(t, r, weights, resonances)
+    loss, resonances_abs, resonances_abs_max, exci_pops = prep_loss_resonances_pops(t, r, resonances, eigenModesMatrix, SP.noPhonons)
     titl = prep_transmissionWithGnmEigenEnergies_title(SP)
     
-    # flt = [maximum(res) > 0.01 for res in resonances_abs]
+    # flt = resonances_abs_max .> 0.01
     # resonances_abs = resonances_abs[flt]
+    # resonances_abs_max = resonances_abs_max[flt]
     # collΔ = collΔ[flt]
     # collΓ = collΓ[flt]
-    # weights_abs = weights_abs[flt]
+    # exci_pops = exci_pops[flt]
     
-    # fig_loss_withGnmeigenEnergies(SP.Δ_range, loss, resonances_abs, collΔ, collΓ, weights_abs, titl)
-    fig_loss_withGnmeigenEnergies(SP.Δ_range, loss, resonances_abs, collΔ, abs.(collΓ), weights_abs, titl)
-    # fig_loss_withGnmeigenEnergies(SP.Δ_range, loss, resonances_abs, collΔ, abs.(collΓ), 2*weights_abs./abs.(collΓ), titl)
+    # fig_transAndResonances_polar(SP.Δ_range, t, resonances, titl)
+    fig_loss_withGnmeigenEnergies(SP.Δ_range, loss, resonances_abs, collΔ, abs.(collΓ), resonances_abs_max, exci_pops, titl)
     
     # flt = weights_abs .> 1e-20
     # titl = L"$ γ_{a} = 0.01 \cdot γ_{a}^{(0)} $"
@@ -1017,7 +1105,7 @@ end
 
 @time begin
     println("\n -- Running main() -- \n")
-    main() 
+    main()
     println(" -- -- ")
     println("@time of main():")
 end
@@ -1025,28 +1113,7 @@ end
 
 
 
-# Talk with Thomas about:
-#   Arno presented an argument that the increase in decay rate due to ground state motion is due to suddenly having "which path"-information
-#       The perfect subradiance of subwavelength arrays can be said to be due to not knowing which atom emits what light
-#       If you somehow get information of where light is emitted, the perfect destructive interference disappears
-#       And now, if some atom occasionally also generates a phonon when it emits a photon you would be able to know which atom emitted, by looking at where the phonon is
-#       But I don't understand this "which path" stuff generally, and the calculation of the decay rates including the eta^2 shift does not involve the phonon part of the state space?
-
-
 ### Major things TODO:
-# Metrics of interaction strength
-    # Read up on slow light (it comes from a lot of phase per atom?), maybe we have it here without three-level/EIT setup?
-    # t = exp(χN), look at ratio of imaginary and real part of susceptibility χ (these give the phase and loss, depending on whether an i is included in the exponent)
-    # Calculate phase per loss for transmission vs. N?
-    # Alternative metrics: Slope of phase close to T=1, phase per loss, phase per atom close to T=1, integral of phase over interval with T=1
-    
-# Look at gamma much smaller than trap frequencies (presently we have gamma 50 times greater than the traps)
-    # With gamma much greater than trap frequencies, the atoms decay before they move, so it should match with classical disorder (which is indeed what we see)
-    # If gamma is smaller we will see more quantum effects due to motion, and there should be a difference between the phonon calculation and simply including classical disorder
-    # When looking at loss spectrum, and we have extra significant peaks appearing when including phonons, 
-        # these are exactly polaron modes which actually have an effect on the transmission
-        # whereas for smaller gamma the phonon modes (polaron modes) are pushed far away
-
 # Consider a pulse/localized excitation in a very long chain to see their dynamics before they reach the ends of the chain, do they decay before the it hits the end?
     # Use transmission spectrum to predict the dynamics of a pulse that is narrow enough in momentum to live within the range of detuning where the transmission is close to 1 when doing Δvari
     # The pulse, implemented via time-dependent driving, will be spatially very very long in order to fit inside the window of high transmission with non-zero phase
@@ -1054,16 +1121,54 @@ end
     # Maybe a pulse will not see the narrow loss resonances, because they take a long time to populate?
     # Somehow calculate the loss of the pulse? I.e. does the pulse stay in the chain more than steady state light..?
 
-# Calculate with Strontium parameters
-
 # Find parameters that result in a strong effective β-factor
     # Plot independent decay transmission for different "strong" βs
     # Scan/explore system parameters to see if any can bring closer to strong β
     # Effect of propagation constant coming close to light cone?
 
+# Driving phonon states for high N
+    # Find out whether these states are driven directly by Ωα or indirectly via single-excitation states (that is, a second order process which never populates the single-excitation modes)
+        # High density of states counters the fact the jump/interaction is first (or second?) order in the Lamb-Dicke parameter
+    # Find out whether T > 1 is due to bug/error or because of ηα expansion
+        # Compare time evolution, steady state via basic variables, and steady state via vectorized variables
+
+# Calculate disordered case by having atoms in a tube, rather than randomly positioned traps
+    # Keep traps in x and y, but sample fixed positions along z
+    # This corresponds to setting ηz = 0 and sampling random positions, as we already did before
+
+# Calculate β_eff for larger and smaller ηα (do this by changing the trap frequencies)
+    # Consider +- 50% for example
+
+# Compare with classical sampling for more cases, including Sr
+
+# Fixed N varying Nsites ordered case, the spectra cross, for small detuning higher ff means lower trans, otherwise higher ff increases trans. Why?
+    # Is this an artefact of the resonances or the band edge?
+
+# Understand small features in the transmission spectra for random positioned traps (in figures of Summary document)
+    # Transmission goes slightly up for random case compared to ordered case for ff = 0.1
+    # A slight kink or shoulder for Δ = 0.6
+        # Edge of energy band? But why is it not there for ordered case then?
+        # General wobbliness due to number of instantiations?
+
+# How does β look for Sr?
 
 
 ### Minor things TODO:
+# Check if the decay rates when having eta nonzero and excluding or including phonons is very different
+    # Does the addition of phonons increase or decrease the decay rates
+    
+# Implement cutting out the y-block from the full coupling matrix when it is anyways analytically decoupled
+    # Somewhat complicated though as many places have 'α in 1:3' or similar and would (probably) need to be changed to ensure consistency
+    # 
+    # Whether to include the y-phonon block (the azimuthal atomic motion) in the full coupling matrix
+    # include_y_block = arrayType ∉ ("1Dchain", "randomZ")
+
+# Metrics of interaction strength
+    # Read up on slow light (it comes from a lot of phase per atom?), maybe we have it here without three-level/EIT setup?
+    # t = exp(χN), look at ratio of imaginary and real part of susceptibility χ (these give the phase and loss, depending on whether an i is included in the exponent)
+    # Calculate phase per loss for transmission vs. N?
+    # Alternative metrics: Slope of phase close to T=1, phase per loss, phase per atom close to T=1, integral of phase over interval with T=1
+
 # Consider a = 500 nm - make t vs ff plots and talk to Philip because he thought that it explained some change in beta?
 
 # Consider small lattice spacing to see if holes matter less? (For small lattice spacing a single hole is not resolved by the wavelength)
@@ -1111,14 +1216,10 @@ end
 
 
 ### Fixes and new features TODO:
-# Consider doing statistics on t instead of T and arg(t)
-    # Calculate T and arg(t) after taking the mean and std
-    # Asymmetric interval of confidence for T, since it has to be positive?
+# Implement proper rounding of parameters in postfixes
+    # Presently there is a unique (and somewhat complicated) rounding for Δ
 
 # Look at calculation of reflection/emission in other guided modes - is it working properly? Plot all four emissions
-    
-# Plot total "population" in sigma part of wave function and in bsigma part of wave function - find some metric for how much weight each wave function has
-    # plot this weight when doing loss and eigenmodes - maybe color markers of decay rate or have another line of plotting
 
 # Figure out T>1 error for doubleChain 
     # Something with the coupling..?

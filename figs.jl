@@ -265,6 +265,67 @@ end
 
 
 """
+Plot magnitude, phase, unfolded phase, unfolded phase divided by N, and slope of phase
+of transmission amplitude as a function of detuning, as well as a polar plot of the transmission
+"""
+function fig_transmission_vs_Δ_phaseDetails_polar(Δ_range, T, phase, t, unwrappedPhase, phaseSlope, titl)
+    # Start figure 
+    fig = Figure(size=(800, 600))
+    
+    # Make title and axis
+    Label(fig[1, 1:4], titl, tellwidth=false)
+    Label(fig[2, 1], L"Transmission coefficient, $ |t|^2 $", tellwidth=false)
+    ax1 = Axis(fig[3, 1], limits=(extrema(Δ_range)..., 0, 1), 
+               xlabel=L"$ \Delta/γ_{a} $")
+    Label(fig[2, 2], L"Transmission phase, arg$ (t) $", tellwidth=false)
+    ax2 = Axis(fig[3, 2], limits=(extrema(Δ_range)..., -π, π),
+            yticks=([-π, -π/2, 0, π/2, π], [L"$ -π $", L"$ -π/2 $", L"$ 0 $", L"$ π/2 $", L"$ π $"]),
+            xlabel=L"$ \Delta/γ_{a} $")
+    
+    Label(fig[4, 1], L"Unwrapped phase, arg$ (t) $", tellwidth=false)
+    ax3 = Axis(fig[5, 1], limits=(extrema(Δ_range)..., nothing, nothing),
+            xlabel=L"$ \Delta/γ_{a} $")
+    Label(fig[4, 2], L"Phase slope, arg$ '(t) $", tellwidth=false)
+    ax4 = Axis(fig[5, 2], limits=(extrema(Δ_range)..., nothing, nothing),
+            xlabel=L"$ \Delta/γ_{a} $")
+    
+    Label(fig[2, 3:4], L"Transmission $ t $", tellwidth=false)
+    ax5 = Axis(fig[3:5, 3:4][1, 1])
+    
+    
+    # Plot magnitude squared and the phase of the transmission 
+    lines!(ax1, Δ_range, T    , color=:blue)
+    lines!(ax2, Δ_range, phase, color=:red)
+    
+    # Plot unwrapped phase, phase per atom, and slope of phase
+    lines!(ax3, Δ_range, unwrappedPhase, color=:red)
+    lines!(ax4, Δ_range[1:end-1] .+ diff(Δ_range)./2, phaseSlope, color=:black)
+    
+    # Radial lines for polar plot
+    vlines!(ax5, 0, color=:black, linewidth=0.5, alpha=0.8)
+    hlines!(ax5, 0, color=:black, linewidth=0.5, alpha=0.8)
+    ablines!(ax5, [0, 0], [1, -1], color=:black, linewidth=0.5, alpha=0.8)
+    
+    # Concentric circles for polar plot
+    for radius in 0.25:0.25:1
+        arc!(ax5, Point2f(0), radius, 0.0, 2π, color=:black, linewidth=0.5 + (radius == 1)*0.5, alpha=0.8)
+        text!(ax5, radius, 0, text=string(radius))
+    end
+    
+    # Detuning colorbar for polar plot
+    Colorbar(fig[3:5, 3:4][2, 1], limits=extrema(Δ_range), colormap=:gist_rainbow, vertical=false, flipaxis=false, label=L"$ Δ/γ_{a} $")
+    
+    # Plot transmission as a polar plot
+    lines!(ax5, real.(t), imag.(t), colormap=:gist_rainbow, color=Δ_range, linewidth=3)
+    
+    
+    # Finish figure
+    ax5.aspect = 1
+    display(GLMakie.Screen(), fig)
+end
+
+
+"""
 Plot magnitude and phase of the transmission and reflection amplitudes as a function of detuning
 """
 function fig_transmissionAndReflection_vs_Δ(Δ_range, T, tPhase, R, rPhase, titl)
@@ -445,6 +506,33 @@ end
 
 
 """
+Plot magnitude and phase of transmission amplitude for a specific detuning as a function of N
+for the perfect arrays together with fits according to the independent decay expressions
+"""
+function fig_transmission_vs_N(Ns, Ts, phases, T_fits, phase_fits, label, titl)
+    # Start figure 
+    fig = Figure(size=(1200, 700))
+    
+    # Make title and axis
+    Label(fig[1, 1:2], titl, tellwidth=false)
+    Label(fig[2, 1], L"Transmission coefficient, $ |t|^2 $", tellwidth=false)
+    ax1 = Axis(fig[3, 1], xlabel=L"$ N $", yscale=log10)
+    Label(fig[2, 2], L"Transmission phase, arg$ (t) $", tellwidth=false)
+    ax2 = Axis(fig[3, 2], xlabel=L"$ N $")
+    
+    # Plot magnitude squared and the phase of the transmission
+    scatter!(ax1, Ns, Ts, color=:red)
+    lines!(ax1, Ns, T_fits, color=:black)
+    scatter!(ax2, Ns, phases, color=:red, label=L"Data$$")
+    lines!(ax2, Ns, phase_fits, color=:black, label=label)
+    
+    # Finish figure
+    axislegend(ax2, position=:lt)
+    display(GLMakie.Screen(), fig)
+end
+
+
+"""
 Plot the effective β-factor as a function of detuning for multiple ff
 """
 function fig_βfactor_vs_Δ(Δ_range, βs, β_indepDecay, labels, titl)
@@ -485,7 +573,7 @@ function fig_effectiveβΔ_vs_Δ(Δ_range, β_effs, Δ_effs, β_indepDecay, labe
     # Make title and axis
     Label(fig[1, 1:2], titl, tellwidth=false)
     Label(fig[2, 1], L"$ β_{eff} $", tellwidth=false)
-    ax1 = Axis(fig[3, 1], xlabel=L"$ Δ/γ_{a} $")
+    ax1 = Axis(fig[3, 1], xlabel=L"$ Δ/γ_{a} $")#, yscale=log10)
     Label(fig[2, 2], L"$ [Δ/(γ_{gm} + γ_{rm})]_{eff} $", tellwidth=false)
     ax2 = Axis(fig[3, 2], xlabel=L"$ Δ/γ_{a} $")
     
@@ -501,6 +589,29 @@ function fig_effectiveβΔ_vs_Δ(Δ_range, β_effs, Δ_effs, β_indepDecay, labe
     
     # Finish figure
     axislegend(ax1, position=:lt)
+    display(GLMakie.Screen(), fig)
+end
+
+
+"""
+Plot the effective decay rates as a function of detuning for multiple ff
+"""
+function fig_effectiveβΔ_vs_Δ_perfectArray(Δ_range, β_effs, Δ_effs, titl)
+    # Start figure 
+    fig = Figure(size=(800, 600))
+    
+    # Make title and axis
+    Label(fig[1, 1:2], titl, tellwidth=false)
+    Label(fig[2, 1], L"$ β_{eff} $", tellwidth=false)
+    ax1 = Axis(fig[3, 1], xlabel=L"$ Δ/γ_{a} $")#, yscale=log10)
+    Label(fig[2, 2], L"$ [Δ/(γ_{gm} + γ_{rm})]_{eff} $", tellwidth=false)
+    ax2 = Axis(fig[3, 2], xlabel=L"$ Δ/γ_{a} $")
+    
+    # Plot magnitude squared and the phase of the transmission with bands for standard deviations
+    lines!(ax1, Δ_range, β_effs, color=:black)
+    lines!(ax2, Δ_range, Δ_effs, color=:black)
+    
+    # Finish figure
     display(GLMakie.Screen(), fig)
 end
 
@@ -660,7 +771,7 @@ Furthermore, plot the emission pattern of that mode.
 
 For the case of including phonons.
 """
-function fig_GnmEigenModes(zs, eigen_σ, eigen_diagBα, ks, eigen_σ_FT, eigen_diagBα_FT, z_range, x_range, intensity, ρf, array, eigval, κ, titl)
+function fig_GnmEigenModes(zs, eigen_σ, eigen_diagBα, ks, eigen_σ_FT, eigen_diagBα_FT, z_range, x_range, intensity, ρf, array, collΔ, collΓ_gm, collΓ_rm, κ, titl)
     # Prepare colors
     colors = distinguishable_colors(8, [RGB(1,1,1), RGB(0,0,0)], dropseed=true)
     
@@ -669,6 +780,7 @@ function fig_GnmEigenModes(zs, eigen_σ, eigen_diagBα, ks, eigen_σ_FT, eigen_d
     
     # Make title and axis
     Label(fig[1, 1:3], titl, tellwidth=false)
+    Label(fig[2, 2:3], L"$ Δ_{i}/γ_{a} $, $ Γ_{i, gm}/γ_{a} $, $ Γ_{i, rm}/γ_{a} $ = %$(round(collΔ, digits=3)), %$(round(collΓ_gm, digits=3)), %$(round(collΓ_rm, digits=3)), ", tellwidth=false)
     Label(fig[2, 2:3], latexstring(L"Eigval. $ = " * format_Complex_to_String(eigval) * L"$"), tellwidth=false)
     Label(fig[3, 2], L"Real space$$", tellwidth=false)
     Label(fig[3, 3], L"Momentum space$$", tellwidth=false)
@@ -795,45 +907,147 @@ end
 Plot magnitude and phase of transmission amplitude as a function of detuning
 and mark the position of the eigvals of Gnm
 """
-function fig_loss_withGnmeigenEnergies(Δ_range, L, resonances_abs, collΔ, collΓ, weights_abs, titl)
+function fig_loss_withGnmeigenEnergies(Δ_range, L, resonances_abs, collΔ, collΓ, resonances_abs_max, exci_pops, titl)
     # Start figure 
     fig = Figure(size=(800, 900))
     
     # Plot the loss
     Label(fig[1, 1], titl, tellwidth=false)
-    Label(fig[end+1, 1], L"Loss coefficient, individual resonances superimposed $$", tellwidth=false)
+    # Label(fig[end+1, 1], L"Loss coefficient, individual resonances superimposed $$", tellwidth=false)
     ax1 = Axis(fig[end+1, 1], limits=(extrema(Δ_range)..., 0, nothing), 
     # ax1 = Axis(fig[end+1, 1], limits=(extrema(Δ_range)..., nothing, nothing), 
                xlabel=L"$ Δ/γ_{a} $",
                ylabel=L"$ 1 - |t|^2 $")
-               lines!(ax1, Δ_range, L, color=:blue, label=L"Loss, $ 1 - |t|^2 $")
+    lines!(ax1, Δ_range, L, color=:blue, label=L"Loss, $ 1 - |t|^2 $")
     
     # Plot the resonances
     for resonance in resonances_abs
         lines!(ax1, Δ_range, resonance, color=:skyblue, label=L"Resonances, $ \left|\frac{γ_{a}w}{(Δ - Δ_\text{coll} + iΓ_\text{coll}/2)}\right| $")
     end
-    axislegend(position=:lt, unique=true)
-            
+    # axislegend(position=:lt, unique=true)
+    
     # Mark the position of the resonances
     vlines!(ax1, collΔ, linewidth=0.2, color=:purple, label=false)
     
     # Plot the Gnm eigenmode decay rates as a function of their energy
-    Label(fig[end+1, 1], L"Collective decay rates, $ Γ_\text{coll}/γ_{a} $", tellwidth=false)
+    # Label(fig[end+1, 1], L"Collective decay rates, $ Γ_\text{coll}/γ_{a} $", tellwidth=false)
     ax2 = Axis(fig[end+1, 1], limits=(extrema(Δ_range), nothing), 
-               xlabel=L"$ Δ_\text{coll}/γ_{a} $",
-               ylabel=L"$ Γ_\text{coll}(Δ_\text{coll})/γ_{a} $", 
+            #    xlabel=L"$ Δ_\text{coll}/γ_{a} $",
+               ylabel=L"$ Γ_\text{coll}/γ_{a} $", 
                yscale=log10)
     scatter!(ax2, collΔ, collΓ, color=:purple)
     
-    # Plot the weights of the resonances
-    Label(fig[end+1, 1], L"Resonance weights, $ |w| $", tellwidth=false)
+    # Plot the peaks values of the resonances
+    # Label(fig[end+1, 1], L"Resonance peak values, $ 2\gamma_{a}|w|/Γ_\text{coll} $", tellwidth=false)
     ax3 = Axis(fig[end+1, 1], limits=(extrema(Δ_range), nothing), 
+            #    xlabel=L"$ Δ_\text{coll}/γ_{a} $",
+               ylabel=L"$ 2\gamma_{a}|w|/Γ_\text{coll} $")
+    scatter!(ax3, collΔ, resonances_abs_max, color=:black)
+    
+    # Plot the excitation-sector populations
+    # Label(fig[end+1, 1], L"Excitation-sector populations$$", tellwidth=false)
+    ax4 = Axis(fig[end+1, 1], limits=(extrema(Δ_range)..., 0, 1), 
                xlabel=L"$ Δ_\text{coll}/γ_{a} $",
-               ylabel=L"$ |w(Δ_\text{coll})| $",
-               yscale=log10)
-    scatter!(ax3, collΔ, weights_abs, color=:black)
+               ylabel=L"Exc. pop.$$")
+    scatter!(ax4, collΔ, exci_pops, color=:black)
     
     # Finish figure
+    display(GLMakie.Screen(), fig)
+end
+
+
+"""
+Plot resonances contributing to the transmission, together with the transmission itself,
+in a polar plot.
+"""
+# function fig_transAndResonances_polar(Δ_range, t, resonances, titl)
+#     # Make a prep function instead of calculating abs and angle here?
+    
+    
+#     # Start figure 
+#     fig = Figure(size=(800, 900))
+#     Label(fig[1, 1:4], titl, tellwidth=false)
+    
+#     # Plot transmission and 1 - res
+#     ax1 = PolarAxis(fig[2, 1])#, rlimits=(0, 1))
+#     trans_line = lines!(ax1, angle.(t), abs.(t), color=:red)
+#     for res in resonances
+#         lines!(ax1, angle.(1 .- res), abs.(1 .- res), alpha=0.9)
+#     end
+#     Legend(fig[2, 2], [trans_line], [L"$ t $"])
+    
+#     # Plot 1 - t and resonances
+#     ax2 = PolarAxis(fig[2, 3])#, rlimits=(0, 1))
+#     trans_line = lines!(ax2, angle.(1 .- t), abs.(1 .- t), color=:red)
+#     for res in resonances
+#         lines!(ax2, angle.(res), abs.(res), alpha=0.9)
+#     end
+#     Legend(fig[2, 4], [trans_line], [L"$ 1 - t $"])
+    
+#     # Finish figure
+#     display(GLMakie.Screen(), fig)
+# end
+
+function fig_transAndResonances_polar(Δ_range, t, resonances, titl)
+    # Start figure 
+    fig = Figure(size=(800, 900))
+    Label(fig[1, 1], titl, tellwidth=false)
+    ax1 = Axis(fig[2, 1])
+    
+    # Radial lines
+    vlines!(0, color=:black, linewidth=0.5, alpha=0.8)
+    hlines!(0, color=:black, linewidth=0.5, alpha=0.8)
+    ablines!(ax1, [0, 0], [1, -1], color=:black, linewidth=0.5, alpha=0.8)
+    
+    # Concentric circles
+    for radius in 0.25:0.25:2
+        arc!(ax1, Point2f(0), radius, 0.0, 2π, color=:black, linewidth=0.5 + (radius == 1)*0.5, alpha=0.8)
+        text!(ax1, radius, 0, text=string(radius))
+    end
+    
+    # Detuning colorbar
+    Colorbar(fig[3, 1], limits=extrema(Δ_range), colormap=:gist_rainbow, vertical=false, flipaxis=false, label=L"$ Δ/γ_{a} $")
+    
+    # Plot transmission and 1 - res
+    lines!(ax1, real.(t), imag.(t), colormap=:gist_rainbow, color=Δ_range, linewidth=3)
+    for res in resonances
+        lines!(ax1, real.(1 .- res), imag.(1 .- res), colormap=:gist_rainbow, color=Δ_range, alpha=0.9)
+    end
+    
+    # Finish figure
+    colsize!(fig.layout, 1, Aspect(2, 1.0))
+    display(GLMakie.Screen(), fig)
+end
+
+
+"""
+Plot the transmission in a polar plot.
+"""
+function fig_transmission_polar(Δ_range, t, titl)
+    # Start figure 
+    fig = Figure(size=(800, 900))
+    Label(fig[1, 1], titl, tellwidth=false)
+    ax1 = Axis(fig[2, 1])
+    
+    # Radial lines
+    vlines!(0, color=:black, linewidth=0.5, alpha=0.8)
+    hlines!(0, color=:black, linewidth=0.5, alpha=0.8)
+    ablines!(ax1, [0, 0], [1, -1], color=:black, linewidth=0.5, alpha=0.8)
+    
+    # Concentric circles
+    for radius in 0.25:0.25:1
+        arc!(ax1, Point2f(0), radius, 0.0, 2π, color=:black, linewidth=0.5 + (radius == 1)*0.5, alpha=0.8)
+        text!(ax1, radius, 0, text=string(radius))
+    end
+    
+    # Detuning colorbar
+    Colorbar(fig[3, 1], limits=extrema(Δ_range), colormap=:gist_rainbow, vertical=false, flipaxis=false, label=L"$ Δ/γ_{a} $")
+    
+    # Plot transmission and 1 - res
+    lines!(ax1, real.(t), imag.(t), colormap=:gist_rainbow, color=Δ_range, linewidth=3)
+    
+    # Finish figure
+    colsize!(fig.layout, 1, Aspect(2, 1.0))
     display(GLMakie.Screen(), fig)
 end
 
@@ -912,4 +1126,4 @@ function fig_state(rs, v, ks, vFT, dom_ks, collΓ_gm, collΓ_rm, v_eigenModes, z
 end
 
 
-# save("C:\\Users\\Simon\\Downloads\\FILENAME.png", fig)
+    # save("C:\\Users\\Simon\\Downloads\\FILENAME.png", fig)

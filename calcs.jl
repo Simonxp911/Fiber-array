@@ -723,6 +723,7 @@ Scan the steady state values of atomic coherences σ and the atom-phonon correla
 function scan_steadyState(SP)
     postfixes = get_postfix_steadyState.(SP.Δ_range, SP.ΔvariDescription, SP.dDescription, Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), Ref(SP.tildeG_flags), SP.arrayDescription, SP.fiber.postfix)
     params = get_parameterMatrices(SP)
+    # params = nothing
     return calc_steadyState.(SP.Δ_range, Ref(params), postfixes, SP.noPhonons, SP.save_steadyState)
 end
 
