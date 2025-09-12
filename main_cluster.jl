@@ -22,8 +22,8 @@ function main()
     # Define system parameters
     SP = define_SP()
     MPI.Barrier(comm)
-    # if myRank == root show(SP) end
-    # MPI.Barrier(comm)
+    if myRank == root show(SP) end
+    MPI.Barrier(comm)
     
     
     task = ARGS[3]
