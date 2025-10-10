@@ -573,13 +573,13 @@ end
 Construct the interpolation of the Im_Grm_trans. Returns a dcitionary that takes a string
 'derivOrder, α' as argument and returns a function of z.
 """
-function interpolation1D_Im_Grm_trans(fiber, N_sites, ρa, a, noPhonons)
+function interpolation1D_Im_Grm_trans(fiber, N_sites, ρa, a, ηα)
     array = get_array("1Dchain", N_sites, ρa, a)
     N = length(array)
     zs = [site[3] for site in array]
     
     derivOrder_α = [((0, 0), 1)]
-    if !noPhonons
+    if !all(ηα .== 0)
         derivOrders = [(1, 0), (0, 1), (1, 1), (2, 0), (0, 2)]
         αs = 1:3
         derivOrder_α = vcat(derivOrder_α, flatten([(derivOrder, α) for derivOrder in derivOrders, α in αs]))

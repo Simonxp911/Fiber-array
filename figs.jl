@@ -277,6 +277,9 @@ function fig_transmission_vs_Δ_phaseDetails_polar(Δ_range, T, phase, t, unwrap
     Label(fig[2, 1], L"Transmission coefficient, $ |t|^2 $", tellwidth=false)
     ax1 = Axis(fig[3, 1], limits=(extrema(Δ_range)..., 0, 1), 
                xlabel=L"$ \Delta/γ_{a} $")
+    # ax1 = Axis(fig[3, 1], limits=(extrema(Δ_range)..., nothing, nothing), 
+    #            xlabel=L"$ \Delta/γ_{a} $",
+    #            yscale=log10)
     Label(fig[2, 2], L"Transmission phase, arg$ (t) $", tellwidth=false)
     ax2 = Axis(fig[3, 2], limits=(extrema(Δ_range)..., -π, π),
             yticks=([-π, -π/2, 0, π/2, π], [L"$ -π $", L"$ -π/2 $", L"$ 0 $", L"$ π/2 $", L"$ π $"]),
@@ -290,7 +293,9 @@ function fig_transmission_vs_Δ_phaseDetails_polar(Δ_range, T, phase, t, unwrap
             xlabel=L"$ \Delta/γ_{a} $")
     
     Label(fig[2, 3:4], L"Transmission $ t $", tellwidth=false)
-    ax5 = Axis(fig[3:5, 3:4][1, 1])
+    ax5 = Axis(fig[3:5, 3:4][1, 1],
+            xlabel=L"Re$ (t) $",
+            ylabel=L"Im$ (t) $")
     
     
     # Plot magnitude squared and the phase of the transmission 
@@ -423,6 +428,37 @@ end
 
 
 """
+Plot real and imaginary parts of the refractive index as a function of detuning
+for several values of ff and ηα
+"""
+function fig_compareImperfectArray_refrIndex_vs_Δ(Δ_range, refrIndex_realss, refrIndex_imagss, labels, titl)
+    colors = distinguishable_colors(length(labels), [RGB(1,1,1), RGB(0,0,0)], dropseed=true)
+    
+    # Start figure 
+    fig = Figure(size=(800, 600))
+    
+    # Make title and axis
+    Label(fig[1, 1:2], titl, tellwidth=false)
+    Label(fig[2, 1], L"Real part of refractive index, $ n $", tellwidth=false)
+    ax1 = Axis(fig[3, 1], limits=(extrema(Δ_range)..., nothing, nothing), 
+               xlabel=L"$ \Delta/γ_{a} $")
+    Label(fig[2, 2], L"imaginary part of refractive index, $ a $", tellwidth=false)
+    ax2 = Axis(fig[3, 2], limits=(extrema(Δ_range)..., nothing, nothing), 
+               xlabel=L"$ \Delta/γ_{a} $")
+    
+    # Plot magnitude squared and the phase of the transmission with bands for standard deviations
+    for (i, label) in enumerate(labels)
+        lines!(ax1, Δ_range, refrIndex_realss[i], label=label , color=colors[i])
+        lines!(ax2, Δ_range, refrIndex_imagss[i], color=colors[i])
+    end
+    
+    # Finish figure
+    axislegend(ax1, position=:lb)
+    display(GLMakie.Screen(), fig)
+end
+
+
+"""
 Plot mean magnitude and phase of transmission amplitude for a specific detuning
 as a function of any quantity x
 with error bars given by the standard deviation
@@ -434,9 +470,9 @@ function fig_compareImperfectArray_transmission_vs_X(xs, x_label, T_means, T_std
     # Make title and axis
     Label(fig[1, 1:2], titl, tellwidth=false)
     Label(fig[2, 1], L"Transmission coefficient, $ |t|^2 $", tellwidth=false)
-    # ax1 = Axis(fig[3, 1], limits=(nothing, nothing, 0, 1), 
-    #            xlabel=x_label)
-    ax1 = Axis(fig[3, 1], xlabel=x_label, yscale=log10)
+    ax1 = Axis(fig[3, 1], limits=(nothing, nothing, 0, 1), 
+               xlabel=x_label)
+    # ax1 = Axis(fig[3, 1], xlabel=x_label, yscale=log10)
     Label(fig[2, 2], L"Transmission phase, arg$ (t) $", tellwidth=false)
     ax2 = Axis(fig[3, 2], limits=(nothing, nothing, -π, π), 
                yticks=([-π, -π/2, 0, π/2, π], [L"$ -π $", L"$ -π/2 $", L"$ 0 $", L"$ π/2 $", L"$ π $"]),
@@ -491,10 +527,10 @@ function fig_compareImperfectArray_transmission_vs_N(Ns, T_means, T_stds, phase_
             end
         end
         
-        errorbars!(ax1, Ns, T_means[i, :], lowerrors, T_stds[i, :], color=colors[i], whiskerwidth=10, label=label)
-        scatter!(ax1, Ns, T_means[i, :], color=colors[i], markersize=6)
+        # errorbars!(ax1, Ns, T_means[i, :], lowerrors, T_stds[i, :], color=colors[i], whiskerwidth=10)
+        scatter!(ax1, Ns, T_means[i, :], color=colors[i], markersize=6, label=label)
         lines!(ax1, Ns, T_fits[i, :], color=colors[i])
-        errorbars!(ax2, Ns, phase_means[i, :], phase_stds[i, :], color=colors[i], whiskerwidth=10)
+        # errorbars!(ax2, Ns, phase_means[i, :], phase_stds[i, :], color=colors[i], whiskerwidth=10)
         scatter!(ax2, Ns, phase_means[i, :], color=colors[i], markersize=6)
         lines!(ax2, Ns, phase_fits[i, :], color=colors[i])
     end
@@ -568,7 +604,7 @@ function fig_effectiveβΔ_vs_Δ(Δ_range, β_effs, Δ_effs, β_indepDecay, labe
     colors = distinguishable_colors(length(labels), [RGB(1,1,1), RGB(0,0,0)], dropseed=true)
     
     # Start figure 
-    fig = Figure(size=(800, 600))
+    fig = Figure(size=(900, 600))
     
     # Make title and axis
     Label(fig[1, 1:2], titl, tellwidth=false)
@@ -588,7 +624,8 @@ function fig_effectiveβΔ_vs_Δ(Δ_range, β_effs, Δ_effs, β_indepDecay, labe
     end
     
     # Finish figure
-    axislegend(ax1, position=:lt)
+    Legend(fig[3, 3], ax1)
+    # axislegend(ax1, position=:lt)
     display(GLMakie.Screen(), fig)
 end
 
@@ -710,6 +747,26 @@ function fig_fOnSquare(rs, M, ks, MFT)
     hm4 = heatmap!(ax4, ks, ks, angle.(MFT), colormap=:RdBu)
     Colorbar(fig[2, 5], hm2)
     Colorbar(fig[3, 5], hm4)
+    
+    # Finish figure
+    display(GLMakie.Screen(), fig)
+end
+
+
+"""
+Plot any complex function (for example for testing or checking)
+"""
+function fig_complexFunction(x, y)
+    # Start figure 
+    fig = Figure(size=(1000, 400))
+    
+    # Make axes
+    ax1 = Axis(fig[1, 1])
+    ax2 = Axis(fig[1, 2])
+    
+    # Plot the real and imaginary part separately
+    lines!(ax1, x, real.(y), color=:blue)
+    lines!(ax2, x, imag.(y), color=:red)
     
     # Finish figure
     display(GLMakie.Screen(), fig)
@@ -941,7 +998,8 @@ function fig_loss_withGnmeigenEnergies(Δ_range, L, resonances_abs, collΔ, coll
     # Label(fig[end+1, 1], L"Resonance peak values, $ 2\gamma_{a}|w|/Γ_\text{coll} $", tellwidth=false)
     ax3 = Axis(fig[end+1, 1], limits=(extrema(Δ_range), nothing), 
             #    xlabel=L"$ Δ_\text{coll}/γ_{a} $",
-               ylabel=L"$ 2\gamma_{a}|w|/Γ_\text{coll} $")
+               ylabel=L"$ 2\gamma_{a}|w|/Γ_\text{coll} $", 
+               yscale=log10)
     scatter!(ax3, collΔ, resonances_abs_max, color=:black)
     
     # Plot the excitation-sector populations

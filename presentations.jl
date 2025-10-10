@@ -328,47 +328,87 @@ end
 
 """
 Presentation version of fig_compareImperfectArray_transmission_vs_ffOrηα,
-showing mean magnitude and phase of transmission amplitude as a function for a specific detuning
+showing mean magnitude and phase of transmission amplitude for a specific detuning
 as a function of ff or ηα
 with error bars given by the standard deviation
 """
-function fig_presentation_compareImperfectArray_transmission_vs_ffOrηα(xs, x_label, T_means, T_stds, phase_means, phase_stds, T_noRadInt, phase_noRadInt, titl)
+function fig_presentation_compareImperfectArray_transmission_vs_ffOrηα(xs, x_label, T_means, T_stds, phase_means, phase_stds, T_indepDecays, phase_indepDecays, titl)
     # Start figure 
-    fig = Figure(size=(700, 300), fontsize=24)
+    fig = Figure(size=(900, 450), fontsize=24)
     
     # Make title and axis
     Label(fig[1, 1:2], titl, tellwidth=false)
     # ax1 = Axis(fig[2, 1], limits=(0.0, 0.8, 0, 1), 
-    ax1 = Axis(fig[2, 1], limits=(0.0, 0.8, nothing, nothing), 
+    ax1 = Axis(fig[2, 1], limits=(0.0, 1.05, nothing, nothing), 
                xlabel=x_label,
                ylabel=L"$ |t|^2 $")
     # ax2 = Axis(fig[2, 2], limits=(0.0, 0.8, -π, π),
-    ax2 = Axis(fig[2, 2], limits=(0.0, 0.8, nothing, nothing),
+    ax2 = Axis(fig[2, 2], limits=(0.0, 1.05, nothing, nothing),
             #    yticks=([-π, -π/2, 0, π/2, π], [L"$ -π $", L"$ -π/2 $", L"$ 0 $", L"$ π/2 $", L"$ π $"]),
                xlabel=x_label,
                ylabel=L"arg$ (t) $")
     
-    # Add line or scatter for independent decay calculation
-    t2 = 0.4507100477120275 #N=100, Δ=-1
-    argt = 0.797941863152475
-    hlines!(ax1, t2, color=:black, label=L"Ind. decay $$")
-    hlines!(ax2, argt, color=:black, label=L"Ind. decay $$")
-    # t2s = [0.889, 0.791, 0.704, 0.626, 0.557, 0.495, 0.392, 0.310, 0.245, 0.194]
-    # argts = [0.237, 0.469, 0.704, 0.939, 1.173, 1.408, 1.878, 2.346, 2.816, -2.999]
-    # scatter!(ax1, xs, T_noRadInt, color=:black, label=L"Ind. decay $$")
-    # scatter!(ax2, xs, phase_noRadInt, color=:black, label=L"Ind. decay $$")
-    
     # Plot magnitude squared and the phase of the transmission 
     x_n = length(xs)
     for (color, label, T_mean, T_std, phase_mean, phase_std) in zip([:blue, :red], 
-                                                                    [L"Ordered$$", L"Random$$"],
+                                                                    [L"Ordered$$", L"Random, $ η_{z} = 0 $"],
                                                                     [T_means[1:x_n], T_means[x_n+1:end]], 
                                                                     [T_stds[1:x_n], T_stds[x_n+1:end]], 
                                                                     [phase_means[1:x_n], phase_means[x_n+1:end]], 
                                                                     [phase_stds[1:x_n], phase_stds[x_n+1:end]])
         errorbars!(ax1, xs, T_mean, T_std, color=color, whiskerwidth=10, label=label)
+        scatter!(ax1, xs, T_mean, color=color)
         errorbars!(ax2, xs, phase_mean, phase_std, color=color, whiskerwidth=10, label=label)
+        scatter!(ax2, xs, phase_mean, color=color)
     end
+    
+    # Add line or scatter for independent decay calculation
+    # hlines!(ax1, T_indepDecays[1], color=:black, label=L"Ind. decay $$")
+    # hlines!(ax2, phase_indepDecays[1], color=:black, label=L"Ind. decay $$")
+    scatter!(ax1, xs, T_indepDecays, color=:black, marker=:star5, markersize=12, label=L"Ind. decay $$")
+    scatter!(ax2, xs, phase_indepDecays, color=:black, marker=:star5, markersize=12, label=L"Ind. decay $$")
+    
+    # Finish figure
+    # axislegend(ax1, position=:lt, labelsize=16)
+    axislegend(ax2, position=:lb, labelsize=16)
+    display(GLMakie.Screen(), fig)
+    return fig
+end
+
+
+"""
+Presentation 
+showing real and imaginary parts of the refractive index for a specific detuning
+as a function of ff or ηα
+"""
+function fig_presentation_compareImperfectArray_refrIndex_vs_ffOrηα(xs, x_label, refrIndex_reals, refrIndex_imags, refrIndex_real_indepDecays, refrIndex_imag_indepDecays, titl)
+    # Start figure 
+    fig = Figure(size=(900, 450), fontsize=24)
+    
+    # Make title and axis
+    Label(fig[1, 1:2], titl, tellwidth=false)
+    ax1 = Axis(fig[2, 1], limits=(0.0, 1.05, nothing, nothing), 
+               xlabel=x_label,
+               ylabel=L"Re$ (n) $")
+    ax2 = Axis(fig[2, 2], limits=(0.0, 1.05, nothing, nothing),
+               xlabel=x_label,
+               ylabel=L"Im$ (t) $")
+    
+    # Plot real and imaginary parts of refractive index
+    x_n = length(xs)
+    for (color, label, refrIndex_real, refrIndex_imag) in zip([:blue, :red], 
+                                                                    [L"Ordered$$", L"Random, $ η_{z} = 0 $"],
+                                                                    [refrIndex_reals[1:x_n], refrIndex_reals[x_n+1:end]], 
+                                                                    [refrIndex_imags[1:x_n], refrIndex_imags[x_n+1:end]])
+        scatter!(ax1, xs, refrIndex_real, color=color, label=label)
+        scatter!(ax2, xs, refrIndex_imag, color=color, label=label)
+    end
+    
+    # Add line or scatter for independent decay calculation
+    # hlines!(ax1, refrIndex_real_indepDecays[1], color=:black, label=L"Ind. decay $$")
+    # hlines!(ax2, refrIndex_imag_indepDecays[1], color=:black, label=L"Ind. decay $$")
+    scatter!(ax1, xs, refrIndex_real_indepDecays, color=:black, marker=:star5, markersize=12, label=L"Ind. decay $$")
+    scatter!(ax2, xs, refrIndex_imag_indepDecays, color=:black, marker=:star5, markersize=12, label=L"Ind. decay $$")
     
     # Finish figure
     # axislegend(ax1, position=:lt, labelsize=16)

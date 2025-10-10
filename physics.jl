@@ -752,7 +752,7 @@ end
 
 
 # ================================================
-#   Functions pertaining to 1D Fourier transform of the vacuum Green's function (along z)
+#   Functions pertaining to 1D Fourier transform (along z) of the vacuum Green's function
 # ================================================
 """
 Calculates the 1D Fourier transform of the vacuum Green's function (along z)
@@ -1098,6 +1098,23 @@ function guidedEmissions(σ, Bα, fiber, d, ηα, array)
         end
     end
     return emissions
+end
+
+
+"""
+Calculates the (complex) index of refraction from the transmission amplitude through the fiber 
+taking the atomic array to define a medium with a certain length 
+"""
+function refractiveIndex(t, arrayType, N_sites, a)
+    if arrayType ∈ ("1Dchain", "randomZ")
+        mediumLength = a*(N_sites - 1)
+    elseif arrayType == "doubleChain"
+        mediumLength = a*(N_sites/2 - 1)
+    else 
+        throw(ArgumentError("The arrayType = $arrayType has not been implemented in refractiveIndex")) 
+    end
+    
+    return 1 + log(t)/(1im*ωa*mediumLength)
 end
 
 
