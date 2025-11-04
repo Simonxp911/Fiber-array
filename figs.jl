@@ -401,7 +401,7 @@ function fig_compareImperfectArray_transmission_vs_Δ(Δ_range, T_meanss, T_stds
     colors = distinguishable_colors(length(labels), [RGB(1,1,1), RGB(0,0,0)], dropseed=true)
     
     # Start figure 
-    fig = Figure(size=(800, 600))
+    fig = Figure(size=(800, 500))
     
     # Make title and axis
     Label(fig[1, 1:2], titl, tellwidth=false)
@@ -422,8 +422,10 @@ function fig_compareImperfectArray_transmission_vs_Δ(Δ_range, T_meanss, T_stds
     end
     
     # Finish figure
-    axislegend(ax1, position=:lb)
+    Legend(fig[3, 3], ax1)
+    # axislegend(ax1, position=:lb)
     display(GLMakie.Screen(), fig)
+    return fig
 end
 
 
@@ -597,14 +599,14 @@ end
 
 
 """
-Plot the effective decay rates as a function of detuning for multiple ff
+Plot the effective β-factor and effective detuning as a function of (bare) detuning for multiple ff
 """
 function fig_effectiveβΔ_vs_Δ(Δ_range, β_effs, Δ_effs, β_indepDecay, labels, titl)
     # Prepare colors
     colors = distinguishable_colors(length(labels), [RGB(1,1,1), RGB(0,0,0)], dropseed=true)
     
     # Start figure 
-    fig = Figure(size=(900, 600))
+    fig = Figure(size=(900, 450))
     
     # Make title and axis
     Label(fig[1, 1:2], titl, tellwidth=false)
@@ -613,9 +615,9 @@ function fig_effectiveβΔ_vs_Δ(Δ_range, β_effs, Δ_effs, β_indepDecay, labe
     Label(fig[2, 2], L"$ [Δ/(γ_{gm} + γ_{rm})]_{eff} $", tellwidth=false)
     ax2 = Axis(fig[3, 2], xlabel=L"$ Δ/γ_{a} $")
     
-    # Compare with independent decay case
-    hlines!(ax1, β_indepDecay, color=:black, label=L"Indep. decay$$")
-    lines!(ax2, Δ_range, Δ_range, color=:black)
+    # # Compare with independent decay case
+    # hlines!(ax1, β_indepDecay, color=:black, label=L"Indep. decay$$")
+    # lines!(ax2, Δ_range, Δ_range, color=:black)
     
     # Plot magnitude squared and the phase of the transmission with bands for standard deviations
     for (i, label) in enumerate(labels)
@@ -627,11 +629,13 @@ function fig_effectiveβΔ_vs_Δ(Δ_range, β_effs, Δ_effs, β_indepDecay, labe
     Legend(fig[3, 3], ax1)
     # axislegend(ax1, position=:lt)
     display(GLMakie.Screen(), fig)
+    return fig
 end
 
 
 """
-Plot the effective decay rates as a function of detuning for multiple ff
+Plot the effective β-factor and effective detuning as a function of (bare) detuning for multiple ff
+for the case of a perfect array
 """
 function fig_effectiveβΔ_vs_Δ_perfectArray(Δ_range, β_effs, Δ_effs, titl)
     # Start figure 
@@ -650,6 +654,65 @@ function fig_effectiveβΔ_vs_Δ_perfectArray(Δ_range, β_effs, Δ_effs, titl)
     
     # Finish figure
     display(GLMakie.Screen(), fig)
+end
+
+
+"""
+Plot the effective β-factor as a function of the Lamb-Dicke parameter
+"""
+function fig_effectiveβΔ_vs_η(ηα_list, β_effs, Δ_effs, labels, titl)
+    # Prepare colors
+    colors = distinguishable_colors(length(labels), [RGB(1,1,1), RGB(0,0,0)], dropseed=true)
+    
+    # Start figure 
+    fig = Figure(size=(600, 450))
+    
+    # Make title and axis
+    Label(fig[1, 1], titl, tellwidth=false)
+    Label(fig[2, 1], L"$ β_{eff} $", tellwidth=false)
+    ax1 = Axis(fig[3, 1], xlabel=L"$ η $-factor", yscale=log10, xscale=log10)
+    
+    # Plot magnitude squared and the phase of the transmission with bands for standard deviations
+    for (i, label) in enumerate(labels)
+        lines!(ax1, ηα_list, β_effs[:, i], color=colors[i], label=label)
+        scatter!(ax1, ηα_list, β_effs[:, i], color=colors[i])
+    end
+    
+    # Finish figure
+    Legend(fig[3, 2], ax1)
+    display(GLMakie.Screen(), fig)
+    return fig
+end
+
+
+"""
+Plot the effective (complex) index of refraction as a function of detuning for multiple ff
+"""
+function fig_effectiveRefrIndex_vs_Δ(Δ_range, n_real, n_imag, labels, titl)
+    # Prepare colors
+    colors = distinguishable_colors(length(labels), [RGB(1,1,1), RGB(0,0,0)], dropseed=true)
+    
+    # Start figure 
+    fig = Figure(size=(900, 450))
+    
+    # Make title and axis
+    Label(fig[1, 1:2], titl, tellwidth=false)
+    Label(fig[2, 1], L"Re$ [n_{eff}] $", tellwidth=false)
+    ax1 = Axis(fig[3, 1], xlabel=L"$ Δ/γ_{a} $")
+    Label(fig[2, 2], L"Im$ [n_{eff}] $", tellwidth=false)
+    ax2 = Axis(fig[3, 2], xlabel=L"$ Δ/γ_{a} $")
+    
+    # Plot magnitude squared and the phase of the transmission with bands for standard deviations
+    for (i, label) in enumerate(labels)
+        lines!(ax1, Δ_range, n_real[i, :], color=colors[i], label=label)
+        lines!(ax2, Δ_range, n_imag[i, :], color=colors[i])
+    end
+    
+    # Finish figure
+    Legend(fig[3, 3], ax1)
+    # axislegend(ax1, position=:lt)
+    display(GLMakie.Screen(), fig)
+    return fig
 end
 
 
@@ -996,7 +1059,7 @@ function fig_loss_withGnmeigenEnergies(Δ_range, L, resonances_abs, collΔ, coll
     
     # Plot the peaks values of the resonances
     # Label(fig[end+1, 1], L"Resonance peak values, $ 2\gamma_{a}|w|/Γ_\text{coll} $", tellwidth=false)
-    ax3 = Axis(fig[end+1, 1], limits=(extrema(Δ_range), nothing), 
+    ax3 = Axis(fig[end+1, 1], limits=(extrema(Δ_range)..., 1e-8, 1e0), 
             #    xlabel=L"$ Δ_\text{coll}/γ_{a} $",
                ylabel=L"$ 2\gamma_{a}|w|/Γ_\text{coll} $", 
                yscale=log10)

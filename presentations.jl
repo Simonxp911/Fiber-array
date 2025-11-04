@@ -340,10 +340,13 @@ function fig_presentation_compareImperfectArray_transmission_vs_ffOrηα(xs, x_l
     Label(fig[1, 1:2], titl, tellwidth=false)
     # ax1 = Axis(fig[2, 1], limits=(0.0, 0.8, 0, 1), 
     ax1 = Axis(fig[2, 1], limits=(0.0, 1.05, nothing, nothing), 
+    # ax1 = Axis(fig[2, 1], limits=(0.0, 105, nothing, nothing), 
+            #    yscale=log10,
                xlabel=x_label,
                ylabel=L"$ |t|^2 $")
     # ax2 = Axis(fig[2, 2], limits=(0.0, 0.8, -π, π),
     ax2 = Axis(fig[2, 2], limits=(0.0, 1.05, nothing, nothing),
+    # ax2 = Axis(fig[2, 2], limits=(0.0, 105, nothing, nothing),
             #    yticks=([-π, -π/2, 0, π/2, π], [L"$ -π $", L"$ -π/2 $", L"$ 0 $", L"$ π/2 $", L"$ π $"]),
                xlabel=x_label,
                ylabel=L"arg$ (t) $")
@@ -363,10 +366,10 @@ function fig_presentation_compareImperfectArray_transmission_vs_ffOrηα(xs, x_l
     end
     
     # Add line or scatter for independent decay calculation
-    # hlines!(ax1, T_indepDecays[1], color=:black, label=L"Ind. decay $$")
-    # hlines!(ax2, phase_indepDecays[1], color=:black, label=L"Ind. decay $$")
-    scatter!(ax1, xs, T_indepDecays, color=:black, marker=:star5, markersize=12, label=L"Ind. decay $$")
-    scatter!(ax2, xs, phase_indepDecays, color=:black, marker=:star5, markersize=12, label=L"Ind. decay $$")
+    hlines!(ax1, T_indepDecays[1], color=:black, label=L"Ind. decay $$")
+    hlines!(ax2, phase_indepDecays[1], color=:black, label=L"Ind. decay $$")
+    # scatter!(ax1, xs, T_indepDecays, color=:black, marker=:star5, markersize=12, label=L"Ind. decay $$")
+    # scatter!(ax2, xs, phase_indepDecays, color=:black, marker=:star5, markersize=12, label=L"Ind. decay $$")
     
     # Finish figure
     # axislegend(ax1, position=:lt, labelsize=16)
@@ -392,7 +395,7 @@ function fig_presentation_compareImperfectArray_refrIndex_vs_ffOrηα(xs, x_labe
                ylabel=L"Re$ (n) $")
     ax2 = Axis(fig[2, 2], limits=(0.0, 1.05, nothing, nothing),
                xlabel=x_label,
-               ylabel=L"Im$ (t) $")
+               ylabel=L"Im$ (n) $")
     
     # Plot real and imaginary parts of refractive index
     x_n = length(xs)
@@ -412,6 +415,42 @@ function fig_presentation_compareImperfectArray_refrIndex_vs_ffOrηα(xs, x_labe
     
     # Finish figure
     # axislegend(ax1, position=:lt, labelsize=16)
+    axislegend(ax2, position=:lt, labelsize=16)
+    display(GLMakie.Screen(), fig)
+    return fig
+end
+
+
+"""
+Presentation 
+showing effective beta and Delta for a specific detuning
+as a function of ff or ηα
+"""
+function fig_presentation_effectiveβΔ_vs_ff(ff_list, β_effs, Δ_effs, β_indepDecay, Δ_fixed, titl)
+    # Start figure 
+    fig = Figure(size=(900, 450), fontsize=24)
+    
+    # Make title and axis
+    Label(fig[1, 1:2], titl, tellwidth=false)
+    ax1 = Axis(fig[2, 1], limits=(0.0, 1.05, nothing, nothing), 
+               xlabel=L"Filling fraction$$",
+               ylabel=L"$ β_{eff} $")
+    ax2 = Axis(fig[2, 2], limits=(0.0, 1.05, nothing, nothing),
+               xlabel=L"Filling fraction$$",
+               ylabel=L"$ [Δ/(γ_{gm} + γ_{rm})]_{eff} $")
+    
+    # Plot real and imaginary parts of refractive index
+    for (i, (color, label)) in enumerate(zip([:blue, :red], 
+                                             [L"Ordered$$", L"Random, $ η_{z} = 0 $"]))
+        scatter!(ax1, ff_list, β_effs[i, :], color=color, label=label)
+        scatter!(ax2, ff_list, Δ_effs[i, :], color=color, label=label)
+    end
+    
+    # Compare with independent decay case
+    hlines!(ax1, β_indepDecay, color=:black, label=L"Indep. decay$$")
+    hlines!(ax2, Δ_fixed, color=:black, label=L"Indep. decay$$")
+    
+    # Finish figure
     axislegend(ax2, position=:lb, labelsize=16)
     display(GLMakie.Screen(), fig)
     return fig

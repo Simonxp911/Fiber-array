@@ -964,7 +964,8 @@ function scan_transmission_indepDecay(SP)
         # Analytical expressions could be found for this and a transmission_indepDecay could be defined,
         # but most likely it would not reduce complexity much (though it would maybe read a bit cleaner)
         if SP.arrayType ∈ ("1Dchain", "randomZ")
-            Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array[1:1], (true, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+            if typeof(SP.d) == String d = SP.d else d = SP.d[1:1] end
+            Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, d, SP.να, SP.ηα, SP.incField_wlf, SP.array[1:1], (true, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
             σBα = calc_steadyState.(SP.Δ_range, Ref((Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2)), "", SP.noPhonons, false)
             t1 = [transmission(σBα_..., tildeΩ, tildeΩα, SP.fiber) for σBα_ in σBα]
             return t1.^SP.N
