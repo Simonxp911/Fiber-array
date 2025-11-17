@@ -823,9 +823,11 @@ function fig_complexFunction(x, y)
     # Start figure 
     fig = Figure(size=(1000, 400))
     
-    # Make axes
-    ax1 = Axis(fig[1, 1])
-    ax2 = Axis(fig[1, 2])
+    # Make titles and axes
+    Label(fig[1, 1], L"Real part$$", tellwidth=false)
+    Label(fig[1, 2], L"Imaginary part$$", tellwidth=false)
+    ax1 = Axis(fig[2, 1])
+    ax2 = Axis(fig[2, 2])
     
     # Plot the real and imaginary part separately
     lines!(ax1, x, real.(y), color=:blue)

@@ -7,6 +7,7 @@ using GLMakie #plotting, specialized interactive plots
 
 # Random.seed!(1234)
 
+
 # ================================================
 #   Main functions
 # ================================================
@@ -170,7 +171,7 @@ function define_SP_BerlinSr()
     να0_ul = να0/γ0 #unitless version of να0, [14.7297, 8.3784, 18.7838]
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-2.0, 20.0, 300)
+    Δ_specs = (-2.0, 2.0, 300)
     
     # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
     ΔvariDependence = "flat"
@@ -371,6 +372,8 @@ function main()
     SP = define_SP_BerlinSr()
     # SP = define_SP_artificial()
     # show(SP)
+    
+    
     
     # plot_propConst_inOutMom(ωρfn_ranges)
     # plot_coupling_strengths(SP)
@@ -1409,11 +1412,6 @@ end
     # Maybe a pulse will not see the narrow loss resonances, because they take a long time to populate?
     # Somehow calculate the loss of the pulse? I.e. does the pulse stay in the chain more than steady state light..?
 
-# Find parameters that result in a strong effective β-factor
-    # Plot independent decay transmission for different "strong" βs
-    # Scan/explore system parameters to see if any can bring closer to strong β
-    # Effect of propagation constant coming close to light cone?
-
 # Driving phonon states for high N
     # Find out whether these states are driven directly by Ωα or indirectly via single-excitation states (that is, a second order process which never populates the single-excitation modes)
         # High density of states counters the fact the jump/interaction is first (or second?) order in the Lamb-Dicke parameter
@@ -1422,35 +1420,9 @@ end
     # Find out why states with higher energy contribute more? 
         # What is the relation to driving at a certain momentum?
 
-# Compare with classical sampling for more cases, including Sr
-
-# Understand small features in the transmission spectra for random positioned traps (in figures of Summary document)
-    # Transmission goes slightly up for random case compared to ordered case for ff = 0.1
-        # Random atoms just talk less to light? Thus less effect on loss/tranmission (the "positive" transmission here is due to the light just going right through the ensemble)
-        # Atoms are detuning each other (pairwise) randomly?
-    # A slight kink or shoulder for Δ = 0.6
-        # Edge of energy band? But why is it not there for ordered case then?
-        # General wobbliness due to number of instantiations?
-            # Check numbers for fixed N=100 with n_inst=100 and n_inst=300
-            # Seems that wobbliness can be reduced by increasing n_inst
-    # Something happens at Δ ~ 1.8 for random arrays with etaz = 0?
-        # A dip in transmission
-        # It does not show up when using classical disorder instead of phonons
-        # An effect of the radial phonons?
-        # random instantiations also have resonances, e.g. due to pairs or clusters of atoms being close, but why is this resonance recurring across random configurations and different number of atoms? 
-        # This is caused by an effective band edge of the possible two-atom eigenenergies
-        # Effective Rabi frequencies/weigths/coupling to driving also matters - negative energies correspond to states that dont couple strongly so we only see this "band edge" on the positive side of the detuning
-
 # Consider thermal state as a initial state (instead of total ground state)
     # Still at most one excitation and at most one phonon on top of this
     # How?
-
-# Consider three-level atoms and EIT
-    # Look up how EIT works, what is the point of having atoms in an array? Talk with Jan
-    # In the Strontium-like regime of large να/γ, photons are not excited, and we can see what effect the ground state motion has
-    # The idea is that EIT might be robust to the effects of motion, because the excited state is only virtually populated
-    # Hence, the motional effects on the transition between the ground and excited state might not matter much
-    # Some analytical work can be done? Look at Kristian's article on EIT and polaritons?
 
 
 ### Minor things TODO:
