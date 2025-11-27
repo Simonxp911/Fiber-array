@@ -144,8 +144,19 @@ function prep_transmission_title(SP)
         "Dipole moments: " * SP.dDescription,
         "No phonons: " * string(SP.noPhonons)
     ]
+    if SP.include3rdLevel
+        append!(title_components, [
+          "Control drive, detuning, Rabi freq.: $(SP.cDriveDescription), $(SP.Δc), $(SP.Ωc)",
+        ])
+        if SP.cDriveDescription == "plW"
+            append!(title_components, [
+                "Control drive wavenumber: $(join(ro.(SP.cDriveArgs.kc), ","))"
+                ])
+        end
+    end
     return join(title_components, "\n")
 end
+
 
 
 """
@@ -161,6 +172,16 @@ function prep_imperfectArray_transmission_title(SP)
         "Dipole moments: " * SP.dDescription,
         "No phonons: " * string(SP.noPhonons)
     ]
+    if SP.include3rdLevel
+        append!(title_components, [
+          "Control drive, detuning, Rabi freq.: $(SP.cDriveDescription), $(SP.Δc), $(SP.Ωc)",
+        ])
+        if SP.cDriveDescription == "plW"
+            append!(title_components, [
+                "Control drive wavenumber: $(join(ro.(SP.cDriveArgs.kc), ","))"
+                ])
+        end
+    end
     return join(title_components, "\n")
 end
 
@@ -178,6 +199,16 @@ function prep_state_title(SP, Δ)
         "No phonons: " * string(SP.noPhonons),
         "Δ = $(ro(Δ))"
     ]
+    if SP.include3rdLevel
+        append!(title_components, [
+          "Control drive, detuning, Rabi freq.: $(SP.cDriveDescription), $(SP.Δc), $(SP.Ωc)",
+        ])
+        if SP.cDriveDescription == "plW"
+            append!(title_components, [
+                "Control drive wavenumber: $(join(ro.(SP.cDriveArgs.kc), ","))"
+                ])
+        end
+    end
     return join(title_components, "\n")
 end
 
@@ -194,6 +225,16 @@ function prep_GnmEigenModes_title(SP)
         "Dipole moments: " * SP.dDescription,
         "No phonons: " * string(SP.noPhonons)
     ]
+    if SP.include3rdLevel
+        append!(title_components, [
+          "Control drive, detuning, Rabi freq.: $(SP.cDriveDescription), $(SP.Δc), $(SP.Ωc)",
+        ])
+        if SP.cDriveDescription == "plW"
+            append!(title_components, [
+                "Control drive wavenumber: $(join(ro.(SP.cDriveArgs.kc), ","))"
+                ])
+        end
+    end
     return join(title_components, "\n")
 end
 
@@ -210,6 +251,16 @@ function prep_GnmEigenEnergies_title(SP)
         "Dipole moments: " * SP.dDescription,
         "No phonons: " * string(SP.noPhonons)
     ]
+    if SP.include3rdLevel
+        append!(title_components, [
+          "Control drive, detuning, Rabi freq.: $(SP.cDriveDescription), $(SP.Δc), $(SP.Ωc)",
+        ])
+        if SP.cDriveDescription == "plW"
+            append!(title_components, [
+                "Control drive wavenumber: $(join(ro.(SP.cDriveArgs.kc), ","))"
+                ])
+        end
+    end
     return join(title_components, "\n")
 end
 
@@ -226,6 +277,16 @@ function prep_transmissionWithGnmEigenEnergies_title(SP)
         "Dipole moments: " * SP.dDescription,
         "No phonons: " * string(SP.noPhonons)
     ]
+    if SP.include3rdLevel
+        append!(title_components, [
+          "Control drive, detuning, Rabi freq.: $(SP.cDriveDescription), $(SP.Δc), $(SP.Ωc)",
+        ])
+        if SP.cDriveDescription == "plW"
+            append!(title_components, [
+                "Control drive wavenumber: $(join(ro.(SP.cDriveArgs.kc), ","))"
+                ])
+        end
+    end
     return join(title_components, "\n")
 end
 

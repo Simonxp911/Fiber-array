@@ -140,8 +140,8 @@ function fig_σTrajectories_σSS(times, σTrajectories, σ_SS)
     for (i, traj) in enumerate(σTrajectories)
         lines!(times, real.(traj), color=colors[i], linestyle=:solid)
         lines!(times, imag.(traj), color=colors[i], linestyle=:dash )
-        lines!([times[end] - (times[end] - times[1])/10, times[end]], real.(σ_SS[i])*ones(2), color=colors[i], linestyle=:dashdot)
-        lines!([times[end] - (times[end] - times[1])/10, times[end]], imag.(σ_SS[i])*ones(2), color=colors[i], linestyle=:dashdot)
+        lines!([times[end] - (times[end] - times[1])/10, times[end]], real.(σ_SS[i])*ones(2), color=colors[i], linestyle=:solid, linewidth=3)
+        lines!([times[end] - (times[end] - times[1])/10, times[end]], imag.(σ_SS[i])*ones(2), color=colors[i], linestyle=:dash, linewidth=3)
     end
     
     # Finish figure
@@ -171,16 +171,16 @@ function fig_σBαTrajectories_σBαSS(times, σTrajectories, BαTrajectories, �
     for (i, traj) in enumerate(σTrajectories)
         lines!(ax1, times, real.(traj), color=colors[i], linestyle=:solid)
         lines!(ax1, times, imag.(traj), color=colors[i], linestyle=:dash)
-        lines!(ax1, [times[end] - (times[end] - times[1])/10, times[end]], real.(σ_SS[i])*ones(2),  color=colors[i], linestyle=:dashdot)
-        lines!(ax1, [times[end] - (times[end] - times[1])/10, times[end]], imag.(σ_SS[i])*ones(2),  color=colors[i], linestyle=:dashdot)
+        lines!(ax1, [times[end] - (times[end] - times[1])/10, times[end]], real.(σ_SS[i])*ones(2),  color=colors[i], linestyle=:solid, linewidth=3)
+        lines!(ax1, [times[end] - (times[end] - times[1])/10, times[end]], imag.(σ_SS[i])*ones(2),  color=colors[i], linestyle=:dash, linewidth=3)
     end
     for α in 1:3
         clr_ind_offset = length(σTrajectories) + (α - 1)*length(BαTrajectories[1])
         for (i, traj) in enumerate(BαTrajectories[α])
             lines!(ax2, times, real.(traj), color=colors[clr_ind_offset + i], linestyle=:solid)
             lines!(ax2, times, imag.(traj), color=colors[clr_ind_offset + i], linestyle=:dash)
-            lines!(ax2, [times[end] - (times[end] - times[1])/10, times[end]], real.(Bα_SS[α][i])*ones(2), color=colors[clr_ind_offset + i], linestyle=:dashdot)
-            lines!(ax2, [times[end] - (times[end] - times[1])/10, times[end]], imag.(Bα_SS[α][i])*ones(2), color=colors[clr_ind_offset + i], linestyle=:dashdot)
+            lines!(ax2, [times[end] - (times[end] - times[1])/10, times[end]], real.(Bα_SS[α][i])*ones(2), color=colors[clr_ind_offset + i], linestyle=:solid, linewidth=3)
+            lines!(ax2, [times[end] - (times[end] - times[1])/10, times[end]], imag.(Bα_SS[α][i])*ones(2), color=colors[clr_ind_offset + i], linestyle=:dash, linewidth=3)
         end
     end
     

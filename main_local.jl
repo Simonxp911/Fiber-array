@@ -61,18 +61,21 @@ function define_SP_BerlinCs()
     noPhonons = all(ηα .== 0)
     # noPhonons = true
     
+    # Whether to include a third (metastable) level to facilitate EIT
+    include3rdLevel = true
+    
     # Set which kind of array to use ("1Dchain", "doubleChain", "randomZ")
     arrayType = "1Dchain"
     # arrayType = "randomZ"
     
     # Set number of atomic sites 
-    N_sites = 1000
+    N_sites = 30
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
     pos_unc = 0.0
     # pos_unc = ηα0/ωa
-    n_inst = 100
+    n_inst = 1
     
     # Generate the array, its description, and the number of atoms
     array, arrayDescription, N = get_array(arrayType, N_sites, ρa0_ul, a0_ul, ff, pos_unc, n_inst)
@@ -82,15 +85,15 @@ function define_SP_BerlinCs()
     dtmax = 0.01
     
     # Prepare initial state for time evolution, as well as description for postfix
-    initialState = groundstate(N, noPhonons)
+    initialState = groundstate(N, noPhonons, include3rdLevel)
     initialStateDescription = "gs"
     
     # Atomic dipole moment
     # d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul, array)
-    # d = "chiral"
-    # dDescription = "chiral"
-    d = rightCircularDipoleMoment(array)
-    dDescription = "rgtCrc"
+    d = "chiral"
+    dDescription = "chiral"
+    # d = rightCircularDipoleMoment(array)
+    # dDescription = "rgtCrc"
     # d = [[1, 0, 0] for site in array]
     # dDescription = "xPol"
     
@@ -125,6 +128,19 @@ function define_SP_BerlinCs()
     # Get the interpolation function for the imaginary, transverse part of the radiation Green's function, if needed
     if interpolate_Im_Grm_trans interpolation_Im_Grm_trans = interpolation1D_Im_Grm_trans(Fiber(ρf0_ul, n0, ωa), Int(ceil(arrayL/0.1)) + 1, ρa0_ul, 0.1, ηα) else interpolation_Im_Grm_trans = nothing end
     
+    # Type of control drive the third level transition
+    cDriveType = "planeWave" # "constant", "planeWave"
+    cDriveDescription = "plW" # "cst", "plW"
+    
+    # Detuning of the control drive with respect to the e-s transition
+    Δc = 0.5
+    
+    # Rabi frequency of the control drive with respect to the e-s transition
+    Ωc = 0.5
+    
+    # Additional arguments for the control drive ("planeWave" requires a momentum vector)
+    cDriveArgs = (kc = ωa*[-1, 0, 0], )
+    
     
     return SysPar(ρf0_ul, n0, ωa,
                   Δ_specs,
@@ -136,7 +152,8 @@ function define_SP_BerlinCs()
                   interpolate_Im_Grm_trans, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans,
                   save_steadyState, save_timeEvol,
                   interpolation_Im_Grm_trans,
-                  z_range, x_range, y_fix) 
+                  z_range, x_range, y_fix,
+                  include3rdLevel, cDriveType, cDriveDescription, Δc, Ωc, cDriveArgs) 
 end
 
 
@@ -187,6 +204,9 @@ function define_SP_BerlinSr()
     noPhonons = all(ηα .== 0)
     # noPhonons = true
     
+    # Whether to include a third (metastable) level to facilitate EIT
+    include3rdLevel = true
+    
     # Set which kind of array to use ("1Dchain", "doubleChain", "randomZ")
     arrayType = "1Dchain"
     
@@ -203,19 +223,19 @@ function define_SP_BerlinSr()
     array, arrayDescription, N = get_array(arrayType, N_sites, ρa0_ul, a0_ul, ff, pos_unc, n_inst)
     
     # Time span and maximum time step allowed in time evolution
-    tspan = (0, 100)
+    tspan = (0, 300)
     dtmax = 0.01
     
     # Prepare initial state for time evolution, as well as description for postfix
-    initialState = groundstate(N, noPhonons)
+    initialState = groundstate(N, noPhonons, include3rdLevel)
     initialStateDescription = "gs"
     
     # Atomic dipole moment
     # d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul, array)
-    # d = "chiral"
-    # dDescription = "chiral"
-    d = rightCircularDipoleMoment(array)
-    dDescription = "rgtCrc"
+    d = "chiral"
+    dDescription = "chiral"
+    # d = rightCircularDipoleMoment(array)
+    # dDescription = "rgtCrc"
     
     # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
     incField_wlf = [(1, 1, 1), (1, -1, 1)]
@@ -248,6 +268,20 @@ function define_SP_BerlinSr()
     # Get the interpolation function for the imaginary, transverse part of the radiation Green's function, if needed
     if interpolate_Im_Grm_trans interpolation_Im_Grm_trans = interpolation1D_Im_Grm_trans(Fiber(ρf0_ul, n0, ωa), Int(ceil(arrayL/0.1)) + 1, ρa0_ul, 0.1, ηα) else interpolation_Im_Grm_trans = nothing end
     
+    # Type of control drive the third level transition
+    cDriveType = "planeWave" # "constant", "planeWave"
+    cDriveDescription = "plW" # "cst", "plW"
+    
+    # Detuning of the control drive with respect to the e-s transition
+    Δc = 0
+    
+    # Rabi frequency of the control drive with respect to the e-s transition
+    Ωc = 0.5
+    
+    # Additional arguments for the control drive ("planeWave" requires a momentum vector)
+    cDriveArgs = (kc = ωa*[-0.8, 0.0, -0.3], )
+    
+    
     
     return SysPar(ρf0_ul, n0, ωa,
                   Δ_specs,
@@ -259,7 +293,8 @@ function define_SP_BerlinSr()
                   interpolate_Im_Grm_trans, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans,
                   save_steadyState, save_timeEvol,
                   interpolation_Im_Grm_trans,
-                  z_range, x_range, y_fix)
+                  z_range, x_range, y_fix,
+                  include3rdLevel, cDriveType, cDriveDescription, Δc, Ωc, cDriveArgs)
 end
 
 
@@ -290,6 +325,9 @@ function define_SP_artificial()
     noPhonons = all(ηα .== 0)
     # noPhonons = false
     
+    # Whether to include a third (metastable) level to facilitate EIT
+    include3rdLevel = false
+    
     # Set which kind of array to use ("1Dchain", "doubleChain", "randomZ")
     arrayType = "1Dchain"
     
@@ -310,7 +348,7 @@ function define_SP_artificial()
     dtmax = 0.01
     
     # Prepare initial state for time evolution, as well as description for postfix
-    initialState = groundstate(N, noPhonons)
+    initialState = groundstate(N, noPhonons, include3rdLevel)
     initialStateDescription = "gs"
     
     # Atomic dipole moment
@@ -351,6 +389,19 @@ function define_SP_artificial()
     # Get the interpolation function for the imaginary, transverse part of the radiation Green's function, if needed
     if interpolate_Im_Grm_trans interpolation_Im_Grm_trans = interpolation1D_Im_Grm_trans(Fiber(ρf, n, ωa), Int(ceil(arrayL/0.1)) + 1, ρa, 0.1, ηα) else interpolation_Im_Grm_trans = nothing end
     
+    # Type of control drive the third level transition
+    cDriveType = "constant" # "constant", "planeWave"
+    cDriveDescription = "cst" # "cst", "plW"
+    
+    # Detuning of the control drive with respect to the e-s transition
+    Δc = 1
+    
+    # Rabi frequency of the control drive with respect to the e-s transition
+    Ωc = 0.5
+    
+    # Additional arguments for the control drive ("planeWave" requires a momentum vector)
+    cDriveArgs = (kc = ωa*[-1, 0, 0], )
+    
     
     return SysPar(ρf, n, ωa,
                   Δ_specs,
@@ -362,7 +413,8 @@ function define_SP_artificial()
                   interpolate_Im_Grm_trans, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans,
                   save_steadyState, save_timeEvol,
                   interpolation_Im_Grm_trans,
-                  z_range, x_range, y_fix)
+                  z_range, x_range, y_fix,
+                  include3rdLevel, cDriveType, cDriveDescription, Δc, Ωc, cDriveArgs)
 end
 
 
@@ -379,7 +431,7 @@ function main()
     # plot_coupling_strengths(SP)
     # plot_arrayIn3D(SP)
     # plot_interPairEnergiesWeights(SP)
-    # plot_σBαTrajectories_σBαSS(SP)
+    plot_σBαTrajectories_σBαSS(SP)
     # plot_transmission_vs_Δ(SP)
     # plot_imperfectArray_transmission_vs_Δ(SP)
     # plot_compareImperfectArray_transmission_vs_Δ(SP)
@@ -517,11 +569,11 @@ function plot_interPairEnergiesWeights(SP)
     collΔs, collΓs, weights, amplitudes, amplitudes_prob = zeros(n, N_modes), zeros(n, N_modes), zeros(n, N_modes), zeros(n, N_modes), zeros(n, N_modes)
     for (i, array) in enumerate(arrays)
         if noPhonons
-            Δvari, tildeΩ, tildeG = get_parameterMatrices(noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, array, SP.tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+            Δvari, tildeΩ, tildeG = get_parameterMatrices(noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, array, SP.tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
             drive = tildeΩ
             fullCoupling = Δvari + tildeG
         else
-            Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, array, SP.tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+            Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, array, SP.tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
             drive = get_fullDriveVector(tildeΩ, tildeΩα)
             fullCoupling = get_fullCouplingMatrix(Δvari, tildeG, tildeFα, tildeGα1, tildeGα2)
         end
@@ -591,15 +643,19 @@ end
 
 
 function plot_σBαTrajectories_σBαSS(SP)
-    Δ = 0.0
+    Δ = 1.0
     σBα_SS = calc_steadyState(SP, Δ)
     xTrajectories = calc_timeEvolution(SP, Δ)
     # xTrajectories = calc_timeEvolution_eigenmodes(SP, Δ)
     
     if SP.noPhonons
+        if SP.include3rdLevel σBα_SS = σBα_SS[1] end
+        if SP.include3rdLevel xTrajectories = xTrajectories[:, 1:1+2*SP.N] end
         times, σTrajectories = prep_times_σTrajectories(xTrajectories, SP.N)
         fig_σTrajectories_σSS(times, σTrajectories, σBα_SS)
     else
+        if SP.include3rdLevel σBα_SS = σBα_SS[[1, 3]] end
+        if SP.include3rdLevel xTrajectories = hcat(xTrajectories[:, 1:1+2*SP.N], xTrajectories[:, 2+4*SP.N:1+4*SP.N+6*SP.N^2]) end
         times, σTrajectories, BαTrajectories = prep_times_σBαTrajectories(xTrajectories, SP.N)
         fig_σBαTrajectories_σBαSS(times, σTrajectories, BαTrajectories, σBα_SS...)
     end
@@ -943,7 +999,7 @@ function plot_effectiveBetaFactor_perfectArray(SP)
     for (i, N) in enumerate(Ns)
         array = get_array(SP.arrayType, N, SP.ρa, SP.a, 1.0, 0.0)
         arrayDescription = arrayDescript(SP.arrayType, N, SP.ρa, SP.a, 1.0, 0.0)
-        postfixes = get_postfix_steadyState.(SP.Δ_range, SP.ΔvariDescription, SP.dDescription, Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), Ref(SP.tildeG_flags), arrayDescription, SP.fiber.postfix)
+        postfixes = get_postfix_steadyState.(SP.Δ_range, SP.ΔvariDescription, SP.dDescription, Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), Ref(SP.tildeG_flags), arrayDescription, SP.fiber.postfix, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, Ref(SP.cDriveArgs))
         for (j, postfix) in enumerate(postfixes)
             if SP.noPhonons filename = "sigma_" * postfix else filename = "sigmaBalpha_" * postfix end
             folder = "steadyStates/"
@@ -1424,6 +1480,10 @@ end
     # Still at most one excitation and at most one phonon on top of this
     # How?
 
+# Implement include3rdLevel calculations for 
+    # Mode calculations (fullCouplingMatrix)
+    # 
+
 
 ### Minor things TODO:
 # Check if the decay rates when having eta nonzero and excluding or including phonons is very different
@@ -1488,6 +1548,9 @@ end
 
 
 ### Fixes and new features TODO:
+# Presently, knowledge about how the x-vector is packed is used at the level of main and calcs
+    # Change it such that such knowledge is only found on a lower level
+
 # Implement proper rounding of parameters in postfixes
     # Presently there is a unique (and somewhat complicated) rounding for Δ
 

@@ -135,7 +135,14 @@ struct SysPar
     z_range::Union{AbstractRange, Nothing}          # Range of z values for calculating the radiation E-field
     x_range::Union{AbstractRange, Nothing}          # Range of x values for calculating the radiation E-field
     y_fix::Union{Real, Nothing}                                     # Fixed value of y for calculating the radiation E-field
-    r_fields::Union{Matrix{Vector{<:Real}}, Nothing} # Range of positions for calculating the radiation E-field
+    r_fields::Union{Matrix{Vector{<:Real}}, Nothing}# Range of positions for calculating the radiation E-field
+    
+    include3rdLevel::Bool                           # Whether to include a third (metastable) level to facilitate EIT
+    cDriveType::String                              # Type of control drive the third level transition
+    cDriveDescription::String                       # Description of cDriveType for postfix
+    Δc::Real                                        # Detuning of the control drive with respect to the e-s transition
+    Ωc::Real                                        # Rabi frequency of the control drive with respect to the e-s transition
+    cDriveArgs::NamedTuple                          # Additional arguments for the control drive
     
     
     function SysPar(ρf::Real, n::Real, ω::Real,
@@ -148,7 +155,8 @@ struct SysPar
                     interpolate_Im_Grm_trans::Bool, save_Im_Grm_trans::Bool, abstol_Im_Grm_trans::Real, approx_Grm_trans::Tuple,
                     save_steadyState::Bool, save_timeEvol::Bool, 
                     interpolation_Im_Grm_trans::Union{Dict, Nothing},
-                    z_range::AbstractRange, x_range::AbstractRange, y_fix::Real)
+                    z_range::AbstractRange, x_range::AbstractRange, y_fix::Real,
+                    include3rdLevel::Bool, cDriveType::String, cDriveDescription::String, Δc::Real, Ωc::Real, cDriveArgs::NamedTuple)
 
         fiber = Fiber(ρf, n, ω)
         Δ_range = range(Δ_specs...)
@@ -164,47 +172,8 @@ struct SysPar
                    interpolate_Im_Grm_trans, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans,
                    save_steadyState, save_timeEvol, 
                    interpolation_Im_Grm_trans,
-                   z_range, x_range, y_fix, r_fields)
-    end
-    
-    function SysPar(ρf::Real, n::Real, ω::Real,
-                    Δ_specs::Tuple{Real, Real, Int},
-                    ΔvariDependence::String, Δvari_args::Union{Tuple, Nothing}, ΔvariDescription::String,
-                    tspan::Tuple{Real, Real}, dtmax::Real, initialState::Vector, initialStateDescription::String,
-                    arrayType::String, N::Int, ρa::Real, a::Real,
-                    να::Vector, ηα::Vector, noPhonons::Bool,
-                    d::Union{Vector, String}, dDescription::String, incField_wlf::Vector, approx_Grm_trans::Tuple)
-        
-        fiber = Fiber(ρf, n, ω)
-        Δ_range = range(Δ_specs...)
-        ff = 1.0
-        pos_unc = 0.0
-        n_inst = 1
-        array = get_array(arrayType, N, ρa, a, ff, pos_unc)
-        arrayDescription = arrayDescript(arrayType, N_sites, ρa, a, ff, pos_unc)
-        tildeG_flags = (true, true, true)
-        abstol_Im_Grm_trans = 1e-4
-        interpolate_Im_Grm_trans = false
-        save_Im_Grm_trans = true
-        save_steadyState = true
-        save_timeEvol = true
-        interpolation_Im_Grm_trans = nothing
-        z_range = nothing
-        x_range = nothing
-        y_fix   = nothing
-        r_fields = nothing
-
-        return new(ρf, n, ω, fiber,
-                   Δ_specs, Δ_range,
-                   ΔvariDependence, Δvari_args, ΔvariDescription,
-                   tspan, dtmax, initialState, initialStateDescription,
-                   arrayType, N, ρa, a, ff, pos_unc, n_inst, array, arrayDescription, N,
-                   να, ηα, noPhonons,
-                   d, dDescription, incField_wlf, tildeG_flags,
-                   interpolate_Im_Grm_trans, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans,
-                   save_steadyState, save_timeEvol, 
-                   interpolation_Im_Grm_trans,
-                   z_range, x_range, y_fix, r_fields)
+                   z_range, x_range, y_fix, r_fields,
+                   include3rdLevel, cDriveType, cDriveDescription, Δc, Ωc, cDriveArgs)
     end
 end
 
@@ -267,6 +236,15 @@ function Base.show(io::IO, SP::SysPar)
     
     println(io, "Whether the real part, transverse part of the radiation GF has been approximated with corresponding part of the vacuum GF")
     println(io, "approx_Grm_trans: ", SP.approx_Grm_trans)
+    println(io, "")
+    
+    println(io, "Whether to include a third (metastable) level to facilitate EIT")
+    println(io, "include3rdLevel: ", SP.include3rdLevel)
+    println(io, "Parameters of the control drive of the e-s transition")
+    println(io, "cDriveType: ", SP.cDriveType)
+    println(io, "Detuning Δc: ", SP.Δc)
+    println(io, "Rabi frequency Ωc: ", SP.Ωc)
+    println(io, "Further arguments cDriveArgs: ", SP.cDriveArgs)
     println(io, "")
     
     println(io, "---  ---")

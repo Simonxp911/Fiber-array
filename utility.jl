@@ -233,6 +233,22 @@ end
 
 
 """
+Prepare an empty x-vector (i.e. all entries are zero)
+"""
+function empty_xVector_noPh_w3l(N)
+    return zeros(4*N)
+end
+
+
+"""
+Prepare an empty x-vector (i.e. all entries are zero)
+"""
+function empty_xVector_w3l(N)
+    return zeros(4*(N + 3*N^2))
+end
+
+
+"""
 Prepare an empty σ vector (i.e. all entries are zero)
 """
 function empty_σVector(N)
@@ -303,6 +319,56 @@ end
 
 
 """
+Pack the σge and σgs entries into the x vector to facilitate NonlinearSolve
+
+Assumes that σge and σgs are N-vectors, and x is a 4N-vector
+"""
+function pack_σgeσgsIntox!(σge, σgs, x)
+    N = length(σge)
+    x[1      :   N] .= real.(σge)
+    x[1 +   N: 2*N] .= imag.(σge)
+    x[1 + 2*N: 3*N] .= real.(σgs)
+    x[1 + 3*N: 4*N] .= imag.(σgs)
+end
+
+
+function pack_σgeσgsIntox(σge, σgs)
+    N = length(σge)
+    x = empty_xVector_noPh_w3l(N)
+    pack_σgeσgsIntox!(σge, σgs, x)
+    return x
+end
+
+
+"""
+Pack the σge, σgs, Bαge, and Bαgs entries into the x vector to facilitate NonlinearSolve
+
+Assumes that σge and σgs are N-vectors, Bαge and Bαgs are 3-vectors consisting of NxN-matrices, and x is a 4(N + 3N^2)-vector
+"""
+function pack_σgeσgsBαgeBαgsIntox!(σge, σgs, Bαge, Bαgs, x)
+    N = length(σge)
+    x[1      :   N] .= real.(σge)
+    x[1 +   N: 2*N] .= imag.(σge)
+    x[1 + 2*N: 3*N] .= real.(σgs)
+    x[1 + 3*N: 4*N] .= imag.(σgs)
+    for α in 1:3
+        x[1 + 4*N         + (α - 1)*N^2 : 4*N         + α*N^2] .= real.(flatten(Bαge[α]))
+        x[1 + 4*N + 3*N^2 + (α - 1)*N^2 : 4*N + 3*N^2 + α*N^2] .= imag.(flatten(Bαge[α]))
+        x[1 + 4*N + 6*N^2 + (α - 1)*N^2 : 4*N + 6*N^2 + α*N^2] .= real.(flatten(Bαgs[α]))
+        x[1 + 4*N + 9*N^2 + (α - 1)*N^2 : 4*N + 9*N^2 + α*N^2] .= imag.(flatten(Bαgs[α]))
+    end
+end
+
+
+function pack_σgeσgsBαgeBαgsIntox(σge, σgs, Bαge, Bαgs)
+    N = length(σge)
+    x = empty_xVector_w3l(N)
+    pack_σgeσgsBαgeBαgsIntox!(σge, σgs, Bαge, Bαgs, x)
+    return x
+end
+
+
+"""
 Unpack the σ entries from the x vector
 
 Assumes that σ is an N-vector, and x is a 2N-vector
@@ -340,6 +406,50 @@ function unpack_σBαFromx(x)
     σ, Bα = empty_σVector(N), empty_BαVector(N)
     unpack_σBαFromx!(σ, Bα, x)
     return σ, Bα
+end
+
+
+"""
+Unpack the σge, σgs entries from the x vector
+
+Assumes that σge and σgs are N-vectors, and x is a 4N-vector
+"""
+function unpack_σgeσgsFromx!(σge, σgs, x)
+    N = length(σge)
+    σge .= x[1      :   N] + 1im*x[1   + N : 2*N]
+    σgs .= x[1 + 2*N: 3*N] + 1im*x[1 + 3*N : 4*N]
+end
+
+
+function unpack_σgeσgsFromx(x)
+    N = Int(length(x)/4) #if length(x) = 4N
+    σge, σgs = empty_σVector(N), empty_σVector(N)
+    unpack_σgeσgsFromx!(σge, σgs, x)
+    return σge, σgs
+end
+
+
+"""
+Unpack the σge, σgs, Bαge, and Bαgs entries from the x vector
+
+Assumes that σge and σgs are N-vectors, Bαge and Bαgs are 3-vectors consisting of NxN-matrices, and x is a 4(N + 3N^2)-vector
+"""
+function unpack_σgeσgsBαgeBαgsFromx!(σge, σgs, Bαge, Bαgs, x)
+    N = length(σge)
+    σge .= x[1      :   N] + 1im*x[1   + N : 2*N]
+    σgs .= x[1 + 2*N: 3*N] + 1im*x[1 + 3*N : 4*N]
+    for α in 1:3
+        Bαge[α] .= reshape(x[1 + 4*N +         (α - 1)*N^2 : 4*N         + α*N^2] + 1im*x[1 + 4*N + 3*N^2 + (α - 1)*N^2 : 4*N + 3*N^2 + α*N^2], (N, N))
+        Bαgs[α] .= reshape(x[1 + 4*N + 6*N^2 + (α - 1)*N^2 : 4*N + 6*N^2 + α*N^2] + 1im*x[1 + 4*N + 9*N^2 + (α - 1)*N^2 : 4*N + 9*N^2 + α*N^2], (N, N))
+    end
+end
+
+
+function unpack_σgeσgsBαgeBαgsFromx(x)
+    N = Int((sqrt(3*length(x) + 1) - 1)/6) #if length(x) = 4(N + 3N^2), then 3*length(x) + 1 = (6N + 1)^2, and N is equal to the following
+    σge, σgs, Bαge, Bαgs = empty_σVector(N), empty_σVector(N), empty_BαVector(N), empty_BαVector(N)
+    unpack_σgeσgsBαgeBαgsFromx!(σge, σgs, Bαge, Bαgs, x)
+    return σge, σgs, Bαge, Bαgs
 end
 
 

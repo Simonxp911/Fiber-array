@@ -844,8 +844,47 @@ function EoMs!(dσdt, dBαdt, σ, Bα, Δ, Δvari, tildeΩ, tildeΩα, tildeG, t
                    -tildeΩ - (Δ*I + Δvari + tildeG)*σ - sum(@. di(Bα*transpose(tildeGα1)) + tildeGα2*di(Bα))
                   )
     dBαdt .= -1im*(
-                   -Bα.*transpose.(Ref(Δ*I + Δvari) .+ tildeFα) - Di.(tildeΩα + tildeGα1.*Ref(σ)) - Ref(Di(σ)).*transpose.(tildeGα2)
+                   -Di.(tildeΩα) - Bα.*(Ref(Δ*I + Δvari) .+ transpose.(tildeFα)) - Di.(tildeGα1.*Ref(σ)) - Ref(Di(σ)).*transpose.(tildeGα2)
                   )
+end
+
+
+"""
+Implements the equations of motion for the atomic of freedom
+to first order in the driving (for the case of no phonons)
+including a third metastable level to facilitate EIT
+""" 
+function EoMs!(dσgedt, dσgsdt, σge, σgs, Δ, Δc, Δvari, tildeΩ, tildeΩc, tildeG)
+    dσgedt  .= -1im*(
+                     -tildeΩ - (Δ*I + Δvari + tildeG)*σge - tildeΩc.*σgs
+                    )
+    dσgsdt  .= -1im*(
+                     -((Δ - Δc)*I + Δvari)*σgs - conj(tildeΩc).*σge
+                    )
+end
+
+
+"""
+Implements the equations of motion for the atomic and phononic degrees of freedom
+to first order in the driving and to second order in the Lamb-Dicke parameter
+including a third metastable level to facilitate EIT
+""" 
+function EoMs!(dσgedt, dσgsdt, dBαgedt, dBαgsdt, σge, σgs, Bαge, Bαgs, 
+               Δ, Δc, να, Δvari, tildeΩ, tildeΩα, tildeΩc, tildeΩcα, tildeG, tildeFα, tildeGα1, tildeGα2)
+    dσgedt  .= -1im*(
+                     -tildeΩ - (Δ*I + Δvari + tildeG)*σge - tildeΩc.*σgs
+                     -sum(@. broadcast(*, tildeΩcα, di(Bαgs)) + di(Bαge*transpose(tildeGα1)) + tildeGα2*di(Bαge))
+                    )
+    dBαgedt .= -1im*(
+                     -Di.(tildeΩα) - Bαge.*(Ref(Δ*I + Δvari) .+ transpose.(tildeFα)) - Ref(Di(tildeΩc)).*Bαgs
+                     -Di.(broadcast.(*, tildeΩcα, Ref(σgs))) - Di.(tildeGα1.*Ref(σge)) - Ref(Di(σge)).*transpose.(tildeGα2)
+                    )
+    dσgsdt  .= -1im*(
+                     -((Δ - Δc)*I + Δvari)*σgs - conj(tildeΩc).*σge - sum(@. broadcast(*, conj(tildeΩcα), di(Bαge)))
+                    )
+    dBαgsdt .= -1im*(
+                     -Bαgs.*((Δ - Δc .- να).*Ref(I) .+ Ref(Δvari)) - Ref(Di(conj(tildeΩc))).*Bαge - Di.(broadcast.(*, conj(tildeΩcα), Ref(σge)))
+                    )
 end
 
 
@@ -862,7 +901,6 @@ function EoMs_wrap_noPh(dxdt, x, args, t)
     unpack_σFromx!(σ, x)
     
     # Calculate and update dσdt
-    # EoMs!(dσdt, σ, args[3:end]...)
     EoMs!(args...)
         
     # Pack dσdt into dxdt
@@ -883,11 +921,53 @@ function EoMs_wrap(dxdt, x, args, t)
     unpack_σBαFromx!(σ, Bα, x)
     
     # Calculate and update dσdt, dBαdt
-    # EoMs!(dσdt, dBαdt, σ, Bα, args[5:end]...)
     EoMs!(args...)
         
     # Pack dσdt and dBαdt into dxdt
     pack_σBαIntox!(dσdt, dBαdt, dxdt)
+end
+
+
+"""
+Wraps the EoMs to conform with the requirements of NonlinearSolve (in the case of no phonons).
+For the case of including a third metastable level to facilitate EIT.
+
+args = dσgedt, dσgsdt, σge, σgs, Δ, Δc, Δvari, tildeΩ, tildeΩc, tildeG
+"""
+function EoMs_wrap_noPh_w3l(dxdt, x, args, t)
+    # Unpack args
+    dσgedt, dσgsdt, σge, σgs = args[1:4]
+    
+    # Unpack σge, σgs, Bαge, and Bαgs from x
+    unpack_σgeσgsFromx!(σge, σgs, x)
+    
+    # Calculate and update dσdt, dBαdt
+    EoMs!(args...)
+        
+    # Pack dσgedt, dσgsdt, dBαgedt, and dBαgsdt into dxdt
+    pack_σgeσgsIntox!(dσgedt, dσgsdt, dxdt)
+end
+
+
+"""
+Wraps the EoMs to conform with the requirements of NonlinearSolve.
+For the case of including a third metastable level to facilitate EIT.
+
+args = dσgedt, dσgsdt, dBαgedt, dBαgsdt, σge, σgs, Bαge, Bαgs, 
+       Δ, Δc, να, Δvari, tildeΩ, tildeΩα, tildeΩc, tildeΩcα, tildeG, tildeFα, tildeGα1, tildeGα2
+"""
+function EoMs_wrap_w3l(dxdt, x, args, t)
+    # Unpack args
+    dσgedt, dσgsdt, dBαgedt, dBαgsdt, σge, σgs, Bαge, Bαgs = args[1:8]
+    
+    # Unpack σge, σgs, Bαge, and Bαgs from x
+    unpack_σgeσgsBαgeBαgsFromx!(σge, σgs, Bαge, Bαgs, x)
+    
+    # Calculate and update dσdt, dBαdt
+    EoMs!(args...)
+        
+    # Pack dσgedt, dσgsdt, dBαgedt, and dBαgsdt into dxdt
+    pack_σgeσgsBαgeBαgsIntox!(dσgedt, dσgsdt, dBαgedt, dBαgsdt, dxdt)
 end
 
 
@@ -919,6 +999,53 @@ function steadyState(Δ, Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1
     σ_SS  = -(Δ*I + Δvari + tildeG - sum(Dα))\(tildeΩ - sum(Cα.*tildeΩα))
     Bα_SS = -(Di.(tildeΩα .+ tildeGα1.*Ref(σ_SS)) .+ Ref(Di(σ_SS)).*transpose.(tildeGα2)).*transpose.(tildeFα_inv)
     return σ_SS, Bα_SS
+end
+
+
+"""
+Implements the analytical solution for the steady state values of the atomic 
+degrees of freedom to first order in the driving (in the case of no phonons)
+For the case of including a third metastable level to facilitate EIT.
+"""
+function steadyState(Δ, Δc, Δvari, tildeΩ, tildeΩc, tildeG)
+    # Prepare shifted parameter matrix
+    tildeGp = tildeG - Di(abs2.(tildeΩc))/(Δ - Δc)
+    
+    # Finally, we calculate the steady state values
+    σge_SS  = -(Δ*I + Δvari + tildeGp)\tildeΩ
+    σgs_SS  = -conj(tildeΩc).*σge_SS./(Δ - Δc .+ di(Δvari))
+    return σge_SS, σgs_SS
+end
+
+
+"""
+Implements the analytical solution for the steady state values of the atomic and phononic 
+degrees of freedom to first order in the driving and to second order in the Lamb-Dicke parameter.
+For the case of including a third metastable level to facilitate EIT.
+"""
+function steadyState(Δ, Δc, να, Δvari, tildeΩ, tildeΩα, tildeΩc, tildeΩcα, tildeG, tildeFα, tildeGα1, tildeGα2)
+    # Prepare shifted parameter matrices
+    tildeGp  = tildeG - Di(abs2.(tildeΩc))/(Δ - Δc) - Di(sum(@. broadcast(abs2, tildeΩcα/(Δ - Δc - να))))
+    tildeFαp = tildeFα .- Ref(Di(abs2.(tildeΩc)))./(Δ - Δc .- να)
+    tildeGα2_1 = tildeGα2 .- Di.(broadcast.(.*, tildeΩcα, Ref(conj(tildeΩc))))./(Δ - Δc .- να) .- Di.(broadcast.(.*, conj(tildeΩcα), Ref(tildeΩc)))/(Δ - Δc)
+    tildeGα2_2 = tildeGα2 .- Di.(broadcast.(.*, conj(tildeΩcα), Ref(tildeΩc)))./(Δ - Δc .- να) .- Di.(broadcast.(.*, tildeΩcα, Ref(conj(tildeΩc))))/(Δ - Δc)
+    
+    tildeFαp_inv = inv.(Ref(Δ*I + Δvari) .+ tildeFαp)
+    
+    # Calculate the coefficient matrices
+    Cαpp = @. (  Diag(tildeGα1*tildeFαp_inv)
+               + tildeGα2_1*Diag(tildeFαp_inv) )
+    Dαpp = @. (  Diag(tildeGα1*tildeFαp_inv)*tildeGα1
+               + Diag(tildeGα1*tildeFαp_inv*tildeGα2_2)
+               + tildeGα2_1*Diag(tildeFαp_inv)*tildeGα1
+               + tildeGα2_1*Diag(tildeFαp_inv*tildeGα2_2) )
+    
+    # Finally, we calculate the steady state values
+    σge_SS  = -(Δ*I + Δvari + tildeGp - sum(Dαpp))\(tildeΩ - sum(Cαpp.*tildeΩα))
+    Bαge_SS = -(Di.(tildeΩα .+ tildeGα1.*Ref(σge_SS)) .+ Ref(Di(σge_SS)).*transpose.(tildeGα2_2)).*transpose.(tildeFαp_inv)
+    σgs_SS  = -(conj(tildeΩc).*σge_SS + sum(@. broadcast(*, conj(tildeΩcα), di(Bαge_SS))))./(Δ - Δc .+ di(Δvari))
+    Bαgs_SS = -((Δ - Δc .- να).*Ref(I) .+ Ref(Δvari)).\(Ref(Di(conj(tildeΩc))).*Bαge_SS + Di.(broadcast.(*, conj(tildeΩcα), Ref(σge_SS))))
+    return σge_SS, σgs_SS, Bαge_SS, Bαgs_SS
 end
 
 
@@ -965,11 +1092,13 @@ Prepare the groundstate in terms of the x-vector for time-evolution
 
 Shallow function, but allows for a good abstraction
 """
-function groundstate(N, noPh=false)
+function groundstate(N, noPh=false, inc3l=false)
     if noPh
-        return empty_xVector_noPh(N)
+        if !inc3l return empty_xVector_noPh(N)
+        else      return empty_xVector_noPh_w3l(N) end
     else
-        return empty_xVector(N)
+        if !inc3l return empty_xVector(N)
+        else      return empty_xVector_w3l(N) end
     end
 end
 

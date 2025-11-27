@@ -29,18 +29,30 @@ end
 """
 For calculation of steady state σ and Bα
 """
-function get_postfix_steadyState(Δ, ΔvariDescription, dDescription, να, ηα, incField_wlf, tildeG_flags, arrayDescription, fiberPostfix)
+function get_postfix_steadyState(Δ, ΔvariDescription, dDescription, να, ηα, incField_wlf, tildeG_flags, arrayDescription, fiberPostfix, include3rdLevel, cDriveDescription, Δc, Ωc, cDriveArgs)
     postfix_components = [
-        "Delta_$(ro(Δ, Int(4 + ceil(log10(ceil(abs(Δ + eps(Δ))))))))",
+        "D_$(ro(Δ, Int(4 + ceil(log10(ceil(abs(Δ + eps(Δ))))))))",
         ΔvariDescription,
         dDescription,
-        "trapFreqs_$(join(ro.(να), ","))",
-        "LamDic_$(join(ro.(ηα), ","))",
+        "tFr_$(join(ro.(να), ","))",
+        "LD_$(join(ro.(ηα), ","))",
         "wlf_$("[" * join(["(" * join([format_Complex_to_String(wlf[1]), wlf[2], wlf[3]], ",") * ")" for wlf in incField_wlf], ",") * "]")",
         "tGfl_$(join(Int.(tildeG_flags), ","))",
         arrayDescription,
         fiberPostfix
     ]
+    if include3rdLevel
+        append!(postfix_components, [
+          "cDr_$cDriveDescription", 
+          "cDe_$Δc", 
+          "cOm_$Ωc"
+        ])
+        if cDriveDescription == "plW"
+            append!(postfix_components, [
+                "kc_$(join(ro.(cDriveArgs.kc), ","))"
+                ])
+        end
+    end
     return join(postfix_components, "_")
 end
 
@@ -68,21 +80,33 @@ end
 """
 For time evolution
 """
-function get_postfix_timeEvolution(Δ, ΔvariDescription, dDescription, να, ηα, incField_wlf, tildeG_flags, arrayDescription, fiberPostfix, initialStateDescription, tspan, dtmax)
+function get_postfix_timeEvolution(Δ, ΔvariDescription, dDescription, να, ηα, incField_wlf, tildeG_flags, arrayDescription, fiberPostfix, initialStateDescription, tspan, dtmax, include3rdLevel, cDriveDescription, Δc, Ωc, cDriveArgs)
     postfix_components = [
-        "Delta_$(ro(Δ, Int(4 + ceil(log10(ceil(abs(Δ + eps(Δ))))))))",
+        "D_$(ro(Δ, Int(4 + ceil(log10(ceil(abs(Δ + eps(Δ))))))))",
         ΔvariDescription,
         dDescription,
-        "trapFreqs_$(join(ro.(να), ","))",
-        "LamDic_$(join(ro.(ηα), ","))",
+        "tFr_$(join(ro.(να), ","))",
+        "LD_$(join(ro.(ηα), ","))",
         "wlf_$("[" * join(["(" * join([format_Complex_to_String(wlf[1]), wlf[2], wlf[3]], ",") * ")" for wlf in incField_wlf], ",") * "]")",
         "tGfl_$(join(Int.(tildeG_flags), ","))",
         arrayDescription,
         fiberPostfix,
         initialStateDescription,
-        "tspan_$(join(ro.(tspan), ","))",
+        "tsp_$(join(ro.(tspan), ","))",
         "dtm_$(ro(dtmax))"
     ]
+    if include3rdLevel
+        append!(postfix_components, [
+          "cDr_$cDriveDescription", 
+          "cDe_$Δc", 
+          "cOm_$Ωc"
+        ])
+        if cDriveDescription == "plW"
+            append!(postfix_components, [
+                "kc_$(join(ro.(cDriveArgs.kc), ","))"
+                ])
+        end
+    end
     return join(postfix_components, "_")
 end
 
@@ -122,3 +146,16 @@ function load_as_txt(saveDir, filename)
     return readdlm(saveDir * filename * ".txt", ' ', Float64, '\n')
 end
 
+
+"""
+Function to rename existing data files
+"""
+function rename()
+    dataFolder = saveDir * "steadyStates/"
+    replacementPairs = ["Delta" => "D"]
+    
+    for oldFilename in readdir(dataFolder)
+        newFilename = replace(oldFilename, replacementPairs...)
+        mv(oldFilename, newFilename)
+    end
+end
