@@ -63,14 +63,14 @@ end
 #   Functions pertaining to calculating the driving and couplings of the system
 # ================================================
 function get_parameterMatrices(SP)
-    return get_parameterMatrices(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
+    return get_parameterMatrices(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.ΩDriveOn, SP.tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
 end
 
 
-function get_parameterMatrices(noPhonons, ΔvariDependence, Δvari_args, fiber, d, να, ηα, incField_wlf, array, tildeG_flags, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans, include3rdLevel, cDriveType, Δc, Ωc, cDriveArgs)
+function get_parameterMatrices(noPhonons, ΔvariDependence, Δvari_args, fiber, d, να, ηα, incField_wlf, array, ΩDriveOn, tildeG_flags, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans, include3rdLevel, cDriveType, Δc, Ωc, cDriveArgs)
     Δvari = get_Δvari(ΔvariDependence, Δvari_args, array)
     if all(ηα .== 0)
-        tildeΩ = get_tildeΩs(fiber, d, incField_wlf, array)
+        tildeΩ = get_tildeΩs(fiber, d, incField_wlf, array, ΩDriveOn)
         tildeG = get_tildeGs(fiber, d, array, tildeG_flags, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
         if include3rdLevel tildeΩc = get_tildeΩcs(cDriveType, Ωc, array, cDriveArgs) end
         
@@ -78,7 +78,7 @@ function get_parameterMatrices(noPhonons, ΔvariDependence, Δvari_args, fiber, 
         else                return Δc, Δvari, tildeΩ, tildeΩc, tildeG end
         
     else
-        tildeΩ, tildeΩα            = get_tildeΩs(fiber, d, ηα, incField_wlf, array)
+        tildeΩ, tildeΩα            = get_tildeΩs(fiber, d, ηα, incField_wlf, array, ΩDriveOn)
         tildeG, tildeGα1, tildeGα2 = get_tildeGs(fiber, d, ηα, array, tildeG_flags, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
         tildeFα                    = get_tildeFα(tildeG, να)
         if include3rdLevel tildeΩc, tildeΩcα = get_tildeΩcs(cDriveType, Ωc, ηα, array, cDriveArgs) end
@@ -94,7 +94,9 @@ function get_parameterMatrices(noPhonons, ΔvariDependence, Δvari_args, fiber, 
 end
 
 
-function get_tildeΩs(fiber, d::String, incField_wlf, array)
+function get_tildeΩs(fiber, d::String, incField_wlf, array, ΩDriveOn)
+    if !ΩDriveOn return zeros(ComplexF64, size(array)) end
+    
     if d == "chiral"
         # Set up coordinates and guided mode components (including their first and second order derivatives)
         ρa = abs(array[1][1])
@@ -116,7 +118,9 @@ function get_tildeΩs(fiber, d::String, incField_wlf, array)
 end
 
 
-function get_tildeΩs(fiber, d::String, ηα, incField_wlf, array)
+function get_tildeΩs(fiber, d::String, ηα, incField_wlf, array, ΩDriveOn)
+    if !ΩDriveOn return zeros(ComplexF64, size(array)), [zeros(ComplexF64, size(array)) for α in 1:3]  end
+    
     if d == "chiral"
         # Set up coordinates and guided mode components (including their first and second order derivatives)
         ρa = abs(array[1][1])
@@ -146,7 +150,9 @@ function get_tildeΩs(fiber, d::String, ηα, incField_wlf, array)
 end
 
 
-function get_tildeΩs(fiber, d, incField_wlf, array)
+function get_tildeΩs(fiber, d, incField_wlf, array, ΩDriveOn)
+    if !ΩDriveOn return zeros(ComplexF64, size(array)) end
+    
     # Calculate incoming field
     En = fill(zeros(ComplexF64, 3), size(array))
     for (w, l, f) in incField_wlf
@@ -159,7 +165,9 @@ function get_tildeΩs(fiber, d, incField_wlf, array)
 end
 
 
-function get_tildeΩs(fiber, d, ηα, incField_wlf, array)
+function get_tildeΩs(fiber, d, ηα, incField_wlf, array, ΩDriveOn)
+    if !ΩDriveOn return zeros(ComplexF64, size(array)), [zeros(ComplexF64, size(array)) for α in 1:3]  end
+    
     # Calculate incoming field and its second derivative
     En   = fill(zeros(ComplexF64, 3), size(array))
     Enα  = [deepcopy(En) for α in 1:3]
@@ -480,11 +488,10 @@ end
 
 function get_tildeGs_split(SP)
     if all(SP.ηα .== 0)
-        tildeG_gm, tildeG_rm = get_tildeGs_split(SP.fiber, SP.d, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+        return get_tildeGs_split(SP.fiber, SP.d, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
     else 
-        tildeG_gm, tildeGα1_gm, tildeGα2_gm, tildeG_rm, tildeGα1_gm, tildeGα2_gm = get_tildeGs_split(SP.fiber, SP.d, SP.ηα, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+        return get_tildeGs_split(SP.fiber, SP.d, SP.ηα, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
     end
-    return tildeG_gm, tildeG_rm
 end
 
 
@@ -497,8 +504,8 @@ end
 
 function get_tildeGs_split(fiber, d, ηα, array, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
     tildeG_gm, tildeGα1_gm, tildeGα2_gm = get_tildeGs(fiber, d, ηα, array, (true, false, true), save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
-    tildeG_rm, tildeGα1_gm, tildeGα2_gm = get_tildeGs(fiber, d, ηα, array, (false, true, true), save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
-    return tildeG_gm, tildeGα1_gm, tildeGα2_gm, tildeG_rm, tildeGα1_gm, tildeGα2_gm
+    tildeG_rm, tildeGα1_rm, tildeGα2_rm = get_tildeGs(fiber, d, ηα, array, (false, true, true), save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+    return tildeG_gm, tildeGα1_gm, tildeGα2_gm, tildeG_rm, tildeGα1_rm, tildeGα2_rm
 end
 
 
@@ -711,7 +718,7 @@ function get_fullCouplingMatrix(Δvari, tildeG, tildeFα, tildeGα1, tildeGα2)
     Nα = N1α + N2α
     Mα = M1α + M2α
     tildeG += Δvari
-    Fα = [kron(tildeFα[α] + Δvari, I(N)) for α in 1:3]    
+    Fα = [kron(tildeFα[α] + Δvari, I(N)) for α in 1:3]
     O = zeros(N^2, N^2)
     return [tildeG Nα[1] Nα[2] Nα[3]
              Mα[1] Fα[1]  O     O
@@ -770,7 +777,7 @@ Scan the steady state values of atomic coherences σ and the atom-phonon correla
 for a given array (and dipole moments)
 """
 function scan_steadyState(SP, d, array)
-    params = get_parameterMatrices(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, d, SP.να, SP.ηα, SP.incField_wlf, array, SP.tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
+    params = get_parameterMatrices(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, d, SP.να, SP.ηα, SP.incField_wlf, array, SP.ΩDriveOn, SP.tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
     return calc_steadyState.(SP.Δ_range, Ref(params), "", SP.noPhonons, SP.include3rdLevel, false)
 end
 
@@ -781,7 +788,7 @@ end
 """
 Perform time evolution of the atomic and phononic degrees of freedom
 """
-function calc_timeEvolution(Δ, params, N, initialState, tspan, dtmax, postfix, noPhonons, include3rdLevel, save_timeEvol=true)
+function calc_timeEvolution(Δ, params, N, initialState, tspan, dtmax, postfix, noPhonons, include3rdLevel, whichTimeEvolver, evolToSS, save_timeEvol=true)
     filename = "TE"
     if noPhonons filename *= "_noPh" end
     if include3rdLevel filename *= "_w3l" end
@@ -790,35 +797,68 @@ function calc_timeEvolution(Δ, params, N, initialState, tspan, dtmax, postfix, 
     
     if isfile(saveDir * folder * filename * ".txt") return load_as_txt(saveDir * folder, filename) end
     
-    # Prepare the time evolution problem
-    if noPhonons
-        if !include3rdLevel
-            args = empty_σVector(N), empty_σVector(N), 
-                   Δ, params...
-            prob = ODEProblem(EoMs_wrap_noPh, initialState, tspan, args)
+    if whichTimeEvolver == "OrdinaryDiffEq"
+        if evolToSS @warn "Stopping time evolution at the steady state has not been implemented when using OrdinaryDiffEq's solver" end
+        
+        # Prepare the time evolution problem
+        if noPhonons
+            if !include3rdLevel
+                args = empty_σVector(N), empty_σVector(N), 
+                       Δ, params...
+                prob = ODEProblem(EoMs_wrap_noPh, initialState, tspan, args)
+            else
+                args = empty_σVector(N), empty_σVector(N), empty_σVector(N), empty_σVector(N), 
+                       Δ, params...
+                prob = ODEProblem(EoMs_wrap_noPh_w3l, initialState, tspan, args)
+            end
         else
-            args = empty_σVector(N), empty_σVector(N), empty_σVector(N), empty_σVector(N), 
-                   Δ, params...
-            prob = ODEProblem(EoMs_wrap_noPh_w3l, initialState, tspan, args)
+            if !include3rdLevel
+                args = empty_σVector(N), empty_BαVector(N), empty_σVector(N), empty_BαVector(N), 
+                       Δ, params...
+                prob = ODEProblem(EoMs_wrap, initialState, tspan, args)
+            else
+                args = empty_σVector(N), empty_σVector(N), empty_BαVector(N), empty_BαVector(N), empty_σVector(N), empty_σVector(N), empty_BαVector(N), empty_BαVector(N), 
+                       Δ, params...
+                prob = ODEProblem(EoMs_wrap_w3l, initialState, tspan, args)
+            end
         end
-    else
-        if !include3rdLevel
-            args = empty_σVector(N), empty_BαVector(N), empty_σVector(N), empty_BαVector(N), 
-                   Δ, params...
-            prob = ODEProblem(EoMs_wrap, initialState, tspan, args)
+        
+        # Perform the time evolution
+        sol = OrdinaryDiffEq.solve(prob, Tsit5(), dtmax=dtmax)
+        
+    elseif whichTimeEvolver == "simple"
+        
+        if noPhonons
+            if !include3rdLevel
+                args = empty_σVector(N), empty_σVector(N), 
+                       Δ, params...
+                sol  = time_evol(EoMs_wrap_noPh, initialState, tspan, dtmax, args, evolToSS, true)
+            else
+                args = empty_σVector(N), empty_σVector(N), empty_σVector(N), empty_σVector(N), 
+                       Δ, params...
+                sol  = time_evol(EoMs_wrap_noPh_w3l, initialState, tspan, dtmax, args, evolToSS, true)
+            end
         else
-            args = empty_σVector(N), empty_σVector(N), empty_BαVector(N), empty_BαVector(N), empty_σVector(N), empty_σVector(N), empty_BαVector(N), empty_BαVector(N), 
-                   Δ, params...
-            prob = ODEProblem(EoMs_wrap_w3l, initialState, tspan, args)
+            if !include3rdLevel
+                args = empty_σVector(N), empty_BαVector(N), empty_σVector(N), empty_BαVector(N), 
+                       Δ, params...
+                sol  = time_evol(EoMs_wrap, initialState, tspan, dtmax, args, evolToSS, true)
+            else
+                args = empty_σVector(N), empty_σVector(N), empty_BαVector(N), empty_BαVector(N), empty_σVector(N), empty_σVector(N), empty_BαVector(N), empty_BαVector(N), 
+                       Δ, params...
+                sol  = time_evol(EoMs_wrap_w3l, initialState, tspan, dtmax, args, evolToSS, true)
+            end
         end
+        
     end
     
-    # Perform the time evolution
-    sol = OrdinaryDiffEq.solve(prob, Tsit5(), dtmax=dtmax)
-    
     # Pack and save data
-    formattedResult = vectorOfRows2Matrix([vcat(sol.t[i], sol.u[i]) for i in eachindex(sol.t)])
-    # if save_timeEvol save_as_txt(formattedResult, saveDir * folder, filename) end
+    formattedResult = zeros(length(sol.t), 1 + length(initialState))
+    formattedResult[:, 1] .= sol.t
+    for i in eachindex(sol.t)
+        formattedResult[i, 2:end] .= sol.u[i]
+    end
+    if save_timeEvol save_as_txt(formattedResult, saveDir * folder, filename) end
     
     return formattedResult
 end
@@ -830,7 +870,7 @@ Perform time evolution for parameters given by SP
 function calc_timeEvolution(SP, Δ)
     postfix = get_postfix_timeEvolution(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.incField_wlf, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, SP.include3rdLevel, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
     params = get_parameterMatrices(SP)
-    return calc_timeEvolution(Δ, params, SP.N, SP.initialState, SP.tspan, SP.dtmax, postfix, SP.noPhonons, SP.include3rdLevel, SP.save_timeEvol)
+    return calc_timeEvolution(Δ, params, SP.N, SP.initialState, SP.tspan, SP.dtmax, postfix, SP.noPhonons, SP.include3rdLevel, SP.whichTimeEvolver, SP.evolToSS, SP.save_timeEvol)
 end
     
 
@@ -840,7 +880,7 @@ Scan time evolutions over the detuning
 function scan_timeEvolution(SP)
     postfixes = get_postfix_timeEvolution.(SP.Δ_range, SP.ΔvariDescription, SP.dDescription, Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), Ref(SP.tildeG_flags), SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, Ref(SP.tspan), SP.dtmax, SP.include3rdLevel, SP.cDriveDescription, SP.Δc, SP.Ωc, Ref(SP.cDriveArgs))
     params = get_parameterMatrices(SP)
-    return calc_timeEvolution.(SP.Δ_range, Ref(params), SP.N, Ref(SP.initialState), Ref(SP.tspan), SP.dtmax, postfixes, SP.noPhonons, SP.include3rdLevel, SP.save_timeEvol)
+    return calc_timeEvolution.(SP.Δ_range, Ref(params), SP.N, Ref(SP.initialState), Ref(SP.tspan), SP.dtmax, postfixes, SP.noPhonons, SP.include3rdLevel, SP.whichTimeEvolver, SP.evolToSS, SP.save_timeEvol)
 end
 
 
@@ -879,7 +919,7 @@ end
 Perform time evolution for parameters given by SP, using the eigenmodes approach
 """
 function calc_timeEvolution_eigenmodes(SP, Δ)
-    postfix = get_postfix_timeEvolution(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.incField_wlf, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax)
+    postfix = get_postfix_timeEvolution(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.incField_wlf, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, SP.include3rdLevel, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
     drive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = prepare_eigenmodesCalculation(SP)
     return calc_timeEvolution_eigenmodes(Δ, drive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, SP.initialState, SP.tspan, SP.dtmax, postfix, SP.noPhonons, SP.save_timeEvol)
 end
@@ -889,7 +929,7 @@ end
 Scan time evolutions over the detuning, using the eigenmodes approach
 """
 function scan_timeEvolution_eigenmodes(SP)
-    postfixes = get_postfix_timeEvolution.(SP.Δ_range, SP.ΔvariDescription, SP.dDescription, Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), Ref(SP.tildeG_flags), SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, Ref(SP.tspan), SP.dtmax)
+    postfixes = get_postfix_timeEvolution.(SP.Δ_range, SP.ΔvariDescription, SP.dDescription, Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), Ref(SP.tildeG_flags), SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, Ref(SP.tspan), SP.dtmax, SP.include3rdLevel, SP.cDriveDescription, SP.Δc, SP.Ωc, Ref(SP.cDriveArgs))
     drive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = prepare_eigenmodesCalculation(SP)
     return calc_timeEvolution_eigenmodes.(SP.Δ_range, Ref(drive), Ref(eigenEnergies), Ref(eigenModesMatrix), Ref(eigenModesMatrix_inv), Ref(SP.initialState), Ref(SP.tspan), SP.dtmax, postfixes, SP.noPhonons, SP.save_timeEvol)
 end
@@ -906,11 +946,11 @@ The function assumes that σBα contains only σ if the Lamb-Dicke parameters ar
 function calc_transmission(SP, σBα)
     if SP.noPhonons
         if SP.include3rdLevel σBα = σBα[1] end
-        tildeΩ = get_tildeΩs(SP.fiber, SP.d, SP.incField_wlf, SP.array)
+        tildeΩ = get_tildeΩs(SP.fiber, SP.d, SP.incField_wlf, SP.array, SP.ΩDriveOn)
         return transmission(σBα, tildeΩ, SP.fiber)
     else
         if SP.include3rdLevel σBα = σBα[[1, 3]] end
-        tildeΩ, tildeΩα = get_tildeΩs(SP.fiber, SP.d, SP.ηα, SP.incField_wlf, SP.array)
+        tildeΩ, tildeΩα = get_tildeΩs(SP.fiber, SP.d, SP.ηα, SP.incField_wlf, SP.array, SP.ΩDriveOn)
         return transmission(σBα..., tildeΩ, tildeΩα, SP.fiber)
     end
 end
@@ -925,11 +965,11 @@ The function assumes that σBα contains only σ if the Lamb-Dicke parameters ar
 function calc_transmission(SP, σBα, d, array)
     if SP.noPhonons
         if SP.include3rdLevel σBα = σBα[1] end
-        tildeΩ = get_tildeΩs(SP.fiber, d, SP.incField_wlf, array)
+        tildeΩ = get_tildeΩs(SP.fiber, d, SP.incField_wlf, array, SP.ΩDriveOn)
         return transmission(σBα, tildeΩ, SP.fiber)
     else
         if SP.include3rdLevel σBα = σBα[[1, 3]] end
-        tildeΩ, tildeΩα = get_tildeΩs(SP.fiber, d, SP.ηα, SP.incField_wlf, array)
+        tildeΩ, tildeΩα = get_tildeΩs(SP.fiber, d, SP.ηα, SP.incField_wlf, array, SP.ΩDriveOn)
         return transmission(σBα..., tildeΩ, tildeΩα, SP.fiber)
     end
 end
@@ -972,12 +1012,12 @@ function calc_transmission_indepDecay(SP, Δ)
         end
     else
         if SP.arrayType ∈ ("1Dchain", "randomZ")
-            Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array[1:1], (true, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
+            Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array[1:1], SP.ΩDriveOn, (true, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
             σBα = calc_steadyState(Δ, (Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2), "", SP.noPhonons, false)
             t1 = transmission(σBα..., tildeΩ, tildeΩα, SP.fiber)
             return t1^SP.N
         else
-            Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, (true, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
+            Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.ΩDriveOn, (true, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
             ts = []
             for i in 1:SP.N
                 ind = i + (i-1)*SP.N
@@ -1017,12 +1057,12 @@ function scan_transmission_indepDecay(SP)
         # but most likely it would not reduce complexity much (though it would maybe read a bit cleaner)
         if SP.arrayType ∈ ("1Dchain", "randomZ")
             if typeof(SP.d) == String d = SP.d else d = SP.d[1:1] end
-            Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, d, SP.να, SP.ηα, SP.incField_wlf, SP.array[1:1], (true, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
+            Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, d, SP.να, SP.ηα, SP.incField_wlf, SP.array[1:1], SP.ΩDriveOn, (true, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
             σBα = calc_steadyState.(SP.Δ_range, Ref((Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2)), "", SP.noPhonons, false)
             t1 = [transmission(σBα_..., tildeΩ, tildeΩα, SP.fiber) for σBα_ in σBα]
             return t1.^SP.N
         else
-            Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, (true, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
+            Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.ΩDriveOn, (true, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
             ts = []
             for i in 1:SP.N
                 ind = i + (i-1)*SP.N
@@ -1060,11 +1100,11 @@ function calc_reflection(SP, σBα)
     
     if SP.noPhonons
         if SP.include3rdLevel σBα = σBα[1] end
-        tildeΩ_refl = get_tildeΩs(SP.fiber, d, [(1, 1, -1), (1, -1, -1)], SP.array)
+        tildeΩ_refl = get_tildeΩs(SP.fiber, d, [(1, 1, -1), (1, -1, -1)], SP.array, SP.ΩDriveOn)
         return reflection(σBα, tildeΩ_refl, SP.fiber)
     else
         if SP.include3rdLevel σBα = σBα[[1, 3]] end
-        tildeΩ_refl, tildeΩα_refl = get_tildeΩs(SP.fiber, d, SP.ηα, [(1, 1, -1), (1, -1, -1)], SP.array)
+        tildeΩ_refl, tildeΩα_refl = get_tildeΩs(SP.fiber, d, SP.ηα, [(1, 1, -1), (1, -1, -1)], SP.array, SP.ΩDriveOn)
         return reflection(σBα..., tildeΩ_refl, tildeΩα_refl, SP.fiber)
     end
 end
@@ -1107,6 +1147,47 @@ function scan_radiation_Efield(SP, σBα, approx_Grm_trans::Tuple=(true, true))
     else
         return calc_radiation_Efield.(Ref(σBα), Ref(SP.fiber), Ref(d), Ref(SP.ηα), SP.r_fields, Ref(SP.array), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, Ref(approx_Grm_trans))
     end
+end
+
+
+# ================================================
+#   Functions pertaining to using the atomic array as a quantum memory
+# ================================================
+function calc_memoryRetrievalError(SP, xTrajectories)
+    if !SP.include3rdLevel throw(ArgumentError("calc_memoryRetrievalError assumes the third level (s) is included")) end
+    
+    # Prepare Δvari and radiation couplings
+    Δvari = get_Δvari(SP.ΔvariDependence, SP.Δvari_args, SP.array)
+    if all(SP.ηα .== 0)
+        _, tildeG_rm = get_tildeGs_split(SP)
+    else 
+        _, _, _, tildeG_rm, tildeGα1_rm, tildeGα2_rm = get_tildeGs_split(SP)
+    end
+    
+    # Get trajectories, couplings matrices, and calculate expectation value to get radiative decay rates
+    if SP.noPhonons
+        σgeσgsTraj = unpack_σgeσgsFromx.(eachrow(xTrajectories[:, 2:end]))
+        vecTraj = [x[1] for x in σgeσgsTraj]
+        
+        fullCoupling = Δvari + tildeG_rm
+    else
+        σgeσgsBαgeBαgsTraj = unpack_σgeσgsBαgeBαgsFromx.(eachrow(xTrajectories[:, 2:end]))
+        σgeBαgeTraj = [x[[1, 3]] for x in σgeσgsBαgeBαgsTraj]
+        vecTraj = pack_σBαIntoσBαVec.(σgeBαgeTraj)
+        
+        tildeFα_rm = get_tildeFα(tildeG_rm, SP.να)
+        fullCoupling = get_fullCouplingMatrix(Δvari, tildeG_rm, tildeFα_rm, tildeGα1_rm, tildeGα2_rm)
+    end
+    Γ_rm = real(2*adjoint.(vecTraj).*Ref(imag(fullCoupling)).*vecTraj)
+    
+    # Integrate decay rate to get error
+    times = xTrajectories[:, 1]
+    
+    # TEMP
+    fig_complexFunction(times, Γ_rm)
+    # TEMP
+    
+    return sum((Γ_rm[1:end-1] .+ Γ_rm[2:end])./2 .* diff(times))
 end
 
 

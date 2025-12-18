@@ -829,9 +829,13 @@ Implements the equations of motion for the atomic of freedom
 to first order in the driving (for the case of no phonons)
 """
 function EoMs!(dσdt, σ, Δ, Δvari, tildeΩ, tildeG)
-    dσdt  .= -1im*(
-                   -tildeΩ - (Δ*I + Δvari + tildeG)*σ
-                  )
+    N = length(σ)
+    for i in 1:N
+            dσdt[i]  = -1im*( -Δ*σ[i] - tildeΩ[i] )
+        for j in 1:N
+            dσdt[i] += -1im*( -(Δvari[i, j] + tildeG[i, j])*σ[j] )
+        end
+    end
 end
 
 
@@ -840,12 +844,27 @@ Implements the equations of motion for the atomic and phononic degrees of freedo
 to first order in the driving and to second order in the Lamb-Dicke parameter
 """
 function EoMs!(dσdt, dBαdt, σ, Bα, Δ, Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2)
-    dσdt  .= -1im*(
-                   -tildeΩ - (Δ*I + Δvari + tildeG)*σ - sum(@. di(Bα*transpose(tildeGα1)) + tildeGα2*di(Bα))
-                  )
-    dBαdt .= -1im*(
-                   -Di.(tildeΩα) - Bα.*(Ref(Δ*I + Δvari) .+ transpose.(tildeFα)) - Di.(tildeGα1.*Ref(σ)) - Ref(Di(σ)).*transpose.(tildeGα2)
-                  )
+    N = length(σ)
+    for i in 1:N
+                     dσdt[i]        = -1im*( -Δ*σ[i] - tildeΩ[i] )
+        for j in 1:N
+                     dσdt[i]       += -1im*( -(Δvari[i, j] + tildeG[i, j])*σ[j] )
+            for α in 1:3
+                     dσdt[i]       += -1im*( -tildeGα1[α][i, j]*Bα[α][i, j] - tildeGα2[α][i, j]*Bα[α][j, j] )
+                    dBαdt[α][i, j]  = -1im*( -Δ*Bα[α][i, j] - tildeGα2[α][j, i]*σ[i] )
+                for k in 1:N
+                    dBαdt[α][i, j] += -1im*( -(Δvari[k, j] + tildeFα[α][j, k])*Bα[α][i, k] )
+                end
+            end
+        end
+        for α in 1:3
+                    dBαdt[α][i, i] += -1im*( -tildeΩα[α][i] )
+            for k in 1:N
+                    dBαdt[α][i, i] += -1im*( -tildeGα1[α][i, k]*σ[k] )
+            end
+            
+        end
+    end
 end
 
 
@@ -855,12 +874,15 @@ to first order in the driving (for the case of no phonons)
 including a third metastable level to facilitate EIT
 """ 
 function EoMs!(dσgedt, dσgsdt, σge, σgs, Δ, Δc, Δvari, tildeΩ, tildeΩc, tildeG)
-    dσgedt  .= -1im*(
-                     -tildeΩ - (Δ*I + Δvari + tildeG)*σge - tildeΩc.*σgs
-                    )
-    dσgsdt  .= -1im*(
-                     -((Δ - Δc)*I + Δvari)*σgs - conj(tildeΩc).*σge
-                    )
+    N = length(σge)
+    for i in 1:N
+            dσgedt[i]  = -1im*( -Δ*σge[i] - tildeΩ[i] - tildeΩc[i].*σgs[i] )
+            dσgsdt[i]  = -1im*( -(Δ - Δc)*σgs[i] - conj(tildeΩc[i]).*σge[i] )
+        for j in 1:N
+            dσgedt[i] += -1im*( -(Δvari[i, j] + tildeG[i, j])*σge[j] )
+            dσgsdt[i] += -1im*( -Δvari[i, j]*σgs[j] )
+        end
+    end
 end
 
 
@@ -871,20 +893,31 @@ including a third metastable level to facilitate EIT
 """ 
 function EoMs!(dσgedt, dσgsdt, dBαgedt, dBαgsdt, σge, σgs, Bαge, Bαgs, 
                Δ, Δc, να, Δvari, tildeΩ, tildeΩα, tildeΩc, tildeΩcα, tildeG, tildeFα, tildeGα1, tildeGα2)
-    dσgedt  .= -1im*(
-                     -tildeΩ - (Δ*I + Δvari + tildeG)*σge - tildeΩc.*σgs
-                     -sum(@. broadcast(*, tildeΩcα, di(Bαgs)) + di(Bαge*transpose(tildeGα1)) + tildeGα2*di(Bαge))
-                    )
-    dBαgedt .= -1im*(
-                     -Di.(tildeΩα) - Bαge.*(Ref(Δ*I + Δvari) .+ transpose.(tildeFα)) - Ref(Di(tildeΩc)).*Bαgs
-                     -Di.(broadcast.(*, tildeΩcα, Ref(σgs))) - Di.(tildeGα1.*Ref(σge)) - Ref(Di(σge)).*transpose.(tildeGα2)
-                    )
-    dσgsdt  .= -1im*(
-                     -((Δ - Δc)*I + Δvari)*σgs - conj(tildeΩc).*σge - sum(@. broadcast(*, conj(tildeΩcα), di(Bαge)))
-                    )
-    dBαgsdt .= -1im*(
-                     -Bαgs.*((Δ - Δc .- να).*Ref(I) .+ Ref(Δvari)) - Ref(Di(conj(tildeΩc))).*Bαge - Di.(broadcast.(*, conj(tildeΩcα), Ref(σge)))
-                    )
+    N = length(σge)
+    for i in 1:N
+                     dσgedt[i]        = -1im*( -Δ*σge[i] - tildeΩ[i] - tildeΩc[i].*σgs[i] )
+                     dσgsdt[i]        = -1im*( -(Δ - Δc)*σgs[i] - conj(tildeΩc[i]).*σge[i] )
+        for j in 1:N
+                     dσgedt[i]       += -1im*( -(Δvari[i, j] + tildeG[i, j])*σge[j] )
+                     dσgsdt[i]       += -1im*( -Δvari[i, j]*σgs[j] )
+            for α in 1:3
+                     dσgedt[i]       += -1im*( -tildeΩcα[α][i]*Bαgs[α][i, i] - tildeGα1[α][i, j]*Bαge[α][i, j] - tildeGα2[α][i, j]*Bαge[α][j, j] )
+                    dBαgedt[α][i, j]  = -1im*( -Δ*Bαge[α][i, j] - tildeΩc[i]*Bαgs[α][i, j] - tildeGα2[α][j, i]*σge[i] )
+                    dBαgsdt[α][i, j]  = -1im*( -(Δ - Δc - να[α])*Bαgs[α][i, j] - conj(tildeΩc[i])*Bαge[α][i, j] )
+                for k in 1:N
+                    dBαgedt[α][i, j] += -1im*( -(Δvari[k, j] + tildeFα[α][j, k])*Bαge[α][i, k] )
+                end
+            end
+        end
+        for α in 1:3
+                    dBαgedt[α][i, i] += -1im*( -tildeΩα[α][i] - tildeΩcα[α][i]*σgs[i] )
+                     dσgsdt[i]       += -1im*( -conj(tildeΩcα[α][i])*Bαge[α][i, i] )
+                    dBαgsdt[α][i, i] += -1im*( -conj(tildeΩcα[α][i])*σge[i] )
+            for k in 1:N
+                    dBαgedt[α][i, i] += -1im*( -tildeGα1[α][i, k]*σge[k] )
+            end
+        end
+    end
 end
 
 
@@ -894,17 +927,16 @@ Wraps the EoMs to conform with the requirements of NonlinearSolve (in the case o
 args = dσdt, σ, Δ, Δvari, tildeΩ, tildeG
 """
 function EoMs_wrap_noPh(dxdt, x, args, t)
-    # Unpack args
-    dσdt, σ = args[1:2]
-    
     # Unpack σ from x
-    unpack_σFromx!(σ, x)
+    unpack_σFromx!(args[2], x)
     
     # Calculate and update dσdt
     EoMs!(args...)
         
     # Pack dσdt into dxdt
-    pack_σIntox!(dσdt, dxdt)
+    pack_σIntox!(args[1], dxdt)
+    
+    return dxdt
 end
 
 
@@ -914,17 +946,16 @@ Wraps the EoMs to conform with the requirements of NonlinearSolve.
 args = dσdt, dBαdt, σ, Bα, Δ, Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2
 """
 function EoMs_wrap(dxdt, x, args, t)
-    # Unpack args
-    dσdt, dBαdt, σ, Bα = args[1:4]
-    
     # Unpack σ, Bα from x
-    unpack_σBαFromx!(σ, Bα, x)
+    unpack_σBαFromx!(args[3:4]..., x)
     
     # Calculate and update dσdt, dBαdt
     EoMs!(args...)
         
     # Pack dσdt and dBαdt into dxdt
-    pack_σBαIntox!(dσdt, dBαdt, dxdt)
+    pack_σBαIntox!(args[1:2]..., dxdt)
+    
+    return dxdt
 end
 
 
@@ -935,17 +966,16 @@ For the case of including a third metastable level to facilitate EIT.
 args = dσgedt, dσgsdt, σge, σgs, Δ, Δc, Δvari, tildeΩ, tildeΩc, tildeG
 """
 function EoMs_wrap_noPh_w3l(dxdt, x, args, t)
-    # Unpack args
-    dσgedt, dσgsdt, σge, σgs = args[1:4]
-    
     # Unpack σge, σgs, Bαge, and Bαgs from x
-    unpack_σgeσgsFromx!(σge, σgs, x)
+    unpack_σgeσgsFromx!(args[3:4]..., x)
     
     # Calculate and update dσdt, dBαdt
     EoMs!(args...)
         
     # Pack dσgedt, dσgsdt, dBαgedt, and dBαgsdt into dxdt
-    pack_σgeσgsIntox!(dσgedt, dσgsdt, dxdt)
+    pack_σgeσgsIntox!(args[1:2]..., dxdt)
+    
+    return dxdt
 end
 
 
@@ -957,17 +987,16 @@ args = dσgedt, dσgsdt, dBαgedt, dBαgsdt, σge, σgs, Bαge, Bαgs,
        Δ, Δc, να, Δvari, tildeΩ, tildeΩα, tildeΩc, tildeΩcα, tildeG, tildeFα, tildeGα1, tildeGα2
 """
 function EoMs_wrap_w3l(dxdt, x, args, t)
-    # Unpack args
-    dσgedt, dσgsdt, dBαgedt, dBαgsdt, σge, σgs, Bαge, Bαgs = args[1:8]
-    
     # Unpack σge, σgs, Bαge, and Bαgs from x
-    unpack_σgeσgsBαgeBαgsFromx!(σge, σgs, Bαge, Bαgs, x)
+    unpack_σgeσgsBαgeBαgsFromx!(args[5:8]..., x)
     
     # Calculate and update dσdt, dBαdt
     EoMs!(args...)
         
     # Pack dσgedt, dσgsdt, dBαgedt, and dBαgsdt into dxdt
-    pack_σgeσgsBαgeBαgsIntox!(dσgedt, dσgsdt, dBαgedt, dBαgsdt, dxdt)
+    pack_σgeσgsBαgeBαgsIntox!(args[1:4]..., dxdt)
+    
+    return dxdt
 end
 
 
@@ -1089,8 +1118,6 @@ end
 
 """
 Prepare the groundstate in terms of the x-vector for time-evolution
-
-Shallow function, but allows for a good abstraction
 """
 function groundstate(N, noPh=false, inc3l=false)
     if noPh
@@ -1100,6 +1127,57 @@ function groundstate(N, noPh=false, inc3l=false)
         if !inc3l return empty_xVector(N)
         else      return empty_xVector_w3l(N) end
     end
+end
+
+
+"""
+Prepare a (spatially) Gaussian distribution along z of a single excitation
+in terms of the x-vector for time-evolution.
+
+The Gaussian is centered at zc, with a width given by w,
+and has a momentum (i.e. phase) given by kz.
+
+Whether the excitation is in the e- or the s-state can be determined
+by setting whichState = 'e' or whichState = 's'.
+"""
+function GaussianState(N, array, kz, zc, w, whichState, noPh=false, inc3l=false)
+    zs = [site[3] for site in array]
+    σGauss = exp.(1im*kz*zs).*exp.(-(zs .- zc).^2/(2*w^2))
+    σGauss /= norm(σGauss)
+    
+    if whichState == "e"
+        σge = σGauss
+        if inc3l σgs = empty_σVector(N) end
+    elseif whichState == "s"
+        if inc3l == false throw(ArgumentError("GaussianState with whichState = 's' prepares an excitation in the s-state and must have inc3l=true")) end
+        σge = empty_σVector(N)
+        σgs = σGauss
+    end
+    
+    if noPh
+        if !inc3l return pack_σIntox(σge)
+        else      return pack_σgeσgsIntox(σge, σgs) end
+    else
+        Bαge, Bαgs = empty_BαVector(N), empty_BαVector(N)
+        if !inc3l return pack_σBαIntox(σge, Bαge)
+        else      return pack_σgeσgsBαgeBαgsIntox(σge, σgs, Bαge, Bαgs) end
+    end
+end
+
+
+"""
+Prepare a (spatially) Gaussian distribution along z of a single excitation in the s-state
+in terms of the x-vector for time-evolution.
+
+The Gaussian is centered in the middle of the array (with respect to the z-axis), with a width given by w
+and has a momentum (i.e. phase) given by the fiber propagation constant.
+"""
+function Gaussian_sState(N, array, fiber, w, noPh=false, inc3l=false)
+    if inc3l == false throw(ArgumentError("Gaussian_sState prepares an excitation in the s-state and must have inc3l=true")) end
+    
+    zs = [site[3] for site in array]
+    zc = (maximum(zs) - minimum(zs))/2
+    return GaussianState(N, array, fiber.propagation_constant, zc, w, "s", noPh, inc3l)
 end
 
 
@@ -1198,7 +1276,7 @@ function guidedEmissions(σ, fiber, d, array)
                          [(1, 1, -1), (1, -1, -1)],
                          [(1, 1,  1), (1,  1,  1)],
                          [(1, 1, -1), (1,  1, -1)]]
-        tildeΩ = get_tildeΩs(fiber, d, incField_wlf, array)
+        tildeΩ = get_tildeΩs(fiber, d, incField_wlf, array, true)
         if incField_wlf == [(1, 1,  1), (1, -1,  1)]
             push!(emissions, 1 + 3im*π*fiber.propagation_constant_derivative/(2*ωa^2)*sum( conj(tildeΩ).*σ ))
         else
@@ -1219,7 +1297,7 @@ function guidedEmissions(σ, Bα, fiber, d, ηα, array)
                          [(1, 1, -1), (1, -1, -1)],
                          [(1, 1,  1), (1,  1,  1)],
                          [(1, 1, -1), (1,  1, -1)]]
-        tildeΩ, tildeΩα = get_tildeΩs(fiber, d, ηα, incField_wlf, array)
+        tildeΩ, tildeΩα = get_tildeΩs(fiber, d, ηα, incField_wlf, array, true)
         if incField_wlf == [(1, 1,  1), (1, -1,  1)]
             push!(emissions, 1 + 3im*π*fiber.propagation_constant_derivative/(2*ωa^2)*sum( conj(tildeΩ).*σ + sum([conj(tildeΩα[α]).*di(Bα[α]) for α in 1:3]) ))
         else
@@ -1244,6 +1322,24 @@ function refractiveIndex(t, arrayType, N_sites, a)
     end
     
     return 1 + log(t)/(1im*ωa*mediumLength)
+end
+
+
+"""
+Calculates the group velocity from the (potentially complex) index of refraction.
+The velocity is given in units of the bare velocity (c = 1) and the frequency is assumed to be ωa.
+"""
+function groupVelocity(n, Δ_range)
+    n_real = real.(n)
+    dΔ     = Δ_range[2] - Δ_range[1]
+    dndΔ   = zeros(length(Δ_range))
+    
+    dndΔ[1] = (n_real[2] - n_real[1])/dΔ
+    for i in 2:length(Δ_range)-1
+        dndΔ[i] = (n_real[i+1] - n_real[i-1])/(2*dΔ)
+    end
+    dndΔ[end] = (n_real[end] - n_real[end-1])/dΔ
+    return 1 ./(n_real +  ωa*dndΔ)
 end
 
 

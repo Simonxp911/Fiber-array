@@ -271,8 +271,8 @@ Assumes that σ is an N-vector, and x is a 2N-vector
 """
 function pack_σIntox!(σ, x)
     N = length(σ)
-    x[1     : N]   .= real.(σ)
-    x[1 + N : 2*N] .= imag.(σ)
+    @. x[1     : N]   = real(σ)
+    @. x[1 + N : 2*N] = imag(σ)
 end
 
 
@@ -291,11 +291,11 @@ Assumes that σ is an N-vector, Bα is a 3-vector consisting of NxN-matrices, an
 """
 function pack_σBαIntox!(σ, Bα, x)
     N = length(σ)
-    x[1     : N]   .= real.(σ)
-    x[1 + N : 2*N] .= imag.(σ)
-    for α in 1:3
-        x[1 + 2*N +         (α - 1)*N^2 : 2*N         + α*N^2] .= real.(flatten(Bα[α]))
-        x[1 + 2*N + 3*N^2 + (α - 1)*N^2 : 2*N + 3*N^2 + α*N^2] .= imag.(flatten(Bα[α]))
+    @. x[1     : N]   = real(σ)
+    @. x[1 + N : 2*N] = imag(σ)
+    for α in 1:3, i in 1:N, j in 1:N
+        x[i + (j - 1)*N + 2*N +         (α - 1)*N^2] = real(Bα[α][i, j])
+        x[i + (j - 1)*N + 2*N + 3*N^2 + (α - 1)*N^2] = imag(Bα[α][i, j])
     end
 end
 
@@ -325,10 +325,10 @@ Assumes that σge and σgs are N-vectors, and x is a 4N-vector
 """
 function pack_σgeσgsIntox!(σge, σgs, x)
     N = length(σge)
-    x[1      :   N] .= real.(σge)
-    x[1 +   N: 2*N] .= imag.(σge)
-    x[1 + 2*N: 3*N] .= real.(σgs)
-    x[1 + 3*N: 4*N] .= imag.(σgs)
+    @. x[1      :   N] = real(σge)
+    @. x[1 +   N: 2*N] = imag(σge)
+    @. x[1 + 2*N: 3*N] = real(σgs)
+    @. x[1 + 3*N: 4*N] = imag(σgs)
 end
 
 
@@ -347,15 +347,15 @@ Assumes that σge and σgs are N-vectors, Bαge and Bαgs are 3-vectors consisti
 """
 function pack_σgeσgsBαgeBαgsIntox!(σge, σgs, Bαge, Bαgs, x)
     N = length(σge)
-    x[1      :   N] .= real.(σge)
-    x[1 +   N: 2*N] .= imag.(σge)
-    x[1 + 2*N: 3*N] .= real.(σgs)
-    x[1 + 3*N: 4*N] .= imag.(σgs)
-    for α in 1:3
-        x[1 + 4*N         + (α - 1)*N^2 : 4*N         + α*N^2] .= real.(flatten(Bαge[α]))
-        x[1 + 4*N + 3*N^2 + (α - 1)*N^2 : 4*N + 3*N^2 + α*N^2] .= imag.(flatten(Bαge[α]))
-        x[1 + 4*N + 6*N^2 + (α - 1)*N^2 : 4*N + 6*N^2 + α*N^2] .= real.(flatten(Bαgs[α]))
-        x[1 + 4*N + 9*N^2 + (α - 1)*N^2 : 4*N + 9*N^2 + α*N^2] .= imag.(flatten(Bαgs[α]))
+    @. x[1      :   N] = real(σge)
+    @. x[1 +   N: 2*N] = imag(σge)
+    @. x[1 + 2*N: 3*N] = real(σgs)
+    @. x[1 + 3*N: 4*N] = imag(σgs)
+    for α in 1:3, i in 1:N, j in 1:N
+        x[i + (j - 1)*N + 4*N         + (α - 1)*N^2] = real(Bαge[α][i, j])
+        x[i + (j - 1)*N + 4*N + 3*N^2 + (α - 1)*N^2] = imag(Bαge[α][i, j])
+        x[i + (j - 1)*N + 4*N + 6*N^2 + (α - 1)*N^2] = real(Bαgs[α][i, j])
+        x[i + (j - 1)*N + 4*N + 9*N^2 + (α - 1)*N^2] = imag(Bαgs[α][i, j])
     end
 end
 
@@ -375,7 +375,9 @@ Assumes that σ is an N-vector, and x is a 2N-vector
 """
 function unpack_σFromx!(σ, x)
     N = length(σ)
-    σ .= x[1 : N] + 1im*x[1 + N : 2*N]
+    for i in 1:N
+        σ[i] = x[i] + 1im*x[i + N]
+    end
 end
 
 
@@ -394,9 +396,11 @@ Assumes that σ is an N-vector, Bα is a 3-vector consisting of NxN-matrices, an
 """
 function unpack_σBαFromx!(σ, Bα, x)
     N = length(σ)
-    σ .= x[1 : N] + 1im*x[1 + N : 2*N]
-    for α in 1:3
-        Bα[α] .= reshape(x[1 + 2*N + (α - 1)*N^2 : 2*N + α*N^2] + 1im*x[1 + 2*N + 3*N^2 + (α - 1)*N^2 : 2*N + 3*N^2 + α*N^2], (N, N))
+    for i in 1:N
+        σ[i] = x[i] + 1im*x[i + N]
+        for α in 1:3, j in 1:N
+            Bα[α][i, j] = x[i + (j - 1)*N + 2*N + (α - 1)*N^2] + 1im*x[i + (j - 1)*N + 2*N + 3*N^2 + (α - 1)*N^2]
+        end
     end
 end
 
@@ -416,8 +420,10 @@ Assumes that σge and σgs are N-vectors, and x is a 4N-vector
 """
 function unpack_σgeσgsFromx!(σge, σgs, x)
     N = length(σge)
-    σge .= x[1      :   N] + 1im*x[1   + N : 2*N]
-    σgs .= x[1 + 2*N: 3*N] + 1im*x[1 + 3*N : 4*N]
+    for i in 1:N
+        σge[i] = x[i]       + 1im*x[i +   N]
+        σgs[i] = x[i + 2*N] + 1im*x[i + 3*N]
+    end
 end
 
 
@@ -436,11 +442,13 @@ Assumes that σge and σgs are N-vectors, Bαge and Bαgs are 3-vectors consisti
 """
 function unpack_σgeσgsBαgeBαgsFromx!(σge, σgs, Bαge, Bαgs, x)
     N = length(σge)
-    σge .= x[1      :   N] + 1im*x[1   + N : 2*N]
-    σgs .= x[1 + 2*N: 3*N] + 1im*x[1 + 3*N : 4*N]
-    for α in 1:3
-        Bαge[α] .= reshape(x[1 + 4*N +         (α - 1)*N^2 : 4*N         + α*N^2] + 1im*x[1 + 4*N + 3*N^2 + (α - 1)*N^2 : 4*N + 3*N^2 + α*N^2], (N, N))
-        Bαgs[α] .= reshape(x[1 + 4*N + 6*N^2 + (α - 1)*N^2 : 4*N + 6*N^2 + α*N^2] + 1im*x[1 + 4*N + 9*N^2 + (α - 1)*N^2 : 4*N + 9*N^2 + α*N^2], (N, N))
+    for i in 1:N
+        σge[i] = x[i]       + 1im*x[i   + N]
+        σgs[i] = x[i + 2*N] + 1im*x[i + 3*N]
+        for α in 1:3, j in 1:N
+            Bαge[α][i, j] = x[i + (j - 1)*N + 4*N         + (α - 1)*N^2] + 1im*x[i + (j - 1)*N + 4*N + 3*N^2 + (α - 1)*N^2]
+            Bαgs[α][i, j] = x[i + (j - 1)*N + 4*N + 6*N^2 + (α - 1)*N^2] + 1im*x[i + (j - 1)*N + 4*N + 9*N^2 + (α - 1)*N^2]
+        end
     end
 end
 

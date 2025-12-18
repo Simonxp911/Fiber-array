@@ -702,7 +702,7 @@ function fig_effectiveRefrIndex_vs_Δ(Δ_range, n_real, n_imag, labels, titl)
     Label(fig[2, 2], L"Im$ [n_{eff}] $", tellwidth=false)
     ax2 = Axis(fig[3, 2], xlabel=L"$ Δ/γ_{a} $")
     
-    # Plot magnitude squared and the phase of the transmission with bands for standard deviations
+    # Plot real and imaginary parts of the refractive index
     for (i, label) in enumerate(labels)
         lines!(ax1, Δ_range, n_real[i, :], color=colors[i], label=label)
         lines!(ax2, Δ_range, n_imag[i, :], color=colors[i])
@@ -711,6 +711,34 @@ function fig_effectiveRefrIndex_vs_Δ(Δ_range, n_real, n_imag, labels, titl)
     # Finish figure
     Legend(fig[3, 3], ax1)
     # axislegend(ax1, position=:lt)
+    display(GLMakie.Screen(), fig)
+    return fig
+end
+
+
+"""
+Plot the (complex) index of refraction as a function of detuning 
+together with the group velocity
+"""
+function fig_RefrIndexGroupVelocity_vs_Δ(Δ_range, n_real, n_imag, groupVel, titl)
+    # Start figure 
+    fig = Figure(size=(900, 450))
+    
+    # Make title and axis
+    Label(fig[1, 1:3], titl, tellwidth=false)
+    Label(fig[2, 1], L"Re$ [n_{eff}] $", tellwidth=false)
+    ax1 = Axis(fig[3, 1], xlabel=L"$ Δ/γ_{a} $")
+    Label(fig[2, 2], L"Im$ [n_{eff}] $", tellwidth=false)
+    ax2 = Axis(fig[3, 2], xlabel=L"$ Δ/γ_{a} $")
+    Label(fig[2, 3], L"Group velocity$$", tellwidth=false)
+    ax3 = Axis(fig[3, 3], xlabel=L"$ Δ/γ_{a} $")
+    
+    # Plot
+    lines!(ax1, Δ_range, n_real, color=:red)
+    lines!(ax2, Δ_range, n_imag, color=:blue)
+    lines!(ax3, Δ_range, groupVel, color=:green)
+    
+    # Finish figure
     display(GLMakie.Screen(), fig)
     return fig
 end
@@ -832,6 +860,58 @@ function fig_complexFunction(x, y)
     # Plot the real and imaginary part separately
     lines!(ax1, x, real.(y), color=:blue)
     lines!(ax2, x, imag.(y), color=:red)
+    
+    # Finish figure
+    display(GLMakie.Screen(), fig)
+end
+
+
+"""
+Plot the magnitude and phase of the atomic coherences along the fiber
+"""
+function fig_σ_vs_z(zs, σ, titl)
+    # Start figure 
+    fig = Figure(size=(800, 700))
+    
+    # Make title and axis
+    Label(fig[1, 1:2], titl, tellwidth=false)
+    Label(fig[2, 1], L"Magnitude$$", tellwidth=false)
+    Label(fig[2, 2], L"Phase$$", tellwidth=false)
+    ax1 = Axis(fig[3, 1], xlabel=L"$ z/λ_{a} $")
+    ax2 = Axis(fig[3, 2], xlabel=L"$ z/λ_{a} $")
+    
+    # Plot real space 
+    lines!(ax1, zs, abs.(σ)  , color=:blue)
+    lines!(ax2, zs, angle.(σ), color=:red)
+    
+    # Finish figure
+    display(GLMakie.Screen(), fig)
+end
+
+
+"""
+Plot the magnitude and phase of the atomic coherences along the fiber
+"""
+function fig_σgeσgs_vs_z(zs, σge, σgs, titl)
+    # Start figure 
+    fig = Figure(size=(800, 700))
+    
+    # Make title and axis
+    Label(fig[1, 1:3], titl, tellwidth=false)
+    Label(fig[2, 2], L"Magnitude$$", tellwidth=false)
+    Label(fig[2, 3], L"Phase$$", tellwidth=false)
+    Label(fig[3, 1], L"$ σ^{ge} $", rotation = pi/2, tellheight=false)
+    Label(fig[4, 1], L"$ σ^{gs} $", rotation = pi/2, tellheight=false)
+    ax1 = Axis(fig[3, 2])
+    ax2 = Axis(fig[3, 3])
+    ax3 = Axis(fig[4, 2], xlabel=L"$ z/λ_{a} $")
+    ax4 = Axis(fig[4, 3], xlabel=L"$ z/λ_{a} $")
+    
+    # Plot 
+    lines!(ax1, zs, abs.(σge)  , color=:blue)
+    lines!(ax2, zs, angle.(σge), color=:red)
+    lines!(ax3, zs, abs.(σgs)  , color=:blue)
+    lines!(ax4, zs, angle.(σgs), color=:red)
     
     # Finish figure
     display(GLMakie.Screen(), fig)
@@ -1061,7 +1141,7 @@ function fig_loss_withGnmeigenEnergies(Δ_range, L, resonances_abs, collΔ, coll
     
     # Plot the peaks values of the resonances
     # Label(fig[end+1, 1], L"Resonance peak values, $ 2\gamma_{a}|w|/Γ_\text{coll} $", tellwidth=false)
-    ax3 = Axis(fig[end+1, 1], limits=(extrema(Δ_range)..., 1e-8, 1e0), 
+    ax3 = Axis(fig[end+1, 1], limits=(extrema(Δ_range), nothing), 
             #    xlabel=L"$ Δ_\text{coll}/γ_{a} $",
                ylabel=L"$ 2\gamma_{a}|w|/Γ_\text{coll} $", 
                yscale=log10)

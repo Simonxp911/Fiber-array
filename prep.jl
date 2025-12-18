@@ -14,6 +14,22 @@ end
 
 
 """
+Prepare the atomic coherences (in the case of no phonons)
+including the third level
+"""
+function prep_times_σgeσgsTrajectories(xTrajectories, N)
+    times = xTrajectories[:, 1]
+    
+    σgeTrajectories_t = unpack_σFromx.(eachrow(xTrajectories[:, 2:1+2*N]))
+    σgsTrajectories_t = unpack_σFromx.(eachrow(xTrajectories[:, 2+2*N:1+4*N]))
+    
+    σgeTrajectories = [[σgeTrajectories_t[t][i] for t in eachindex(times)] for i in 1:N]
+    σgsTrajectories = [[σgsTrajectories_t[t][i] for t in eachindex(times)] for i in 1:N]
+    return times, σgeTrajectories, σgsTrajectories
+end
+
+
+"""
 Prepare the atomic coherences and the atom-phonon correlations 
 """
 function prep_times_σBαTrajectories(xTrajectories, N)
@@ -26,6 +42,22 @@ function prep_times_σBαTrajectories(xTrajectories, N)
     return times, σTrajectories, BαTrajectories
 end
 
+
+"""
+Prepare the atomic coherences and the atom-phonon correlations 
+"""
+function prep_times_σgeσgsBαgeBαgsTrajectories(xTrajectories, N)
+    times = xTrajectories[:, 1]
+    
+    σgeBαgeTrajectories = unpack_σBαFromx.(eachrow(hcat(xTrajectories[:, 2:1+2*N], xTrajectories[:, 2+4*N:1+4*N+6*N^2])))
+    σgsBαgsTrajectories = unpack_σBαFromx.(eachrow(hcat(xTrajectories[:, 2+2*N:1+4*N], xTrajectories[:, 2+4*N+6*N^2:end])))
+    
+    σgeTrajectories  =  [[σgeBαgeTrajectories[t][1][i]    for t in eachindex(times)] for i in 1:N]
+    σgsTrajectories  =  [[σgsBαgsTrajectories[t][1][i]    for t in eachindex(times)] for i in 1:N]
+    BαgeTrajectories = [[[σgeBαgeTrajectories[t][2][α][i] for t in eachindex(times)] for i in 1:N^2] for α in 1:3]
+    BαgsTrajectories = [[[σgsBαgsTrajectories[t][2][α][i] for t in eachindex(times)] for i in 1:N^2] for α in 1:3]
+    return times, σgeTrajectories, σgsTrajectories, BαgeTrajectories, BαgsTrajectories
+end
 
 
 """
