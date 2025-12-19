@@ -788,7 +788,7 @@ end
 """
 Perform time evolution of the atomic and phononic degrees of freedom
 """
-function calc_timeEvolution(Δ, params, N, initialState, tspan, dtmax, postfix, noPhonons, include3rdLevel, whichTimeEvolver, evolToSS, save_timeEvol=true)
+function calc_timeEvolution(Δ, params, N, initialState, tspan, dtmax, postfix, noPhonons, include3rdLevel, whichTimeEvolver, save_timeEvol=true)
     filename = "TE"
     if noPhonons filename *= "_noPh" end
     if include3rdLevel filename *= "_w3l" end
@@ -797,9 +797,7 @@ function calc_timeEvolution(Δ, params, N, initialState, tspan, dtmax, postfix, 
     
     if isfile(saveDir * folder * filename * ".txt") return load_as_txt(saveDir * folder, filename) end
     
-    if whichTimeEvolver == "OrdinaryDiffEq"
-        if evolToSS @warn "Stopping time evolution at the steady state has not been implemented when using OrdinaryDiffEq's solver" end
-        
+    if whichTimeEvolver == "OrdinaryDiffEq"        
         # Prepare the time evolution problem
         if noPhonons
             if !include3rdLevel
@@ -827,26 +825,27 @@ function calc_timeEvolution(Δ, params, N, initialState, tspan, dtmax, postfix, 
         sol = OrdinaryDiffEq.solve(prob, Tsit5(), dtmax=dtmax)
         
     elseif whichTimeEvolver == "simple"
+        timeEvol_args = (tspan=tspan, dtmax=dtmax)
         
         if noPhonons
             if !include3rdLevel
-                args = empty_σVector(N), empty_σVector(N), 
+                EoMs_args = empty_σVector(N), empty_σVector(N), 
                        Δ, params...
-                sol  = time_evol(EoMs_wrap_noPh, initialState, tspan, dtmax, args, evolToSS, true)
+                sol  = timeEvol(EoMs_wrap_noPh, initialState, EoMs_args, timeEvol_args)
             else
-                args = empty_σVector(N), empty_σVector(N), empty_σVector(N), empty_σVector(N), 
+                EoMs_args = empty_σVector(N), empty_σVector(N), empty_σVector(N), empty_σVector(N), 
                        Δ, params...
-                sol  = time_evol(EoMs_wrap_noPh_w3l, initialState, tspan, dtmax, args, evolToSS, true)
+                sol  = timeEvol(EoMs_wrap_noPh_w3l, initialState, EoMs_args, timeEvol_args)
             end
         else
             if !include3rdLevel
-                args = empty_σVector(N), empty_BαVector(N), empty_σVector(N), empty_BαVector(N), 
+                EoMs_args = empty_σVector(N), empty_BαVector(N), empty_σVector(N), empty_BαVector(N), 
                        Δ, params...
-                sol  = time_evol(EoMs_wrap, initialState, tspan, dtmax, args, evolToSS, true)
+                sol  = timeEvol(EoMs_wrap, initialState, EoMs_args, timeEvol_args)
             else
-                args = empty_σVector(N), empty_σVector(N), empty_BαVector(N), empty_BαVector(N), empty_σVector(N), empty_σVector(N), empty_BαVector(N), empty_BαVector(N), 
+                EoMs_args = empty_σVector(N), empty_σVector(N), empty_BαVector(N), empty_BαVector(N), empty_σVector(N), empty_σVector(N), empty_BαVector(N), empty_BαVector(N), 
                        Δ, params...
-                sol  = time_evol(EoMs_wrap_w3l, initialState, tspan, dtmax, args, evolToSS, true)
+                sol  = timeEvol(EoMs_wrap_w3l, initialState, EoMs_args, timeEvol_args)
             end
         end
         
@@ -870,7 +869,7 @@ Perform time evolution for parameters given by SP
 function calc_timeEvolution(SP, Δ)
     postfix = get_postfix_timeEvolution(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.incField_wlf, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, SP.include3rdLevel, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
     params = get_parameterMatrices(SP)
-    return calc_timeEvolution(Δ, params, SP.N, SP.initialState, SP.tspan, SP.dtmax, postfix, SP.noPhonons, SP.include3rdLevel, SP.whichTimeEvolver, SP.evolToSS, SP.save_timeEvol)
+    return calc_timeEvolution(Δ, params, SP.N, SP.initialState, SP.tspan, SP.dtmax, postfix, SP.noPhonons, SP.include3rdLevel, SP.whichTimeEvolver, SP.save_timeEvol)
 end
     
 
@@ -880,7 +879,7 @@ Scan time evolutions over the detuning
 function scan_timeEvolution(SP)
     postfixes = get_postfix_timeEvolution.(SP.Δ_range, SP.ΔvariDescription, SP.dDescription, Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), Ref(SP.tildeG_flags), SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, Ref(SP.tspan), SP.dtmax, SP.include3rdLevel, SP.cDriveDescription, SP.Δc, SP.Ωc, Ref(SP.cDriveArgs))
     params = get_parameterMatrices(SP)
-    return calc_timeEvolution.(SP.Δ_range, Ref(params), SP.N, Ref(SP.initialState), Ref(SP.tspan), SP.dtmax, postfixes, SP.noPhonons, SP.include3rdLevel, SP.whichTimeEvolver, SP.evolToSS, SP.save_timeEvol)
+    return calc_timeEvolution.(SP.Δ_range, Ref(params), SP.N, Ref(SP.initialState), Ref(SP.tspan), SP.dtmax, postfixes, SP.noPhonons, SP.include3rdLevel, SP.whichTimeEvolver, SP.save_timeEvol)
 end
 
 
@@ -1153,10 +1152,7 @@ end
 # ================================================
 #   Functions pertaining to using the atomic array as a quantum memory
 # ================================================
-function calc_memoryRetrievalError(SP, xTrajectories)
-    if !SP.include3rdLevel throw(ArgumentError("calc_memoryRetrievalError assumes the third level (s) is included")) end
-    
-    # Prepare Δvari and radiation couplings
+function calc_fullCoupling_rm(SP)
     Δvari = get_Δvari(SP.ΔvariDependence, SP.Δvari_args, SP.array)
     if all(SP.ηα .== 0)
         _, tildeG_rm = get_tildeGs_split(SP)
@@ -1166,28 +1162,61 @@ function calc_memoryRetrievalError(SP, xTrajectories)
     
     # Get trajectories, couplings matrices, and calculate expectation value to get radiative decay rates
     if SP.noPhonons
-        σgeσgsTraj = unpack_σgeσgsFromx.(eachrow(xTrajectories[:, 2:end]))
-        vecTraj = [x[1] for x in σgeσgsTraj]
-        
-        fullCoupling = Δvari + tildeG_rm
+        fullCoupling_rm = Δvari + tildeG_rm
     else
-        σgeσgsBαgeBαgsTraj = unpack_σgeσgsBαgeBαgsFromx.(eachrow(xTrajectories[:, 2:end]))
-        σgeBαgeTraj = [x[[1, 3]] for x in σgeσgsBαgeBαgsTraj]
-        vecTraj = pack_σBαIntoσBαVec.(σgeBαgeTraj)
-        
         tildeFα_rm = get_tildeFα(tildeG_rm, SP.να)
-        fullCoupling = get_fullCouplingMatrix(Δvari, tildeG_rm, tildeFα_rm, tildeGα1_rm, tildeGα2_rm)
+        fullCoupling_rm = get_fullCouplingMatrix(Δvari, tildeG_rm, tildeFα_rm, tildeGα1_rm, tildeGα2_rm)
     end
-    Γ_rm = real(2*adjoint.(vecTraj).*Ref(imag(fullCoupling)).*vecTraj)
+    return fullCoupling_rm
+end
+
+
+function calc_timeEvolution_forMemoryRetrievalError(SP, Δ, fullCoupling_rm, radiativeDecayRate_LowerTol, stepCondition)
+    if !SP.include3rdLevel throw(ArgumentError("calc_timeEvolution_forMemoryRetrievalError assumes the third level (s) is included")) end
     
-    # Integrate decay rate to get error
-    times = xTrajectories[:, 1]
+    params = get_parameterMatrices(SP)
+    timeEvol_args = (tspan=SP.tspan,
+                     dtmax=SP.dtmax, 
+                     stepFuncValLowerTol=radiativeDecayRate_LowerTol)
+    stepFunc(t, xt, ΔxΔt, timeEvol_args) = calc_radiativeDecayRate(SP, xt, fullCoupling_rm)
+                     
+    if SP.noPhonons
+        EoMs_args = empty_σVector(SP.N), empty_σVector(SP.N), empty_σVector(SP.N), empty_σVector(SP.N), 
+                    Δ, params...
+        sol = timeEvol(EoMs_wrap_noPh_w3l, SP.initialState, EoMs_args, timeEvol_args, stepCondition, stepFunc)
+    else
+        EoMs_args = empty_σVector(SP.N), empty_σVector(SP.N), empty_BαVector(SP.N), empty_BαVector(SP.N), empty_σVector(SP.N), empty_σVector(SP.N), empty_BαVector(SP.N), empty_BαVector(SP.N), 
+                    Δ, params...
+        sol = timeEvol(EoMs_wrap_w3l, SP.initialState, EoMs_args, timeEvol_args, stepCondition, stepFunc)
+    end
     
-    # TEMP
-    fig_complexFunction(times, Γ_rm)
-    # TEMP
+    return sol.t, sol.u, sol.stepFuncVal
+end
+
+
+function calc_radiativeDecayRate(SP, state, fullCoupling_rm)
+    if SP.noPhonons
+        if !SP.include3rdLevel
+            σge = unpack_σFromx(state)
+        else
+            σge, σgs = unpack_σgeσgsFromx(state)
+        end
+        σBαVec = σge
+    else
+        if !SP.include3rdLevel
+            σge, Bαge = unpack_σBαFromx(state)
+        else
+            σge, σgs, Bαge, Bαgs = unpack_σgeσgsBαgeBαgsFromx(state)
+        end
+        σBαVec = pack_σBαIntoσBαVec(σge, Bαge)
+    end
     
-    return sum((Γ_rm[1:end-1] .+ Γ_rm[2:end])./2 .* diff(times))
+    return real(2*σBαVec'*imag(fullCoupling_rm)*σBαVec)
+end
+
+
+function calc_memoryRetrievalError(times, radiativeDecayRates)
+    return sum((radiativeDecayRates[1:end-1] .+ radiativeDecayRates[2:end])./2 .* diff(times))
 end
 
 

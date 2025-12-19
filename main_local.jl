@@ -90,9 +90,6 @@ function define_SP_BerlinCs()
     tspan = (0, 100)
     dtmax = 0.01
     
-    # Whether to stop evolution if steady state is reached before the end of the above tspan
-    evolToSS = true
-    
     # Prepare initial state for time evolution, as well as description for postfix
     initialState = groundstate(N, noPhonons, include3rdLevel)
     initialStateDescription = "gs"
@@ -158,7 +155,7 @@ function define_SP_BerlinCs()
                   fiber,
                   Δ_specs,
                   ΔvariDependence, Δvari_args, ΔvariDescription,
-                  whichTimeEvolver, tspan, dtmax, evolToSS,
+                  whichTimeEvolver, tspan, dtmax,
                   initialState, initialStateDescription,
                   ΩDriveOn,
                   arrayType, N_sites, ρa0_ul, a0_ul, ff, pos_unc, n_inst, array, arrayDescription, N,
@@ -214,9 +211,9 @@ function define_SP_BerlinSr()
     ΔvariDescription = ΔvariDescript(ΔvariDependence, Δvari_args)
     
     # Lamb-Dicke parameters
-    ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
+    # ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
     # ηα = ηα0 .* [1, 1, 0]
-    # ηα = [0, 0, 0]
+    ηα = [0, 0, 0]
     
     # Whether phonons are excluded or not from the calculations (a finite ηα but noPhonons = true will result in including ground state motion into tildeG)
     noPhonons = all(ηα .== 0)
@@ -229,7 +226,7 @@ function define_SP_BerlinSr()
     arrayType = "1Dchain"
     
     # Set number of atomic sites 
-    N_sites = 5
+    N_sites = 50
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
@@ -247,13 +244,10 @@ function define_SP_BerlinSr()
     tspan = (0, 1000)
     dtmax = 0.01
     
-    # Whether to stop evolution if steady state is reached before the end of the above tspan
-    evolToSS = true
-    
     # Prepare initial state for time evolution, as well as description for postfix
     # initialState = groundstate(N, noPhonons, include3rdLevel)
     # initialStateDescription = "gs"
-    GaussWidth = 2*a0_ul
+    GaussWidth = sqrt(N)*a0_ul
     initialState = Gaussian_sState(N, array, fiber, GaussWidth, noPhonons, include3rdLevel)
     # initialState = GaussianState(N, array, 0, N/2*a0_ul, GaussWidth, "e", noPhonons, include3rdLevel)
     initialStateDescription = "Ga"
@@ -263,10 +257,10 @@ function define_SP_BerlinSr()
     
     # Atomic dipole moment
     # d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul, array)
-    d = "chiral"
-    dDescription = "chiral"
-    # d = rightCircularDipoleMoment(array)
-    # dDescription = "rgtCrc"
+    # d = "chiral"
+    # dDescription = "chiral"
+    d = rightCircularDipoleMoment(array)
+    dDescription = "rgtCrc"
     
     # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
     incField_wlf = [(1, 1, 1), (1, -1, 1)]
@@ -318,7 +312,7 @@ function define_SP_BerlinSr()
                   fiber,
                   Δ_specs,
                   ΔvariDependence, Δvari_args, ΔvariDescription,
-                  whichTimeEvolver, tspan, dtmax, evolToSS,
+                  whichTimeEvolver, tspan, dtmax,
                   initialState, initialStateDescription,
                   ΩDriveOn,
                   arrayType, N_sites, ρa0_ul, a0_ul, ff, pos_unc, n_inst, array, arrayDescription, N,
@@ -387,9 +381,6 @@ function define_SP_artificial()
     tspan = (0, 100)
     dtmax = 0.01
     
-    # Whether to stop evolution if steady state is reached before the end of the above tspan
-    evolToSS = true
-    
     # Prepare initial state for time evolution, as well as description for postfix
     initialState = groundstate(N, noPhonons, include3rdLevel)
     initialStateDescription = "gs"
@@ -453,7 +444,7 @@ function define_SP_artificial()
                   fiber,
                   Δ_specs,
                   ΔvariDependence, Δvari_args, ΔvariDescription,
-                  whichTimeEvolver, tspan, dtmax, evolToSS,
+                  whichTimeEvolver, tspan, dtmax,
                   initialState, initialStateDescription,
                   ΩDriveOn,
                   arrayType, N_sites, ρa, a, ff, pos_unc, n_inst, array, arrayDescription, N,
@@ -1528,41 +1519,38 @@ function plot_memoryEfficiency(SP)
     if SP.initialStateDescription != "Ga" throw(ArgumentError("plot_memoryEfficiency assumes a Gaussian initial state")) end
     if SP.ΩDriveOn                        throw(ArgumentError("plot_memoryEfficiency assumes the driving on the g-e transition is off")) end
     
-    
-    
-    # initializing in a state without phonons
-    # how was that state achieved? any driving also would create phonons?
-    # initialize in a Gaussian with phonons? 
-    # give Bαgs same weigth as just \sigmags
-    
-    
-    
+    # Prepare parameters
     Δ = SP.Δc + eps(Float64)
-    xTrajectories = calc_timeEvolution(SP, Δ)
+    fullCoupling_rm = calc_fullCoupling_rm(SP)
+    radiativeDecayRate_LowerTol = 1e-4
+    stepCondition = stepCondition_stepFuncVal_isSmall
+    # stepCondition = stepCondition_endOftspan
     
-    # # TEMP
-    # zs = [site[3] for site in SP.array]
-    # times = xTrajectories[:, 1]
-    # σgeσgsTraj = unpack_σgeσgsFromx.(eachrow(xTrajectories[:, 2:end]))
-    # # σgeσgsBαgeBαgsTraj = unpack_σgeσgsBαgeBαgsFromx.(eachrow(xTrajectories[:, 2:end]))
-    # for i in [1, 10000, 20000, 30000]
-    #     σge, σgs = σgeσgsTraj[i]
-    #     # σge, σgs, Bαge, Bαgs = σgeσgsBαgeBαgsTraj[i]
-    #     titl = "time = $(ro(times[i]))"
-    #     fig_σgeσgs_vs_z(zs, σge, σgs, titl)
-    # end
-    # # TEMP
+    # Perform time-evolution and calculate memory retrieval error
+    times, states, radiativeDecayRates = calc_timeEvolution_forMemoryRetrievalError(SP, Δ, fullCoupling_rm, radiativeDecayRate_LowerTol, stepCondition)
+    ϵ = calc_memoryRetrievalError(times, radiativeDecayRates)
     
-    ϵ = calc_memoryRetrievalError(SP, xTrajectories)
     
+    # TEMP
     println(ϵ)
     
+    zs = [site[3] for site in SP.array]
+    σgeσgsTraj = unpack_σgeσgsFromx.(states)
+    # σgeσgsBαgeBαgsTraj = unpack_σgeσgsBαgeBαgsFromx.(states)
+    for i in Int.(floor.(1 .+ [0.1, 0.3, 0.5, 0.7, 0.9].*length(times)))
+        σge, σgs = σgeσgsTraj[i]
+        # σge, σgs, Bαge, Bαgs = σgeσgsBαgeBαgsTraj[i]
+        titl = "time = $(ro(times[i]))"
+        fig_σgeσgs_vs_z(zs, σge, σgs, titl)
+    end
     
-    # calc Γ_rm one point at a time
-    # use to
-    # stop evolution according to some function and return function values optionally
-    # Then calculate error from the gathered values of Γ_rm
+    fig_complexFunction(times, radiativeDecayRates)
+    # TEMP
     
+    
+    
+    
+    # FIGURE OUT where the related functions in calcs.jl should be - in calcs.jl or in physics.jl?
     
     # do the above for different N in parallel (probably quite slow for large N...)
     # and plot that
@@ -1603,6 +1591,7 @@ end
 
 # Implement include3rdLevel calculations for 
     # Mode calculations (fullCouplingMatrix)
+    # Others?
     
 # Study the effect of motion on EIT (seems to be robust against motion)
     # Motion indeed includes an extra term in the transmission which may be not be zero when the original is, but its contribution is small
@@ -1616,10 +1605,12 @@ end
     # Is there a difference? Are bad effects perhaps less when doing the quantum calculations?
     # Compare Strontium and Caesium
 # Look at effect on quantum memory quality metrics
-    # Implement metrics from Chang's article
-    # Implement time-evolution of an initial Gaussian state
     # Implement spatial variation of Ωc
     # Implement scanning over range of Ωc? Maybe just do a few chosen points?
+    # Presently initializing in a Gaussian state without phonons
+        # how was that state achieved? any driving also would create phonons?
+        # initialize in a Gaussian with phonons? 
+        # give Bαgs same weigth as just \sigmags
 
 
 

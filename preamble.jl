@@ -96,7 +96,6 @@ struct SysPar
     whichTimeEvolver::String                        # Which time evolver to use
     tspan::Tuple{Real, Real}                        # Time span (min and max value) for time evolution
     dtmax::Real                                     # Maximum allowed time step for time evolution
-    evolToSS::Bool                                  # Whether to stop time evolution at the steady state
     
     initialState::Vector{<:Real}                    # Initial state for time evolution
     initialStateDescription::String                 # Description of initial state for postfix
@@ -155,7 +154,7 @@ struct SysPar
                     fiber::Fiber,
                     Δ_specs::Tuple{Real, Real, Int},
                     ΔvariDependence::String, Δvari_args::Union{Tuple, Nothing}, ΔvariDescription::String,
-                    whichTimeEvolver::String, tspan::Tuple{Real, Real}, dtmax::Real, evolToSS::Bool, 
+                    whichTimeEvolver::String, tspan::Tuple{Real, Real}, dtmax::Real,
                     initialState::Vector, initialStateDescription::String,
                     ΩDriveOn::Bool,
                     arrayType::String, N_sites::Int, ρa::Real, a::Real, ff::Real, pos_unc::Union{Real, Vector}, n_inst::Int, array::Vector, arrayDescription::String, N::Int,
@@ -173,7 +172,7 @@ struct SysPar
         return new(ρf, n, ω, fiber,
                    Δ_specs, Δ_range,
                    ΔvariDependence, Δvari_args, ΔvariDescription,
-                   whichTimeEvolver, tspan, dtmax, evolToSS, 
+                   whichTimeEvolver, tspan, dtmax, 
                    initialState, initialStateDescription,
                    ΩDriveOn,
                    arrayType, N_sites, ρa, a, ff, pos_unc, n_inst, array, arrayDescription, N,
