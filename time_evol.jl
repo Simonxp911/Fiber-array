@@ -108,10 +108,12 @@ end
 
 """
 To stop time evolution when stepFuncVal is small, as defined by timeEvol_args.stepFuncValLowerTol,
-and one-tenth of tspan has passed
+and one-tenth of tspan has passed.
+If stepFuncVal is an iterable (and timeEvol_args.stepFuncValLowerTol is too), all values are compared
+and time evolution is stopped when all of them are small
 """
 function stepCondition_stepFuncVal_isSmall(t, xt, ΔxΔt, stepFuncVal, timeEvol_args)
-    return (t < timeEvol_args.tspan[1] + (timeEvol_args.tspan[2] - timeEvol_args.tspan[1])/10) || stepFuncVal >= timeEvol_args.stepFuncValLowerTol
+    return (t < timeEvol_args.tspan[1] + (timeEvol_args.tspan[2] - timeEvol_args.tspan[1])/10) || any(stepFuncVal .>= timeEvol_args.stepFuncValLowerTol)
 end
 
 

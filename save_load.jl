@@ -112,6 +112,37 @@ end
 
 
 """
+For memory efficiency 
+"""
+function get_postfix_memoryEfficiency(Δ, ΔvariDescription, dDescription, να, ηα, incField_wlf, tildeG_flags, arrayDescription, fiberPostfix, initialStateDescription, tspan, dtmax, radDecayRateAndStateNorm_LowerTol, cDriveDescription, Δc, Ωc, cDriveArgs)
+    postfix_components = [
+        "D_$(ro(Δ, Int(4 + ceil(log10(ceil(abs(Δ + eps(Δ))))))))",
+        ΔvariDescription,
+        dDescription,
+        "tFr_$(join(ro.(να), ","))",
+        "LD_$(join(ro.(ηα), ","))",
+        "wlf_$("[" * join(["(" * join([format_Complex_to_String(wlf[1]), wlf[2], wlf[3]], ",") * ")" for wlf in incField_wlf], ",") * "]")",
+        "tGfl_$(join(Int.(tildeG_flags), ","))",
+        arrayDescription,
+        fiberPostfix,
+        initialStateDescription,
+        "tsp_$(join(ro.(tspan), ","))",
+        "dtm_$(ro(dtmax))",
+        "lTol_$(join(ro.(radDecayRateAndStateNorm_LowerTol), ","))",
+        "cDr_$cDriveDescription", 
+        "cDe_$Δc", 
+        "cOm_$Ωc"
+    ]
+    if cDriveDescription == "plW"
+        append!(postfix_components, [
+            "kc_$(join(ro.(cDriveArgs.kc), ","))"
+            ])
+    end
+    return join(postfix_components, "_")
+end
+
+
+"""
 For calculation of the imaginary part of the transverse part of radiation mode Green's function or its derivatives 
 """
 function get_postfix_Im_Grm_trans(ω, coords, derivOrder, α, abstol, fiberPostfix)

@@ -1171,27 +1171,50 @@ function calc_fullCoupling_rm(SP)
 end
 
 
-function calc_timeEvolution_forMemoryRetrievalError(SP, Δ, fullCoupling_rm, radiativeDecayRate_LowerTol, stepCondition)
+function calc_timeEvolution_forMemoryRetrievalError(SP, Δ, fullCoupling_rm, radDecayRateAndStateNorm_LowerTol)
     if !SP.include3rdLevel throw(ArgumentError("calc_timeEvolution_forMemoryRetrievalError assumes the third level (s) is included")) end
     
     params = get_parameterMatrices(SP)
     timeEvol_args = (tspan=SP.tspan,
                      dtmax=SP.dtmax, 
-                     stepFuncValLowerTol=radiativeDecayRate_LowerTol)
-    stepFunc(t, xt, ΔxΔt, timeEvol_args) = calc_radiativeDecayRate(SP, xt, fullCoupling_rm)
-                     
+                     stepFuncValLowerTol=radDecayRateAndStateNorm_LowerTol)
+    stepFunc(t, xt, ΔxΔt, timeEvol_args) = (calc_radiativeDecayRate(SP, xt, fullCoupling_rm), norm(xt)^2)
+    
     if SP.noPhonons
         EoMs_args = empty_σVector(SP.N), empty_σVector(SP.N), empty_σVector(SP.N), empty_σVector(SP.N), 
                     Δ, params...
-        sol = timeEvol(EoMs_wrap_noPh_w3l, SP.initialState, EoMs_args, timeEvol_args, stepCondition, stepFunc)
+        sol = timeEvol(EoMs_wrap_noPh_w3l, SP.initialState, EoMs_args, timeEvol_args, stepCondition_stepFuncVal_isSmall, stepFunc)
     else
         EoMs_args = empty_σVector(SP.N), empty_σVector(SP.N), empty_BαVector(SP.N), empty_BαVector(SP.N), empty_σVector(SP.N), empty_σVector(SP.N), empty_BαVector(SP.N), empty_BαVector(SP.N), 
                     Δ, params...
-        sol = timeEvol(EoMs_wrap_w3l, SP.initialState, EoMs_args, timeEvol_args, stepCondition, stepFunc)
+        sol = timeEvol(EoMs_wrap_w3l, SP.initialState, EoMs_args, timeEvol_args, stepCondition_stepFuncVal_isSmall, stepFunc)
     end
     
     return sol.t, sol.u, sol.stepFuncVal
 end
+
+
+# function calc_timeEvolution_forMemoryRetrievalError(SP, Δ)
+#     if !SP.include3rdLevel throw(ArgumentError("calc_timeEvolution_forMemoryRetrievalError assumes the third level (s) is included")) end
+    
+#     params = get_parameterMatrices(SP)
+#     timeEvol_args = (tspan=SP.tspan,
+#                      dtmax=SP.dtmax, 
+#                      stepFuncValLowerTol=0.001) 
+#     stepFunc(t, xt, ΔxΔt, timeEvol_args) = norm(xt)^2
+                     
+#     if SP.noPhonons
+#         EoMs_args = empty_σVector(SP.N), empty_σVector(SP.N), empty_σVector(SP.N), empty_σVector(SP.N), 
+#                     Δ, params...
+#         sol = timeEvol(EoMs_wrap_noPh_w3l, SP.initialState, EoMs_args, timeEvol_args, stepCondition_stepFuncVal_isSmall, stepFunc)
+#     else
+#         EoMs_args = empty_σVector(SP.N), empty_σVector(SP.N), empty_BαVector(SP.N), empty_BαVector(SP.N), empty_σVector(SP.N), empty_σVector(SP.N), empty_BαVector(SP.N), empty_BαVector(SP.N), 
+#                     Δ, params...
+#         sol = timeEvol(EoMs_wrap_w3l, SP.initialState, EoMs_args, timeEvol_args, stepCondition_stepFuncVal_isSmall, stepFunc)
+#     end
+    
+#     return sol.t, sol.u
+# end
 
 
 function calc_radiativeDecayRate(SP, state, fullCoupling_rm)

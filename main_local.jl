@@ -4,7 +4,7 @@ include("preamble.jl")
 const saveDir = "C:/Users/Simon/Forskning/Data/fiber_array_data/"
 
 using GLMakie #plotting, specialized interactive plots
-using StatProfilerHTML
+using StatProfilerHTML #profiling the code to see which parts take the most time to run
 
 # Random.seed!(1234)
 
@@ -226,7 +226,7 @@ function define_SP_BerlinSr()
     arrayType = "1Dchain"
     
     # Set number of atomic sites 
-    N_sites = 50
+    N_sites = 200
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
@@ -296,6 +296,8 @@ function define_SP_BerlinSr()
     # Type of control drive the third level transition
     cDriveType = "planeWave" # "constant", "planeWave"
     cDriveDescription = "plW" # "cst", "plW"
+    # cDriveType = "constant"
+    # cDriveDescription = "cst"
     
     # Detuning of the control drive with respect to the e-s transition
     Δc = 0
@@ -304,7 +306,7 @@ function define_SP_BerlinSr()
     Ωc = 0.1
     
     # Additional arguments for the control drive ("planeWave" requires a momentum vector)
-    cDriveArgs = (kc = ωa*[-0.7, 0.1, -0.3], )
+    cDriveArgs = (kc = ωa*[0.0, 0.9, 0.0], )
     
     
     
@@ -326,20 +328,19 @@ function define_SP_BerlinSr()
 end
 
 
-function define_SP_artificial()
+function define_SP_ChangExponential()
     # Fiber and array parameters
-    n  = 1.45
-    ρf = 0.2347
-    ρa = 0.6455 - 0.2347 + ρf
-    a  = 0.352112676056
-    # να = [0.0209, 0.0119, 0.0266]
-    να = [5, 12, 7]
+    n  = 2
+    ρf = 1.2/ωa
+    ρa = 1.5*ρf
+    a  = 0.25
+    να = [1, 2, 3]
     
     # Define the fiber
     fiber = Fiber(ρf, n, ωa)
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (6.5, 7.5, 300)
+    Δ_specs = (-10, 10, 3000)
     
     # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
     ΔvariDependence = "flat"
@@ -349,21 +350,20 @@ function define_SP_artificial()
     # Lamb-Dicke parameters
     # ηα = [0.1377, 0.1826, 0.1219] #Cs
     # ηα = [0.2093, 0.2775, 0.1853] #Sr
-    ηα = [0.1784, 0.2366, 0.1580]
-    # ηα = [0.0, 0.0, 0.0]
+    ηα = [0.0, 0.0, 0.0]
     
     # Whether phonons are excluded or not from the calculations (a finite ηα but noPhonons = true will result in including ground state motion into tildeG)
     noPhonons = all(ηα .== 0)
     # noPhonons = false
     
     # Whether to include a third (metastable) level to facilitate EIT
-    include3rdLevel = false
+    include3rdLevel = true
     
     # Set which kind of array to use ("1Dchain", "doubleChain", "randomZ")
     arrayType = "1Dchain"
     
     # Set number of atomic sites 
-    N_sites = 500
+    N_sites = 50
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
@@ -378,22 +378,28 @@ function define_SP_artificial()
     whichTimeEvolver = "simple"
     
     # Time span and maximum time step allowed in time evolution
-    tspan = (0, 100)
+    tspan = (0, 3000)
     dtmax = 0.01
     
     # Prepare initial state for time evolution, as well as description for postfix
-    initialState = groundstate(N, noPhonons, include3rdLevel)
-    initialStateDescription = "gs"
+    # initialState = groundstate(N, noPhonons, include3rdLevel)
+    # initialStateDescription = "gs"
+    GaussWidth = sqrt(N)*a
+    initialState = Gaussian_sState(N, array, fiber, GaussWidth, noPhonons, include3rdLevel)
+    # initialState = GaussianState(N, array, 0, N/2*a, GaussWidth, "e", noPhonons, include3rdLevel)
+    initialStateDescription = "Ga"
     
     # Whether to have driving on the g-e transition or not
-    ΩDriveOn = true
+    ΩDriveOn = false
     
     # Atomic dipole moment
     # d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul, array)
-    d = "chiral"
-    dDescription = "chiral"
+    # d = "chiral"
+    # dDescription = "chiral"
     # d = rightCircularDipoleMoment(array)
     # dDescription = "rgtCrc"
+    d = [[1, 0, 0] for site in array]
+    dDescription = "xPol"
     
     # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
     incField_wlf = [(1, 1, 1), (1, -1, 1)]
@@ -431,10 +437,147 @@ function define_SP_artificial()
     cDriveDescription = "cst" # "cst", "plW"
     
     # Detuning of the control drive with respect to the e-s transition
-    Δc = 1
+    Δc = 0
     
     # Rabi frequency of the control drive with respect to the e-s transition
-    Ωc = 0.5
+    Ωc = 0.1
+    
+    # Additional arguments for the control drive ("planeWave" requires a momentum vector)
+    cDriveArgs = (kc = ωa*[-1, 0, 0], )
+    
+    
+    return SysPar(ρf, n, ωa,
+                  fiber,
+                  Δ_specs,
+                  ΔvariDependence, Δvari_args, ΔvariDescription,
+                  whichTimeEvolver, tspan, dtmax,
+                  initialState, initialStateDescription,
+                  ΩDriveOn,
+                  arrayType, N_sites, ρa, a, ff, pos_unc, n_inst, array, arrayDescription, N,
+                  να, ηα, noPhonons,
+                  d, dDescription, incField_wlf, tildeG_flags, 
+                  interpolate_Im_Grm_trans, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans,
+                  save_steadyState, save_timeEvol,
+                  interpolation_Im_Grm_trans,
+                  z_range, x_range, y_fix,
+                  include3rdLevel, cDriveType, cDriveDescription, Δc, Ωc, cDriveArgs)
+end
+
+
+function define_SP_artificial()
+    # Fiber and array parameters
+    n  = 1.45
+    ρf = 0.167
+    ρa = 0.3991
+    a  = 0.2903
+    να = [1, 2, 3]
+    
+    # Define the fiber
+    fiber = Fiber(ρf, n, ωa)
+    
+    # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
+    Δ_specs = (-10, 10, 3000)
+    
+    # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
+    ΔvariDependence = "flat"
+    Δvari_args = -3, 50*a
+    ΔvariDescription = ΔvariDescript(ΔvariDependence, Δvari_args)
+    
+    # Lamb-Dicke parameters
+    # ηα = [0.1377, 0.1826, 0.1219] #Cs
+    # ηα = [0.2093, 0.2775, 0.1853] #Sr
+    # ηα = [0.1784, 0.2366, 0.1580]
+    ηα = [0.0, 0.0, 0.0]
+    
+    # Whether phonons are excluded or not from the calculations (a finite ηα but noPhonons = true will result in including ground state motion into tildeG)
+    noPhonons = all(ηα .== 0)
+    # noPhonons = false
+    
+    # Whether to include a third (metastable) level to facilitate EIT
+    include3rdLevel = false
+    
+    # Set which kind of array to use ("1Dchain", "doubleChain", "randomZ")
+    arrayType = "1Dchain"
+    
+    # Set number of atomic sites 
+    N_sites = 20
+    
+    # Set filling fraction, positional uncertainty, and number of instantiations 
+    ff = 1.0
+    pos_unc = 0.0
+    # pos_unc = ηα0/ωa
+    n_inst = 1
+    
+    # Generate the array, its description, and the number of atoms
+    array, arrayDescription, N = get_array(arrayType, N_sites, ρa, a, ff, pos_unc, n_inst)
+    
+    # Which time evolver to use ("OrdinaryDiffEq", "simple")
+    whichTimeEvolver = "simple"
+    
+    # Time span and maximum time step allowed in time evolution
+    tspan = (0, 20)
+    dtmax = 0.01
+    
+    # Prepare initial state for time evolution, as well as description for postfix
+    initialState = groundstate(N, noPhonons, include3rdLevel)
+    initialStateDescription = "gs"
+    # GaussWidth = sqrt(N)*a
+    # initialState = Gaussian_sState(N, array, fiber, GaussWidth, noPhonons, include3rdLevel)
+    # # initialState = GaussianState(N, array, 0, N/2*a, GaussWidth, "e", noPhonons, include3rdLevel)
+    # initialStateDescription = "Ga"
+    
+    # Whether to have driving on the g-e transition or not
+    ΩDriveOn = true
+    
+    # Atomic dipole moment
+    # d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul, array)
+    # d = "chiral"
+    # dDescription = "chiral"
+    # d = rightCircularDipoleMoment(array)
+    # dDescription = "rgtCrc"
+    d = [[1, 0, 0] for site in array]
+    dDescription = "xPol"
+    
+    # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
+    incField_wlf = [(1, 1, 1), (1, -1, 1)]
+    if typeof(d) == String incField_wlf = [] end
+    
+    # Whether to include the guided contribution, the radiated contribution, and the radiated interactions when calculating tildeG
+    tildeG_flags = (true, true, true)
+    
+    # Absolute tolerance in the calculations of Im_Grm_trans
+    abstol_Im_Grm_trans = 1e-5
+    
+    # Whether to approximate transverse part of radiation GF (real part and imaginary part respectively, usually (true, false))
+    approx_Grm_trans = (true, false)
+    
+    # Whether to interpolate Im_Grm_trans
+    interpolate_Im_Grm_trans = arrayType == "randomZ"
+    
+    # Whether to save individual results (Im_Grm_trans, steady states, time evolutions)
+    save_Im_Grm_trans = pos_unc == 0 && arrayType != "randomZ" && !interpolate_Im_Grm_trans
+    save_steadyState  = false # n_inst == 1 && ff == 1 && pos_unc == 0 && arrayType != "randomZ"
+    save_timeEvol     = false # n_inst == 1 && ff == 1 && pos_unc == 0 && arrayType != "randomZ"
+    
+    # Ranges of z and x values to define r_fields for calculating the radiated E-field
+    arrayL = (N_sites - 1)*a
+    margin = 0.1*arrayL
+    z_range = range(-margin, arrayL + margin, 100)
+    x_range = range(-ρf - margin, ρf + ρa + margin, 100)
+    y_fix   = ρa
+    
+    # Get the interpolation function for the imaginary, transverse part of the radiation Green's function, if needed
+    if interpolate_Im_Grm_trans interpolation_Im_Grm_trans = interpolation1D_Im_Grm_trans(fiber, Int(ceil(arrayL/0.1)) + 1, ρa, 0.1, ηα) else interpolation_Im_Grm_trans = nothing end
+    
+    # Type of control drive the third level transition
+    cDriveType = "constant" # "constant", "planeWave"
+    cDriveDescription = "cst" # "cst", "plW"
+    
+    # Detuning of the control drive with respect to the e-s transition
+    Δc = 0
+    
+    # Rabi frequency of the control drive with respect to the e-s transition
+    Ωc = 0.1
     
     # Additional arguments for the control drive ("planeWave" requires a momentum vector)
     cDriveArgs = (kc = ωa*[-1, 0, 0], )
@@ -461,7 +604,8 @@ end
 function main()
     # Define system parameters
     # SP = define_SP_BerlinCs()
-    SP = define_SP_BerlinSr()
+    # SP = define_SP_BerlinSr()
+    SP = define_SP_ChangExponential()
     # SP = define_SP_artificial()
     # show(SP)
     
@@ -726,20 +870,20 @@ function plot_transmission_vs_Δ(SP)
     T, tPhase, unwrappedPhase, phasePerAtom, phaseSlope = prep_squaredNorm_phase_unwrappedPhase_phasePerAtom_phaseSlope(SP, t)
     # fig_transmission_vs_Δ_phaseDetails(SP.Δ_range, T, tPhase, unwrappedPhase, phasePerAtom, phaseSlope, titl)
     # fig_transmission_polar(SP.Δ_range, t, titl)
-    fig_transmission_vs_Δ_phaseDetails_polar(SP.Δ_range, T, tPhase, t, unwrappedPhase, phaseSlope, titl)
+    # fig_transmission_vs_Δ_phaseDetails_polar(SP.Δ_range, T, tPhase, t, unwrappedPhase, phaseSlope, titl)
     
-    # r = calc_reflection.(Ref(SP), σBα_scan)
-    # R, rPhase = prep_squaredNorm_phase(r)
-    # fig_transmissionAndReflection_vs_Δ(SP.Δ_range, T, tPhase, R, rPhase, titl)
+    r = calc_reflection.(Ref(SP), σBα_scan)
+    R, rPhase = prep_squaredNorm_phase(r)
+    fig_transmissionAndReflection_vs_Δ(SP.Δ_range, T, tPhase, R, rPhase, titl)
     
     # titl = L"$ N = %$(SP.N) $"
     # fig = fig_presentation_transmission_vs_Δ(SP.Δ_range, T, phase, titl)
     # save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Conferences and visits\\Berlin 2025\\talk\\figures\\transmission_N500_linear_negative_zoom1.png", fig, px_per_unit=2)
     
-    n = refractiveIndex.(t, SP.arrayType, SP.N_sites, SP.a)
-    n_real, n_imag = real.(n), imag.(n)
-    groupVel = groupVelocity(n, SP.Δ_range)
-    fig_RefrIndexGroupVelocity_vs_Δ(SP.Δ_range, n_real, n_imag, groupVel, titl)
+    # n = refractiveIndex.(t, SP.arrayType, SP.N_sites, SP.a)
+    # n_real, n_imag = real.(n), imag.(n)
+    # groupVel = groupVelocity(n, SP.Δ_range)
+    # fig_RefrIndexGroupVelocity_vs_Δ(SP.Δ_range, n_real, n_imag, groupVel, titl)
 end
 
 
@@ -1252,7 +1396,7 @@ function plot_GnmEigenModes(SP)
         eigen_σs = eachcol(eigenModesMatrix)
         collΔ_Δvs, collΓ_Δvs, collΔ_gms, collΓ_gms, collΔ_rms, collΓ_rms = splitCollEnergies(eigenModesMatrix, Δvari, tildeG_gm, tildeG_rm)
         collΔs = collΔ_Δvs + collΔ_gms + collΔ_rms
-    
+        
         # Pack the eigenmodes
         eigen_σs_FT = discFourierTransform.(collect.(eigen_σs), SP.a)
         
@@ -1519,42 +1663,62 @@ function plot_memoryEfficiency(SP)
     if SP.initialStateDescription != "Ga" throw(ArgumentError("plot_memoryEfficiency assumes a Gaussian initial state")) end
     if SP.ΩDriveOn                        throw(ArgumentError("plot_memoryEfficiency assumes the driving on the g-e transition is off")) end
     
-    # Prepare parameters
-    Δ = SP.Δc + eps(Float64)
-    fullCoupling_rm = calc_fullCoupling_rm(SP)
-    radiativeDecayRate_LowerTol = 1e-4
-    stepCondition = stepCondition_stepFuncVal_isSmall
-    # stepCondition = stepCondition_endOftspan
+    # # Prepare parameters
+    # Δ = SP.Δc + eps(Float64)
+    # fullCoupling_rm = calc_fullCoupling_rm(SP)
+    # radDecayRateAndStateNorm_LowerTol = (1e-6, 0.01)
     
-    # Perform time-evolution and calculate memory retrieval error
-    times, states, radiativeDecayRates = calc_timeEvolution_forMemoryRetrievalError(SP, Δ, fullCoupling_rm, radiativeDecayRate_LowerTol, stepCondition)
-    ϵ = calc_memoryRetrievalError(times, radiativeDecayRates)
+    # # Perform time-evolution and calculate memory retrieval error
+    # times, states, radDecayRatesAndStateNorm = calc_timeEvolution_forMemoryRetrievalError(SP, Δ, fullCoupling_rm, radDecayRateAndStateNorm_LowerTol)
+    # radiativeDecayRates = [x[1] for x in radDecayRatesAndStateNorm]
+    # ϵ = calc_memoryRetrievalError(times, radiativeDecayRates)
     
+    # loop over Nsites
+    postfix = get_postfix_memoryEfficiency(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.incField_wlf, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
+    filename = "memEff_" * postfix
+    folder = "memoryEfficiency/"
+
+    if isfile(saveDir * folder * filename * ".txt") 
+        ϵ = load_as_txt(saveDir * folder, filename)
+    else
+        throw(ArgumentError("The following file can not be found: " * filename))
+    end
+            
+            
     
     # TEMP
     println(ϵ)
     
-    zs = [site[3] for site in SP.array]
     σgeσgsTraj = unpack_σgeσgsFromx.(states)
     # σgeσgsBαgeBαgsTraj = unpack_σgeσgsBαgeBαgsFromx.(states)
-    for i in Int.(floor.(1 .+ [0.1, 0.3, 0.5, 0.7, 0.9].*length(times)))
-        σge, σgs = σgeσgsTraj[i]
-        # σge, σgs, Bαge, Bαgs = σgeσgsBαgeBαgsTraj[i]
-        titl = "time = $(ro(times[i]))"
-        fig_σgeσgs_vs_z(zs, σge, σgs, titl)
-    end
+    # zs = [site[3] for site in SP.array]
+    # for i in Int.(floor.(1 .+ [0.1, 0.3, 0.5, 0.7, 0.9].*length(times)))
+    # # for i in Int.(floor.(1 .+ [0.5, 0.9].*length(times)))
+    #     σge, σgs = σgeσgsTraj[i]
+    #     # σge, σgs, Bαge, Bαgs = σgeσgsBαgeBαgsTraj[i]
+    #     titl = "time = $(ro(times[i]))"
+    #     fig_σgeσgs_vs_z(zs, σge, σgs, titl)
+    # end
     
     fig_complexFunction(times, radiativeDecayRates)
+    fig_complexFunction(times, norm.(states).^2)
+    
     # TEMP
     
     
     
+    # Figure out why the plots of the excitation distribution don't match at all 
+    # with Chang's article (also giving us incorrect values for ϵ?)
+        # Real part of GF is exact in their calculations?
     
     # FIGURE OUT where the related functions in calcs.jl should be - in calcs.jl or in physics.jl?
+        # maybe this function should also be a calcs.jl?
     
+    # Implement a postfix, a folder, and save ϵ
     # do the above for different N in parallel (probably quite slow for large N...)
     # and plot that
     # compare with and without phonons, different Ωc, other parameters
+    
 end
 
 

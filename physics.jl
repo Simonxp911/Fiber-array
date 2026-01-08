@@ -225,7 +225,7 @@ end
 
 
 """
-Calculates the dipole moment which yields a chiral fiber setup
+Returns a right-circular dipole moment vector
 """
 function rightCircularDipoleMoment()
     return [1im, 0, 1]/sqrt(2)
@@ -233,17 +233,15 @@ end
 
 
 """
-Returns a list of the dipole moments of each atom which yields a chiral fiber setup
-for the case of 1Dchain or doubleChain arrays
+Returns a list of right-circular dipole moments 
 """
 function rightCircularDipoleMoment(array::Vector{<:Vector})
-    return [rightCircularDipoleMoment().*[sign(site[1]), 1, 1] for site in array]    
+    return [rightCircularDipoleMoment() for site in array]    
 end
 
 
 """
-Returns a list of the dipole moments of each atom which yields a chiral fiber setup
-for the case of 1Dchain or doubleChain arrays, for the case of n_inst != 1
+Returns a list of right-circular dipole moments, for the case of n_inst != 1
 """
 function rightCircularDipoleMoment(array::Vector{<:Vector{<:Vector}})
     return [rightCircularDipoleMoment(array_inst) for array_inst in array]
