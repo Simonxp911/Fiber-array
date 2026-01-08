@@ -33,6 +33,8 @@ function main()
         imperfectArray_transmission_vs_Δ(SP)
     elseif task == "steadyState_vs_Δ"
         steadyState_vs_Δ(SP)
+    elseif task == "memoryEfficiency"
+        memoryEfficiency(SP)
     end
     return nothing
 end
@@ -133,6 +135,29 @@ function steadyState_vs_Δ(SP)
         println("My rank is $myRank, I am working on index = $index")
         calc_steadyState(SP.Δ_range[index], params, postfixes[index], SP.noPhonons, SP.save_steadyState)
     end
+end
+
+
+function memoryEfficiency(SP)
+    if !SP.include3rdLevel                throw(ArgumentError("plot_memoryEfficiency assumes the third level (s) is included")) end
+    if SP.initialStateDescription != "Ga" throw(ArgumentError("plot_memoryEfficiency assumes a Gaussian initial state")) end
+    if SP.ΩDriveOn                        throw(ArgumentError("plot_memoryEfficiency assumes the driving on the g-e transition is off")) end
+    
+    # Prepare parameters
+    Δ = SP.Δc + eps(Float64)
+    fullCoupling_rm = calc_fullCoupling_rm(SP)
+    radDecayRateAndStateNorm_LowerTol = (1e-6, 0.01)
+    
+    # Perform time-evolution and calculate memory retrieval error
+    times, states, radDecayRatesAndStateNorm = calc_timeEvolution_forMemoryRetrievalError(SP, Δ, fullCoupling_rm, radDecayRateAndStateNorm_LowerTol)
+    radiativeDecayRates = [x[1] for x in radDecayRatesAndStateNorm]
+    ϵ = calc_memoryRetrievalError(times, radiativeDecayRates)
+    
+    
+    postfix = get_postfix_memoryEfficiency(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.incField_wlf, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
+    filename = "memEff_" * postfix
+    folder = "memoryEfficiency/"
+    save_as_txt(ϵ, saveDir * folder, filename)
 end
 
 
