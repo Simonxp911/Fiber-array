@@ -199,6 +199,11 @@ function get_tildeΩcs(cDriveType, Ωc, array, cDriveArgs)
     elseif cDriveType == "planeWave"
         kc = cDriveArgs.kc
         Ωcn = Ωc*exp.(1im*(Ref(transpose(kc)).*array))
+        
+    elseif cDriveType == "hyperbolic"
+        N_sites, a = cDriveArgs.N_sites, cDriveArgs.a
+        zs = [site[3] for site in array]
+        Ωcn = @. Ωc*sqrt(N_sites/(N_sites - zs/a))
 
     end
     return Ωcn
@@ -216,6 +221,17 @@ function get_tildeΩcs(cDriveType, Ωc, ηα, array, cDriveArgs)
         Ωcn   = Ωc*exp.(1im*(Ref(transpose(kc)).*array))
         Ωcnα  = [1im*kc[α]  *Ωcn for α in 1:3]
         Ωcnαα = [   -kc[α]^2*Ωcn for α in 1:3]
+        
+    elseif cDriveType == "hyperbolic"
+        N_sites, a = cDriveArgs.N_sites, cDriveArgs.a
+        zs = [site[3] for site in SP.array]
+        Ωcn = @. Ωc*sqrt(N_sites/(N_sites - zs/a))
+        Ωcnα  = [zeros(size(array)),
+                 zeros(size(array)),
+                 @. Ωc*sqrt(N_sites)/(2*a*(N_sites - zs/a)^(3/2))]
+        Ωcnαα = [zeros(size(array)),
+                 zeros(size(array)),
+                 @. Ωc*3*sqrt(N_sites)/(4*a^2*(N_sites - zs/a)^(5/2))]
 
     end
     return Ωcn + sum(@. ηα^2*Ωcnαα)/(2*ωa^2), ηα.*Ωcnα/ωa
@@ -1192,29 +1208,6 @@ function calc_timeEvolution_forMemoryRetrievalError(SP, Δ, fullCoupling_rm, rad
     
     return sol.t, sol.u, sol.stepFuncVal
 end
-
-
-# function calc_timeEvolution_forMemoryRetrievalError(SP, Δ)
-#     if !SP.include3rdLevel throw(ArgumentError("calc_timeEvolution_forMemoryRetrievalError assumes the third level (s) is included")) end
-    
-#     params = get_parameterMatrices(SP)
-#     timeEvol_args = (tspan=SP.tspan,
-#                      dtmax=SP.dtmax, 
-#                      stepFuncValLowerTol=0.001) 
-#     stepFunc(t, xt, ΔxΔt, timeEvol_args) = norm(xt)^2
-                     
-#     if SP.noPhonons
-#         EoMs_args = empty_σVector(SP.N), empty_σVector(SP.N), empty_σVector(SP.N), empty_σVector(SP.N), 
-#                     Δ, params...
-#         sol = timeEvol(EoMs_wrap_noPh_w3l, SP.initialState, EoMs_args, timeEvol_args, stepCondition_stepFuncVal_isSmall, stepFunc)
-#     else
-#         EoMs_args = empty_σVector(SP.N), empty_σVector(SP.N), empty_BαVector(SP.N), empty_BαVector(SP.N), empty_σVector(SP.N), empty_σVector(SP.N), empty_BαVector(SP.N), empty_BαVector(SP.N), 
-#                     Δ, params...
-#         sol = timeEvol(EoMs_wrap_w3l, SP.initialState, EoMs_args, timeEvol_args, stepCondition_stepFuncVal_isSmall, stepFunc)
-#     end
-    
-#     return sol.t, sol.u
-# end
 
 
 function calc_radiativeDecayRate(SP, state, fullCoupling_rm)

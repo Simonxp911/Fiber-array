@@ -378,7 +378,7 @@ function define_SP_ChangExponential()
     whichTimeEvolver = "simple"
     
     # Time span and maximum time step allowed in time evolution
-    tspan = (0, 3000)
+    tspan = (0, 1000)
     dtmax = 0.01
     
     # Prepare initial state for time evolution, as well as description for postfix
@@ -433,8 +433,8 @@ function define_SP_ChangExponential()
     if interpolate_Im_Grm_trans interpolation_Im_Grm_trans = interpolation1D_Im_Grm_trans(fiber, Int(ceil(arrayL/0.1)) + 1, ρa, 0.1, ηα) else interpolation_Im_Grm_trans = nothing end
     
     # Type of control drive the third level transition
-    cDriveType = "constant" # "constant", "planeWave"
-    cDriveDescription = "cst" # "cst", "plW"
+    cDriveType = "hyperbolic" # "constant", "planeWave", "hyperbolic"
+    cDriveDescription = "hyp" # "cst", "plW", "hyp"
     
     # Detuning of the control drive with respect to the e-s transition
     Δc = 0
@@ -443,7 +443,7 @@ function define_SP_ChangExponential()
     Ωc = 0.1
     
     # Additional arguments for the control drive ("planeWave" requires a momentum vector)
-    cDriveArgs = (kc = ωa*[-1, 0, 0], )
+    cDriveArgs = (kc = ωa*[-1, 0, 0], N_sites=N_sites, a=a)
     
     
     return SysPar(ρf, n, ωa,
@@ -1664,32 +1664,40 @@ function plot_memoryEfficiency(SP)
     if SP.ΩDriveOn                        throw(ArgumentError("plot_memoryEfficiency assumes the driving on the g-e transition is off")) end
     
     # # Prepare parameters
-    # Δ = SP.Δc + eps(Float64)
+    Δ = SP.Δc + eps(Float64)
     # fullCoupling_rm = calc_fullCoupling_rm(SP)
-    # radDecayRateAndStateNorm_LowerTol = (1e-6, 0.01)
+    radDecayRateAndStateNorm_LowerTol = (1e-6, 0.01)
     
     # # Perform time-evolution and calculate memory retrieval error
     # times, states, radDecayRatesAndStateNorm = calc_timeEvolution_forMemoryRetrievalError(SP, Δ, fullCoupling_rm, radDecayRateAndStateNorm_LowerTol)
     # radiativeDecayRates = [x[1] for x in radDecayRatesAndStateNorm]
     # ϵ = calc_memoryRetrievalError(times, radiativeDecayRates)
     
-    # loop over Nsites
-    postfix = get_postfix_memoryEfficiency(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.incField_wlf, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
-    filename = "memEff_" * postfix
-    folder = "memoryEfficiency/"
+    
+    N_sites_list = 10:10:200
+    ϵs = []
+    for N_sites in N_sites_list
+        arrayDescription = arrayDescript(SP.arrayType, N_sites, SP.ρa, SP.a, SP.ff, SP.pos_unc)
+        
+        postfix = get_postfix_memoryEfficiency(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.incField_wlf, SP.tildeG_flags, arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
+        filename = "memEff_" * postfix
+        folder = "memoryEfficiency/"
 
-    if isfile(saveDir * folder * filename * ".txt") 
-        ϵ = load_as_txt(saveDir * folder, filename)
-    else
-        throw(ArgumentError("The following file can not be found: " * filename))
+        if isfile(saveDir * folder * filename * ".txt")
+            push!(ϵs, load_as_txt(saveDir * folder, filename)[1])
+        else
+            throw(ArgumentError("The following file can not be found: " * filename))
+        end
     end
-            
-            
+    
+    titl = prep_memoryRetrievalError_title(SP, Δ)
+    fig_memoryRetrievalError(N_sites_list, ϵs, titl)
+    
     
     # TEMP
-    println(ϵ)
+    # println(ϵ)
     
-    σgeσgsTraj = unpack_σgeσgsFromx.(states)
+    # σgeσgsTraj = unpack_σgeσgsFromx.(states)
     # σgeσgsBαgeBαgsTraj = unpack_σgeσgsBαgeBαgsFromx.(states)
     # zs = [site[3] for site in SP.array]
     # for i in Int.(floor.(1 .+ [0.1, 0.3, 0.5, 0.7, 0.9].*length(times)))
@@ -1700,8 +1708,10 @@ function plot_memoryEfficiency(SP)
     #     fig_σgeσgs_vs_z(zs, σge, σgs, titl)
     # end
     
-    fig_complexFunction(times, radiativeDecayRates)
-    fig_complexFunction(times, norm.(states).^2)
+    # fig_complexFunction(times, radiativeDecayRates)
+    # fig_complexFunction(times, norm.(states).^2)
+    
+    # fig_complexFunction(N_sites_list, ϵs)
     
     # TEMP
     

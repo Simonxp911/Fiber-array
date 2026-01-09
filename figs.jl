@@ -1329,4 +1329,24 @@ function fig_state(rs, v, ks, vFT, dom_ks, collΓ_gm, collΓ_rm, v_eigenModes, z
 end
 
 
+"""
+Plot the memory retrieval error vs. number of atoms
+"""
+function fig_memoryRetrievalError(N_sites, ϵs, titl)
+    # Start figure 
+    fig = Figure(size=(700, 500))
+    
+    # Make titles and axes
+    Label(fig[1, 1], titl, tellwidth=false)
+    ax1 = Axis(fig[2, 1], yscale=log10,
+               xlabel=L"$ N_{sites} $", ylabel=L"$ ϵ $")
+    
+    # Plot 
+    lines!(ax1, N_sites, ϵs)
+    
+    # Finish figure
+    display(GLMakie.Screen(), fig)
+end
+
+
     # save("C:\\Users\\Simon\\Downloads\\FILENAME.png", fig)
