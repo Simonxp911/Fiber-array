@@ -1199,11 +1199,11 @@ function calc_timeEvolution_forMemoryRetrievalError(SP, Δ, fullCoupling_rm, rad
     if SP.noPhonons
         EoMs_args = empty_σVector(SP.N), empty_σVector(SP.N), empty_σVector(SP.N), empty_σVector(SP.N), 
                     Δ, params...
-        sol = timeEvol(EoMs_wrap_noPh_w3l, SP.initialState, EoMs_args, timeEvol_args, stepCondition_stepFuncVal_isSmall, stepFunc)
+        sol = timeEvol(EoMs_wrap_noPh_w3l, SP.initialState, EoMs_args, timeEvol_args, stepCondition_stepFuncVal_isSmall, stepFunc, "timeAndStepFuncVal")
     else
         EoMs_args = empty_σVector(SP.N), empty_σVector(SP.N), empty_BαVector(SP.N), empty_BαVector(SP.N), empty_σVector(SP.N), empty_σVector(SP.N), empty_BαVector(SP.N), empty_BαVector(SP.N), 
                     Δ, params...
-        sol = timeEvol(EoMs_wrap_w3l, SP.initialState, EoMs_args, timeEvol_args, stepCondition_stepFuncVal_isSmall, stepFunc)
+        sol = timeEvol(EoMs_wrap_w3l, SP.initialState, EoMs_args, timeEvol_args, stepCondition_stepFuncVal_isSmall, stepFunc, "timeAndStepFuncVal")
     end
     
     return sol.t, sol.u, sol.stepFuncVal

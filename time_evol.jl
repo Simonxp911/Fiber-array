@@ -8,9 +8,12 @@ EoMs_args: arguments for EoMs
 timeEvol_args: arguments for timeEvol, stepCondition, and stepFunc
 stepCondition: condition to continue time evolution (evaluated at every step)
 stepFunc: function that is evaluated at every step (and its value returned)
-returnAll: if true, returns all times, states, and stepFuncVal (otherwise only the final step is returned)
+whatToReturn: 'lastStep' (default), 'timeAndStepFuncVal', or 'all' to return the time, state, and stepFunc value of only the last step, 
+    or to return all times and stepFunc values but state of only the last step, or to return all times, states, and stepFunc values
 """
-function timeEvol(EoMs, x0, EoMs_args, timeEvol_args, stepCondition=stepCondition_endOftspan, stepFunc=stepFunc_nothing, returnAll=true)
+function timeEvol(EoMs, x0, EoMs_args, timeEvol_args, stepCondition=stepCondition_endOftspan, stepFunc=stepFunc_nothing, whatToReturn="lastStep")
+    if whatToReturn ∉ ("lastStep", "timeAndStepFuncVal", "all") throw(ArgumentError("whatToReturn = $whatToReturn was not recognized in timeEvol")) end
+    
     # Prepare a function f with arguments t and x(t) that calculate the derivative at that time and with that state
     dxdt_container = zeros(length(x0))
     dxdt_function(t, x) = EoMs(dxdt_container, x, EoMs_args, t)
@@ -26,7 +29,10 @@ function timeEvol(EoMs, x0, EoMs_args, timeEvol_args, stepCondition=stepConditio
     RK4!(ΔxΔt, t, xt, Δt, dxdt_container, dxdt_function, xt_intermediate)
     stepFuncVal = stepFunc(t, xt, ΔxΔt, timeEvol_args)
     
-    if returnAll
+    if whatToReturn == "timeAndStepFuncVal"
+        t_all = [Float64(t)]
+        stepFuncVal_all = [stepFuncVal]
+    elseif whatToReturn == "all"
         t_all = [Float64(t)]
         x_all = [deepcopy(x0)]
         stepFuncVal_all = [stepFuncVal]
@@ -44,15 +50,19 @@ function timeEvol(EoMs, x0, EoMs_args, timeEvol_args, stepCondition=stepConditio
         # Evaluate the stepFunc
         stepFuncVal = stepFunc(t, xt, ΔxΔt, timeEvol_args)
         
-        if returnAll
+        if whatToReturn == "timeAndStepFuncVal"
+            push!(t_all, t)
+            push!(stepFuncVal_all, deepcopy(stepFuncVal))
+        elseif whatToReturn == "all"
             push!(t_all, t)
             push!(x_all, deepcopy(xt))
             push!(stepFuncVal_all, deepcopy(stepFuncVal))
         end
     end
     
-    if returnAll return (t=t_all, u=x_all, stepFuncVal=stepFuncVal_all)
-    else         return (t=[t]  , u=[xt] , stepFuncVal=[stepFuncVal]) 
+    if     whatToReturn == "lastStep"           return (t=[t]  , u=[xt] , stepFuncVal=[stepFuncVal])
+    elseif whatToReturn == "timeAndStepFuncVal" return (t=t_all, u=[xt] , stepFuncVal=stepFuncVal_all)
+    elseif whatToReturn == "all"                return (t=t_all, u=x_all, stepFuncVal=stepFuncVal_all)
     end
 end
 
@@ -100,20 +110,26 @@ end
 """
 To stop time evolution at the steady state, as defined by 
 timeEvol_args.stateDiffAbsTol and timeEvol_args.stateDiffRelTol
+or when reaching the end of tspan
 """
 function stepCondition_reachSS(t, xt, ΔxΔt, stepFuncVal, timeEvol_args)
-    return (t <= timeEvol_args.tspan[2]) && (any(ΔxΔt .> timeEvol_args.stateDiffAbsTol) || any(ΔxΔt.*xt .> timeEvol_args.stateDiffRelTol))
+    return (   (   any(ΔxΔt .> timeEvol_args.stateDiffAbsTol) 
+                || any(ΔxΔt.*xt .> timeEvol_args.stateDiffRelTol) )
+            && stepCondition_endOftspan(t, xt, ΔxΔt, stepFuncVal, timeEvol_args) )
 end
 
 
 """
 To stop time evolution when stepFuncVal is small, as defined by timeEvol_args.stepFuncValLowerTol,
-and one-tenth of tspan has passed.
-If stepFuncVal is an iterable (and timeEvol_args.stepFuncValLowerTol is too), all values are compared
+and one-tenth of tspan has passed,
+or when reaching the end of tspan.
+If stepFuncVal is an iterable (and timeEvol_args.stepFuncValLowerTol as well), all values are compared
 and time evolution is stopped when all of them are small
 """
 function stepCondition_stepFuncVal_isSmall(t, xt, ΔxΔt, stepFuncVal, timeEvol_args)
-    return (t < timeEvol_args.tspan[1] + (timeEvol_args.tspan[2] - timeEvol_args.tspan[1])/10) || any(stepFuncVal .>= timeEvol_args.stepFuncValLowerTol)
+    return (   (   t < ( timeEvol_args.tspan[1] + (timeEvol_args.tspan[2] - timeEvol_args.tspan[1])/10 )
+                || any(stepFuncVal .>= timeEvol_args.stepFuncValLowerTol) )
+            && stepCondition_endOftspan(t, xt, ΔxΔt, stepFuncVal, timeEvol_args) )
 end
 
 

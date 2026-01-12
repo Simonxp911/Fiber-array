@@ -440,7 +440,7 @@ function define_SP_ChangExponential()
     Δc = 0
     
     # Rabi frequency of the control drive with respect to the e-s transition
-    Ωc = 0.1
+    Ωc = 0.005
     
     # Additional arguments for the control drive ("planeWave" requires a momentum vector)
     cDriveArgs = (kc = ωa*[-1, 0, 0], N_sites=N_sites, a=a)
@@ -610,7 +610,6 @@ function main()
     # show(SP)
     
     
-    
     # plot_propConst_inOutMom(ωρfn_ranges)
     # plot_coupling_strengths(SP)
     # plot_arrayIn3D(SP)
@@ -630,7 +629,7 @@ function main()
     # plot_GnmFourierTransformed(SP)
     # plot_compareGnmEigenEnergies(SP)
     # plot_lossWithGnmEigenEnergies(SP)
-    plot_memoryEfficiency(SP)
+    # plot_memoryEfficiency(SP)
     
     return nothing
 end
@@ -1674,7 +1673,7 @@ function plot_memoryEfficiency(SP)
     # ϵ = calc_memoryRetrievalError(times, radiativeDecayRates)
     
     
-    N_sites_list = 10:10:200
+    N_sites_list = 10:10:100
     ϵs = []
     for N_sites in N_sites_list
         arrayDescription = arrayDescript(SP.arrayType, N_sites, SP.ρa, SP.a, SP.ff, SP.pos_unc)
@@ -1721,13 +1720,13 @@ function plot_memoryEfficiency(SP)
     # with Chang's article (also giving us incorrect values for ϵ?)
         # Real part of GF is exact in their calculations?
     
-    # FIGURE OUT where the related functions in calcs.jl should be - in calcs.jl or in physics.jl?
+    # Figure out where the related functions in calcs.jl should be - in calcs.jl or in physics.jl?
         # maybe this function should also be a calcs.jl?
+    # make a function here that can calculate ϵ?
     
-    # Implement a postfix, a folder, and save ϵ
-    # do the above for different N in parallel (probably quite slow for large N...)
-    # and plot that
     # compare with and without phonons, different Ωc, other parameters
+        # compare constant and hyperbolic control drive with the same value of Ωc
+    
     
 end
 
@@ -1786,6 +1785,9 @@ end
         # initialize in a Gaussian with phonons? 
         # give Bαgs same weigth as just \sigmags
 
+# WRITE NOTES on the conclusions regarding EIT
+    # Refraction index has jumps due to phase going a full 2π around
+    # 
 
 
 ### Minor things TODO:

@@ -519,7 +519,8 @@ arrayDescription for the arrays given by get_array()
 """
 function arrayDescript(arrayType, N_sites, ρa, a, ff, pos_unc)
     if pos_unc isa Number
-        return arrayType * "_Nsit_$(N_sites)_rhoa_$(ro(ρa))_a_$(ro(a))_ff_$(ro(ff))_pu_$(ro(pos_unc))"
+        if pos_unc == 0 return arrayType * "_Nsit_$(N_sites)_rhoa_$(ro(ρa))_a_$(ro(a))_ff_$(ro(ff))"
+        else            return arrayType * "_Nsit_$(N_sites)_rhoa_$(ro(ρa))_a_$(ro(a))_ff_$(ro(ff))_pu_$(ro(pos_unc))" end
     else
         return arrayType * "_Nsit_$(N_sites)_rhoa_$(ro(ρa))_a_$(ro(a))_ff_$(ro(ff))_pu_$(join(ro.(pos_unc), ","))"
     end

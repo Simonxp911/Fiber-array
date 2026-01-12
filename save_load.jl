@@ -19,9 +19,13 @@ For Fiber struct postfix
 function get_postfix_Fiber(ρf, n, ω)
     postfix_components = [
         "rhof_$(ro(ρf))",
-        "n_$(ro(n))",
-        "omega_$(ro(ω))"
+        "n_$(ro(n))"
     ]
+    if ω == ωa
+        push!(postfix_components, "o_2pi")
+    else
+        push!(postfix_components, "o_$(ro(ω))")
+    end
     return join(postfix_components, "_")
 end
 
@@ -35,12 +39,20 @@ function get_postfix_steadyState(Δ, ΔvariDescription, dDescription, να, ηα
         ΔvariDescription,
         dDescription,
         "tFr_$(join(ro.(να), ","))",
-        "LD_$(join(ro.(ηα), ","))",
-        "wlf_$("[" * join(["(" * join([format_Complex_to_String(wlf[1]), wlf[2], wlf[3]], ",") * ")" for wlf in incField_wlf], ",") * "]")",
-        "tGfl_$(join(Int.(tildeG_flags), ","))",
-        arrayDescription,
-        fiberPostfix
     ]
+    if all(ηα .== 0)
+        push!(postfix_components, "LD_0.0")
+    else
+        push!(postfix_components, "LD_$(join(ro.(ηα), ","))")
+    end
+    push!(postfix_components, "wlf_$("[" * join(["(" * join([format_Complex_to_String(wlf[1]), wlf[2], wlf[3]], ",") * ")" for wlf in incField_wlf], ",") * "]")")
+    if any(tildeG_flags .!== 1)
+        push!(postfix_components, "tGfl_$(join(Int.(tildeG_flags), ","))")
+    end
+    append!(postfix_components, [
+            arrayDescription,
+            fiberPostfix,
+    ])
     if include3rdLevel
         append!(postfix_components, [
           "cDr_$cDriveDescription", 
@@ -48,9 +60,7 @@ function get_postfix_steadyState(Δ, ΔvariDescription, dDescription, να, ηα
           "cOm_$Ωc"
         ])
         if cDriveDescription == "plW"
-            append!(postfix_components, [
-                "kc_$(join(ro.(cDriveArgs.kc), ","))"
-                ])
+            push!(postfix_components, "kc_$(join(ro.(cDriveArgs.kc), ","))")
         end
     end
     return join(postfix_components, "_")
@@ -62,17 +72,24 @@ For calculation of transmission over classically disordered arrays
 """
 function get_postfix_imperfectArray_transmission(Δ_specs, ΔvariDescription, dDescription, να, ηα, incField_wlf, n_inst, tildeG_flags, arrayDescription, fiberPostfix)
     postfix_components = [
-        "Delta_$(join((ro(Δ_specs[1]), ro(Δ_specs[2]), Δ_specs[3]), ","))",
+        "D_$(ro(Δ, Int(4 + ceil(log10(ceil(abs(Δ + eps(Δ))))))))",
         ΔvariDescription,
         dDescription,
-        "trapFreqs_$(join(ro.(να), ","))",
-        "LamDic_$(join(ro.(ηα), ","))",
-        "wlf_$("[" * join(["(" * join([format_Complex_to_String(wlf[1]), wlf[2], wlf[3]], ",") * ")" for wlf in incField_wlf], ",") * "]")",
-        "nInst_$(n_inst)",
-        "tGfl_$(join(Int.(tildeG_flags), ","))",
-        arrayDescription,
-        fiberPostfix
+        "tFr_$(join(ro.(να), ","))",
     ]
+    if all(ηα .== 0)
+        push!(postfix_components, "LD_0.0")
+    else
+        push!(postfix_components, "LD_$(join(ro.(ηα), ","))")
+    end
+    push!(postfix_components, "wlf_$("[" * join(["(" * join([format_Complex_to_String(wlf[1]), wlf[2], wlf[3]], ",") * ")" for wlf in incField_wlf], ",") * "]")")
+    if any(tildeG_flags .!== 1)
+        push!(postfix_components, "tGfl_$(join(Int.(tildeG_flags), ","))")
+    end
+    append!(postfix_components, [
+            arrayDescription,
+            fiberPostfix,
+    ])
     return join(postfix_components, "_")
 end
 
@@ -86,15 +103,22 @@ function get_postfix_timeEvolution(Δ, ΔvariDescription, dDescription, να, η
         ΔvariDescription,
         dDescription,
         "tFr_$(join(ro.(να), ","))",
-        "LD_$(join(ro.(ηα), ","))",
-        "wlf_$("[" * join(["(" * join([format_Complex_to_String(wlf[1]), wlf[2], wlf[3]], ",") * ")" for wlf in incField_wlf], ",") * "]")",
-        "tGfl_$(join(Int.(tildeG_flags), ","))",
-        arrayDescription,
-        fiberPostfix,
-        initialStateDescription,
-        "tsp_$(join(ro.(tspan), ","))",
-        "dtm_$(ro(dtmax))"
     ]
+    if all(ηα .== 0)
+        push!(postfix_components, "LD_0.0")
+    else
+        push!(postfix_components, "LD_$(join(ro.(ηα), ","))")
+    end
+    push!(postfix_components, "wlf_$("[" * join(["(" * join([format_Complex_to_String(wlf[1]), wlf[2], wlf[3]], ",") * ")" for wlf in incField_wlf], ",") * "]")")
+    if any(tildeG_flags .!== 1)
+        push!(postfix_components, "tGfl_$(join(Int.(tildeG_flags), ","))")
+    end
+    append!(postfix_components, [
+            arrayDescription,
+            fiberPostfix,
+            initialStateDescription,
+            "t_$(join(ro.(tspan), ",")),$(ro(dtmax))"
+    ])
     if include3rdLevel
         append!(postfix_components, [
           "cDr_$cDriveDescription", 
@@ -102,9 +126,7 @@ function get_postfix_timeEvolution(Δ, ΔvariDescription, dDescription, να, η
           "cOm_$Ωc"
         ])
         if cDriveDescription == "plW"
-            append!(postfix_components, [
-                "kc_$(join(ro.(cDriveArgs.kc), ","))"
-                ])
+            push!(postfix_components, "kc_$(join(ro.(cDriveArgs.kc), ","))")
         end
     end
     return join(postfix_components, "_")
@@ -120,23 +142,28 @@ function get_postfix_memoryEfficiency(Δ, ΔvariDescription, dDescription, να,
         ΔvariDescription,
         dDescription,
         "tFr_$(join(ro.(να), ","))",
-        "LD_$(join(ro.(ηα), ","))",
-        "wlf_$("[" * join(["(" * join([format_Complex_to_String(wlf[1]), wlf[2], wlf[3]], ",") * ")" for wlf in incField_wlf], ",") * "]")",
-        "tGfl_$(join(Int.(tildeG_flags), ","))",
+    ]
+    if all(ηα .== 0)
+        push!(postfix_components, "LD_0.0")
+    else
+        push!(postfix_components, "LD_$(join(ro.(ηα), ","))")
+    end
+    push!(postfix_components, "wlf_$("[" * join(["(" * join([format_Complex_to_String(wlf[1]), wlf[2], wlf[3]], ",") * ")" for wlf in incField_wlf], ",") * "]")")
+    if any(tildeG_flags .!== 1)
+        push!(postfix_components, "tGfl_$(join(Int.(tildeG_flags), ","))")
+    end
+    append!(postfix_components, [
         arrayDescription,
         fiberPostfix,
         initialStateDescription,
-        "tsp_$(join(ro.(tspan), ","))",
-        "dtm_$(ro(dtmax))",
+        "t_$(join(ro.(tspan), ",")),$(ro(dtmax))",
         "lTol_$(join(ro.(radDecayRateAndStateNorm_LowerTol), ","))",
         "cDr_$cDriveDescription", 
         "cDe_$Δc", 
         "cOm_$Ωc"
-    ]
+    ])
     if cDriveDescription == "plW"
-        append!(postfix_components, [
-            "kc_$(join(ro.(cDriveArgs.kc), ","))"
-            ])
+        push!(postfix_components, "kc_$(join(ro.(cDriveArgs.kc), ","))")
     end
     return join(postfix_components, "_")
 end
@@ -182,11 +209,17 @@ end
 Function to rename existing data files
 """
 function rename()
-    dataFolder = saveDir * "steadyStates/"
-    replacementPairs = ["Delta" => "D"]
+    dataFolder = saveDir * "imperfectArray_T_phase/"
+    replacementPairs = ["Delta" => "D", 
+                        "trapFreqs" => "tFr", 
+                        "LamDic" => "LD", 
+                        "pu_0.0_" => "", 
+                        "omega_6.283" => "o_2pi", 
+                        "0.0,0.0,0.0" => "0.0", 
+                        "tGfl_1,1,1_" => ""]
     
     for oldFilename in readdir(dataFolder)
         newFilename = replace(oldFilename, replacementPairs...)
-        mv(oldFilename, newFilename)
+        mv(dataFolder * oldFilename, dataFolder * newFilename)
     end
 end
