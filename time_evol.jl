@@ -113,9 +113,8 @@ timeEvol_args.stateDiffAbsTol and timeEvol_args.stateDiffRelTol
 or when reaching the end of tspan
 """
 function stepCondition_reachSS(t, xt, ΔxΔt, stepFuncVal, timeEvol_args)
-    return (   (   any(ΔxΔt .> timeEvol_args.stateDiffAbsTol) 
-                || any(ΔxΔt.*xt .> timeEvol_args.stateDiffRelTol) )
-            && stepCondition_endOftspan(t, xt, ΔxΔt, stepFuncVal, timeEvol_args) )
+    return (   any(ΔxΔt .> timeEvol_args.stateDiffAbsTol) 
+            || any(ΔxΔt.*xt .> timeEvol_args.stateDiffRelTol) )
 end
 
 
@@ -127,9 +126,8 @@ If stepFuncVal is an iterable (and timeEvol_args.stepFuncValLowerTol as well), a
 and time evolution is stopped when all of them are small
 """
 function stepCondition_stepFuncVal_isSmall(t, xt, ΔxΔt, stepFuncVal, timeEvol_args)
-    return (   (   t < ( timeEvol_args.tspan[1] + (timeEvol_args.tspan[2] - timeEvol_args.tspan[1])/10 )
-                || any(stepFuncVal .>= timeEvol_args.stepFuncValLowerTol) )
-            && stepCondition_endOftspan(t, xt, ΔxΔt, stepFuncVal, timeEvol_args) )
+    return (   t < ( timeEvol_args.tspan[1] + (timeEvol_args.tspan[2] - timeEvol_args.tspan[1])/10 )
+            || any(stepFuncVal .>= timeEvol_args.stepFuncValLowerTol) )
 end
 
 
