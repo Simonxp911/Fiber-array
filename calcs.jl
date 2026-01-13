@@ -224,7 +224,7 @@ function get_tildeΩcs(cDriveType, Ωc, ηα, array, cDriveArgs)
         
     elseif cDriveType == "hyperbolic"
         N_sites, a = cDriveArgs.N_sites, cDriveArgs.a
-        zs = [site[3] for site in SP.array]
+        zs = [site[3] for site in array]
         Ωcn = @. Ωc*sqrt(N_sites/(N_sites - zs/a))
         Ωcnα  = [zeros(size(array)),
                  zeros(size(array)),
