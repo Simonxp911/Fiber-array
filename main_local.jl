@@ -203,7 +203,7 @@ function define_SP_BerlinSr()
     fiber = Fiber(ρf0_ul, n0, ωa)
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-1, 1, 300)
+    Δ_specs = (-3, 3, 3000)
     
     # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
     ΔvariDependence = "flat"
@@ -211,9 +211,8 @@ function define_SP_BerlinSr()
     ΔvariDescription = ΔvariDescript(ΔvariDependence, Δvari_args)
     
     # Lamb-Dicke parameters
-    # ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
-    # ηα = ηα0 .* [1, 1, 0]
-    ηα = [0, 0, 0]
+    ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
+    # ηα = [0, 0, 0]
     
     # Whether phonons are excluded or not from the calculations (a finite ηα but noPhonons = true will result in including ground state motion into tildeG)
     noPhonons = all(ηα .== 0)
@@ -226,7 +225,7 @@ function define_SP_BerlinSr()
     arrayType = "1Dchain"
     
     # Set number of atomic sites 
-    N_sites = 200
+    N_sites = 50
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
@@ -245,15 +244,15 @@ function define_SP_BerlinSr()
     dtmax = 0.01
     
     # Prepare initial state for time evolution, as well as description for postfix
-    # initialState = groundstate(N, noPhonons, include3rdLevel)
-    # initialStateDescription = "gs"
-    GaussWidth = sqrt(N)*a0_ul
-    initialState = Gaussian_sState(N, array, fiber, GaussWidth, noPhonons, include3rdLevel)
-    # initialState = GaussianState(N, array, 0, N/2*a0_ul, GaussWidth, "e", noPhonons, include3rdLevel)
-    initialStateDescription = "Ga"
+    initialState = groundstate(N, noPhonons, include3rdLevel)
+    initialStateDescription = "gs"
+    # GaussWidth = sqrt(N)*a0_ul
+    # initialState = Gaussian_sState(N, array, fiber, GaussWidth, noPhonons, include3rdLevel)
+    # # initialState = GaussianState(N, array, 0, N/2*a0_ul, GaussWidth, "e", noPhonons, include3rdLevel)
+    # initialStateDescription = "Ga"
     
     # Whether to have driving on the g-e transition or not
-    ΩDriveOn = false
+    ΩDriveOn = true
     
     # Atomic dipole moment
     # d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul, array)
@@ -303,7 +302,7 @@ function define_SP_BerlinSr()
     Δc = 0
     
     # Rabi frequency of the control drive with respect to the e-s transition
-    Ωc = 0.1
+    Ωc = 0.3
     
     # Additional arguments for the control drive ("planeWave" requires a momentum vector)
     cDriveArgs = (kc = ωa*[0.0, 0.9, 0.0], )
@@ -334,7 +333,10 @@ function define_SP_ChangExponential()
     ρf = 1.2/ωa
     ρa = 1.5*ρf
     a  = 0.25
-    να = [1, 2, 3]
+    # να = [0.0209, 0.0119, 0.0266] #Cs
+    να = [14.7297, 8.3784, 18.7838] #Sr
+    # να = [1, 2, 3]
+    
     
     # Define the fiber
     fiber = Fiber(ρf, n, ωa)
@@ -349,8 +351,8 @@ function define_SP_ChangExponential()
     
     # Lamb-Dicke parameters
     # ηα = [0.1377, 0.1826, 0.1219] #Cs
-    # ηα = [0.2093, 0.2775, 0.1853] #Sr
-    ηα = [0.0, 0.0, 0.0]
+    ηα = [0.2093, 0.2775, 0.1853] #Sr
+    # ηα = [0.0, 0.0, 0.0]
     
     # Whether phonons are excluded or not from the calculations (a finite ηα but noPhonons = true will result in including ground state motion into tildeG)
     noPhonons = all(ηα .== 0)
@@ -378,7 +380,7 @@ function define_SP_ChangExponential()
     whichTimeEvolver = "simple"
     
     # Time span and maximum time step allowed in time evolution
-    tspan = (0, 1000)
+    tspan = (0, 100)
     dtmax = 0.01
     
     # Prepare initial state for time evolution, as well as description for postfix
@@ -609,6 +611,7 @@ function main()
     # SP = define_SP_artificial()
     # show(SP)
     
+    rename()
     
     # plot_propConst_inOutMom(ωρfn_ranges)
     # plot_coupling_strengths(SP)
@@ -869,28 +872,28 @@ function plot_transmission_vs_Δ(SP)
     T, tPhase, unwrappedPhase, phasePerAtom, phaseSlope = prep_squaredNorm_phase_unwrappedPhase_phasePerAtom_phaseSlope(SP, t)
     # fig_transmission_vs_Δ_phaseDetails(SP.Δ_range, T, tPhase, unwrappedPhase, phasePerAtom, phaseSlope, titl)
     # fig_transmission_polar(SP.Δ_range, t, titl)
-    # fig_transmission_vs_Δ_phaseDetails_polar(SP.Δ_range, T, tPhase, t, unwrappedPhase, phaseSlope, titl)
+    fig_transmission_vs_Δ_phaseDetails_polar(SP.Δ_range, T, tPhase, t, unwrappedPhase, phaseSlope, titl)
     
-    r = calc_reflection.(Ref(SP), σBα_scan)
-    R, rPhase = prep_squaredNorm_phase(r)
-    fig_transmissionAndReflection_vs_Δ(SP.Δ_range, T, tPhase, R, rPhase, titl)
+    # r = calc_reflection.(Ref(SP), σBα_scan)
+    # R, rPhase = prep_squaredNorm_phase(r)
+    # fig_transmissionAndReflection_vs_Δ(SP.Δ_range, T, tPhase, R, rPhase, titl)
     
     # titl = L"$ N = %$(SP.N) $"
     # fig = fig_presentation_transmission_vs_Δ(SP.Δ_range, T, phase, titl)
     # save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Conferences and visits\\Berlin 2025\\talk\\figures\\transmission_N500_linear_negative_zoom1.png", fig, px_per_unit=2)
     
-    # n = refractiveIndex.(t, SP.arrayType, SP.N_sites, SP.a)
-    # n_real, n_imag = real.(n), imag.(n)
-    # groupVel = groupVelocity(n, SP.Δ_range)
-    # fig_RefrIndexGroupVelocity_vs_Δ(SP.Δ_range, n_real, n_imag, groupVel, titl)
+    n = refractiveIndex.(t, SP.arrayType, SP.N_sites, SP.a)
+    n_real, n_imag = real.(n), imag.(n)
+    groupVel = groupVelocity(n, SP.Δ_range)
+    fig_RefrIndexGroupVelocity_vs_Δ(SP.Δ_range, n_real, n_imag, groupVel, titl)
 end
 
 
 function plot_imperfectArray_transmission_vs_Δ(SP)
     if SP.n_inst == 1 throw(ArgumentError("plot_imperfectArray_transmission_vs_Δ requires n_inst > 1")) end
     
-    postfix = get_postfix_imperfectArray_transmission(SP.Δ_specs, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.incField_wlf, SP.n_inst, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix)
-    filename = "T_phase_" * postfix
+    postfix = get_postfix_imperfectArray_transmission(SP.Δ_specs, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.noPhonons, SP.incField_wlf, SP.n_inst, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix)
+    filename = "T_phase" * postfix
     folder = "imperfectArray_T_phase/"
     
     if isfile(saveDir * folder * filename * ".txt") 
@@ -993,8 +996,8 @@ function plot_compareImperfectArray_transmission_vs_Δ(SP)
             arrayDescription = arrayDescript(SP.arrayType, N_sites, SP.ρa, SP.a, ff, pos_unc)
             # arrayDescription = arrayDescript(arrayType, N_sites, SP.ρa, SP.a, ff, pos_unc)
             
-            postfix = get_postfix_imperfectArray_transmission(SP.Δ_specs, SP.ΔvariDescription, SP.dDescription, SP.να, ηα, SP.incField_wlf, SP.n_inst, SP.tildeG_flags, arrayDescription, SP.fiber.postfix)
-            filename = "T_phase_" * postfix
+            postfix = get_postfix_imperfectArray_transmission(SP.Δ_specs, SP.ΔvariDescription, SP.dDescription, SP.να, ηα, SP.noPhonons, SP.incField_wlf, SP.n_inst, SP.tildeG_flags, arrayDescription, SP.fiber.postfix)
+            filename = "T_phase" * postfix
             folder = "imperfectArray_T_phase/"
         
             if isfile(saveDir * folder * filename * ".txt") 
@@ -1122,8 +1125,8 @@ function plot_effectiveBetaFactor(SP)
     for (i, arrayType) in enumerate(arrayType_list), (j, ff) in enumerate(ff_list), (k, N_sites) in enumerate(Nsites_list[:, j])
         arrayDescription = arrayDescript(arrayType, N_sites, SP.ρa, SP.a, ff, SP.pos_unc)
         ηα = SP.ηα .* ηαFactor_list[i]
-        postfix = get_postfix_imperfectArray_transmission(SP.Δ_specs, SP.ΔvariDescription, SP.dDescription, SP.να, ηα, SP.incField_wlf, SP.n_inst, SP.tildeG_flags, arrayDescription, SP.fiber.postfix)
-        filename = "T_phase_" * postfix
+        postfix = get_postfix_imperfectArray_transmission(SP.Δ_specs, SP.ΔvariDescription, SP.dDescription, SP.να, ηα, SP.noPhonons, SP.incField_wlf, SP.n_inst, SP.tildeG_flags, arrayDescription, SP.fiber.postfix)
+        filename = "T_phase" * postfix
         folder = "imperfectArray_T_phase/"
     
         if isfile(saveDir * folder * filename * ".txt")
@@ -1188,6 +1191,9 @@ end
 
 
 function plot_effectiveBetaFactor_perfectArray(SP)
+    # some parameter values are implicit...
+    # presumably Δ_specs = (-2, 2, 300)
+    
     Ns = 200:50:750
     
     # Load pre-calculated steady states and calculate transmissions
@@ -1196,12 +1202,13 @@ function plot_effectiveBetaFactor_perfectArray(SP)
     for (i, N) in enumerate(Ns)
         array = get_array(SP.arrayType, N, SP.ρa, SP.a, 1.0, 0.0)
         arrayDescription = arrayDescript(SP.arrayType, N, SP.ρa, SP.a, 1.0, 0.0)
-        postfixes = get_postfix_steadyState.(SP.Δ_range, SP.ΔvariDescription, SP.dDescription, Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), Ref(SP.tildeG_flags), arrayDescription, SP.fiber.postfix, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, Ref(SP.cDriveArgs))
+        postfixes = get_postfix_steadyState.(SP.Δ_range, SP.ΔvariDescription, SP.dDescription, Ref(SP.να), Ref(SP.ηα), SP.noPhonons, Ref(SP.incField_wlf), Ref(SP.tildeG_flags), arrayDescription, SP.fiber.postfix, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, Ref(SP.cDriveArgs))
         for (j, postfix) in enumerate(postfixes)
-            if SP.noPhonons filename = "sigma_" * postfix else filename = "sigmaBalpha_" * postfix end
+            if SP.noPhonons filename = "sigma" * postfix else filename = "sigmaBalpha" * postfix end
             folder = "steadyStates/"
             if isfile(saveDir * folder * filename * ".jld2")
                 σBα = load_as_jld2(saveDir * folder, filename)
+                steady
                 
                 if SP.noPhonons
                     tildeΩ = get_tildeΩs(SP.fiber, SP.d, SP.incField_wlf, array, SP.ΩDriveOn)
@@ -1289,8 +1296,8 @@ function plot_effectiveBetaFactor_vs_eta(SP)
         arrayDescription = arrayDescript(SP.arrayType, N_sites, SP.ρa, SP.a, ff, SP.pos_unc)
         να = SP.να * ναFactor
         ηα = SP.ηα / sqrt(ναFactor)
-        postfix = get_postfix_imperfectArray_transmission(SP.Δ_specs, SP.ΔvariDescription, SP.dDescription, να, ηα, SP.incField_wlf, SP.n_inst, SP.tildeG_flags, arrayDescription, SP.fiber.postfix)
-        filename = "T_phase_" * postfix
+        postfix = get_postfix_imperfectArray_transmission(SP.Δ_specs, SP.ΔvariDescription, SP.dDescription, να, ηα, SP.noPhonons, SP.incField_wlf, SP.n_inst, SP.tildeG_flags, arrayDescription, SP.fiber.postfix)
+        filename = "T_phase" * postfix
         folder = "imperfectArray_T_phase/"
     
         if isfile(saveDir * folder * filename * ".txt")
@@ -1662,24 +1669,17 @@ function plot_memoryEfficiency(SP)
     if SP.initialStateDescription != "Ga" throw(ArgumentError("plot_memoryEfficiency assumes a Gaussian initial state")) end
     if SP.ΩDriveOn                        throw(ArgumentError("plot_memoryEfficiency assumes the driving on the g-e transition is off")) end
     
-    # # Prepare parameters
+    
     Δ = SP.Δc + eps(Float64)
-    # fullCoupling_rm = calc_fullCoupling_rm(SP)
     radDecayRateAndStateNorm_LowerTol = (1e-6, 0.01)
-    
-    # # Perform time-evolution and calculate memory retrieval error
-    # times, states, radDecayRatesAndStateNorm = calc_timeEvolution_forMemoryRetrievalError(SP, Δ, fullCoupling_rm, radDecayRateAndStateNorm_LowerTol)
-    # radiativeDecayRates = [x[1] for x in radDecayRatesAndStateNorm]
-    # ϵ = calc_memoryRetrievalError(times, radiativeDecayRates)
-    
-    
-    N_sites_list = 10:10:100
+    N_sites_list = 10:10:200
+    # N_sites_list = 1:10
     ϵs = []
     for N_sites in N_sites_list
         arrayDescription = arrayDescript(SP.arrayType, N_sites, SP.ρa, SP.a, SP.ff, SP.pos_unc)
         
-        postfix = get_postfix_memoryEfficiency(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.incField_wlf, SP.tildeG_flags, arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
-        filename = "memEff_" * postfix
+        postfix = get_postfix_memoryEfficiency(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.noPhonons, SP.incField_wlf, SP.tildeG_flags, arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
+        filename = "memEff" * postfix
         folder = "memoryEfficiency/"
 
         if isfile(saveDir * folder * filename * ".txt")
@@ -1693,39 +1693,24 @@ function plot_memoryEfficiency(SP)
     fig_memoryRetrievalError(N_sites_list, ϵs, titl)
     
     
-    # TEMP
+    # # Prepare parameters
+    # Δ = SP.Δc + eps(Float64)
+    # fullCoupling_rm = calc_fullCoupling_rm(SP)
+    # radDecayRateAndStateNorm_LowerTol = (1e-6, 0.01)
+    
+    # # Perform time-evolution and calculate memory retrieval error
+    # times, states, radDecayRatesAndStateNorm = calc_timeEvolution_forMemoryRetrievalError(SP, Δ, fullCoupling_rm, radDecayRateAndStateNorm_LowerTol)
+    # radiativeDecayRates = [x[1] for x in radDecayRatesAndStateNorm]
+    # stateNorm = [x[2] for x in radDecayRatesAndStateNorm]
+    # ϵ = calc_memoryRetrievalError(times, radiativeDecayRates)
+    
+    # # Print and plot
     # println(ϵ)
-    
-    # σgeσgsTraj = unpack_σgeσgsFromx.(states)
-    # σgeσgsBαgeBαgsTraj = unpack_σgeσgsBαgeBαgsFromx.(states)
-    # zs = [site[3] for site in SP.array]
-    # for i in Int.(floor.(1 .+ [0.1, 0.3, 0.5, 0.7, 0.9].*length(times)))
-    # # for i in Int.(floor.(1 .+ [0.5, 0.9].*length(times)))
-    #     σge, σgs = σgeσgsTraj[i]
-    #     # σge, σgs, Bαge, Bαgs = σgeσgsBαgeBαgsTraj[i]
-    #     titl = "time = $(ro(times[i]))"
-    #     fig_σgeσgs_vs_z(zs, σge, σgs, titl)
-    # end
-    
     # fig_complexFunction(times, radiativeDecayRates)
-    # fig_complexFunction(times, norm.(states).^2)
-    
-    # fig_complexFunction(N_sites_list, ϵs)
-    
-    # TEMP
+    # fig_complexFunction(times, stateNorm)
     
     
     
-    # Figure out why the plots of the excitation distribution don't match at all 
-    # with Chang's article (also giving us incorrect values for ϵ?)
-        # Real part of GF is exact in their calculations?
-    
-    # Figure out where the related functions in calcs.jl should be - in calcs.jl or in physics.jl?
-        # maybe this function should also be a calcs.jl?
-    # make a function here that can calculate ϵ?
-    
-    # compare with and without phonons, different Ωc, other parameters
-        # compare constant and hyperbolic control drive with the same value of Ωc
     
     
 end
@@ -1778,19 +1763,31 @@ end
     # Is there a difference? Are bad effects perhaps less when doing the quantum calculations?
     # Compare Strontium and Caesium
 # Look at effect on quantum memory quality metrics
-    # Implement spatial variation of Ωc
-    # Implement scanning over range of Ωc? Maybe just do a few chosen points?
     # Presently initializing in a Gaussian state without phonons
         # how was that state achieved? any driving also would create phonons?
         # initialize in a Gaussian with phonons? 
         # give Bαgs same weigth as just \sigmags
+    # Figure out why the plots of the excitation distribution don't match at all with Chang's article (also giving different values for ϵ?)
+        # Real part of GF is exact in their calculations?
+    # See if the calculations can be done with a larger time step (to reduce calculation time...)
+        # Optimize in some other way to facilitate calculations including phonons
+        # With Sr parameters we don't need to include phonons - only the ground state motion shifts
+            # Compare those with the calculations already made which have fully included the phonons
+    # Figure out if ϵ can be calculated without time evolution
+        # Decompose in terms of eigenstates
+        # They evolve with just a complex exponential
+        # ϵ should therefore be analytically expressable in terms of this decomposition
+    # Check infidelity scaling for 
+        # independent decay with uniform Ωc (normally 1/N scaling)
+        # normal interacting case with uniform Ωc (normally 1/N^2 scaling)
+        # normal interacting case with hyperbolic Ωc (normally exp(-N) scaling) 
 
-# WRITE NOTES on the conclusions regarding EIT
-    # Refraction index has jumps due to phase going a full 2π around
-    # 
+# Make it so that when you choose a "description" in SP, you don't also need to separately choose the setting?
 
 
 ### Minor things TODO:
+# Prove that the y-derivatives (of drive and coupling matrices) go to zero
+
 # Check if the decay rates when having eta nonzero and excluding or including phonons is very different
     # Does the addition of phonons increase or decrease the decay rates
     

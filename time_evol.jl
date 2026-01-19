@@ -110,7 +110,6 @@ end
 """
 To stop time evolution at the steady state, as defined by 
 timeEvol_args.stateDiffAbsTol and timeEvol_args.stateDiffRelTol
-or when reaching the end of tspan
 """
 function stepCondition_reachSS(t, xt, ΔxΔt, stepFuncVal, timeEvol_args)
     return (   any(ΔxΔt .> timeEvol_args.stateDiffAbsTol) 
@@ -121,7 +120,6 @@ end
 """
 To stop time evolution when stepFuncVal is small, as defined by timeEvol_args.stepFuncValLowerTol,
 and one-tenth of tspan has passed,
-or when reaching the end of tspan.
 If stepFuncVal is an iterable (and timeEvol_args.stepFuncValLowerTol as well), all values are compared
 and time evolution is stopped when all of them are small
 """

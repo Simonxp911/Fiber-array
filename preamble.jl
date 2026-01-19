@@ -221,6 +221,12 @@ function Base.show(io::IO, SP::SysPar)
     println(io, "d: ", SP.dDescription)
     println(io, "")
     
+    println(io, "Whether phonons are excluded or not")
+    println(io, "noPhonons: ", noPhonons)
+    println(io, "")
+    
+    
+    
     println(io, "Incoming field described in terms of weights, polarization indices, and direction indices")
     println(io, "incField_wlf: ", "[" * join(["(" * join([format_Complex_to_String(wlf[1]), wlf[2], wlf[3]], ", ") * ")" for wlf in SP.incField_wlf], ", ") * "]")
     println(io, "")

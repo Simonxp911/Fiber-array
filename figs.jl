@@ -217,6 +217,7 @@ function fig_transmission_vs_Δ(Δ_range, T, phase, titl)
     
     # Finish figure
     display(GLMakie.Screen(), fig)
+    save("C:\\Users\\Simon\\Downloads\\transmission_withMotion.png", fig)
 end
 
 

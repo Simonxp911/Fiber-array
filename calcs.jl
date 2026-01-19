@@ -27,7 +27,7 @@ end
 
 function scan_propConst(SP, overwrite_bool=false)
     postfix = get_postfix_scan_propConst(SP.ω_specs, SP.ρf_specs, SP.n_specs)
-    filename = "kappa_" * postfix
+    filename = "kappa" * postfix
     
     if isfile(saveDir * filename * ".jld2")
         if overwrite_bool 
@@ -749,11 +749,8 @@ end
 """
 Calculate the steady state values of atomic coherences σ and the atom-phonon correlations Bα
 """
-function calc_steadyState(Δ, params, postfix, noPhonons, include3rdLevel, save_steadyState=true)
-    filename = "SS"
-    if noPhonons filename *= "_noPh" end
-    if include3rdLevel filename *= "_w3l" end
-    filename *= "_" * postfix
+function calc_steadyState(Δ, params, postfix, save_steadyState=true)
+    filename = "SS" * postfix
     folder = "steadyStates/"
     
     if isfile(saveDir * folder * filename * ".jld2") return load_as_jld2(saveDir * folder, filename) end
@@ -771,9 +768,9 @@ Calculate the steady state values of atomic coherences σ and the atom-phonon co
 for parameters given by SP and a given detuning
 """
 function calc_steadyState(SP, Δ)
-    postfix = get_postfix_steadyState(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.incField_wlf, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix, SP.include3rdLevel, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
+    postfix = get_postfix_steadyState(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.noPhonons, SP.incField_wlf, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix, SP.include3rdLevel, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
     params = get_parameterMatrices(SP)
-    return calc_steadyState(Δ, params, postfix, SP.noPhonons, SP.include3rdLevel, SP.save_steadyState)
+    return calc_steadyState(Δ, params, postfix, SP.save_steadyState)
 end
 
 
@@ -781,10 +778,10 @@ end
 Scan the steady state values of atomic coherences σ and the atom-phonon correlations Bα over the detuning
 """
 function scan_steadyState(SP)
-    postfixes = get_postfix_steadyState.(SP.Δ_range, SP.ΔvariDescription, SP.dDescription, Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), Ref(SP.tildeG_flags), SP.arrayDescription, SP.fiber.postfix, SP.include3rdLevel, SP.cDriveDescription, SP.Δc, SP.Ωc, Ref(SP.cDriveArgs))
+    postfixes = get_postfix_steadyState.(SP.Δ_range, SP.ΔvariDescription, SP.dDescription, Ref(SP.να), Ref(SP.ηα), SP.noPhonons, Ref(SP.incField_wlf), Ref(SP.tildeG_flags), SP.arrayDescription, SP.fiber.postfix, SP.include3rdLevel, SP.cDriveDescription, SP.Δc, SP.Ωc, Ref(SP.cDriveArgs))
     params = get_parameterMatrices(SP)
     # params = nothing
-    return calc_steadyState.(SP.Δ_range, Ref(params), postfixes, SP.noPhonons, SP.include3rdLevel, SP.save_steadyState)
+    return calc_steadyState.(SP.Δ_range, Ref(params), postfixes, SP.save_steadyState)
 end
 
 
@@ -794,7 +791,7 @@ for a given array (and dipole moments)
 """
 function scan_steadyState(SP, d, array)
     params = get_parameterMatrices(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, d, SP.να, SP.ηα, SP.incField_wlf, array, SP.ΩDriveOn, SP.tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
-    return calc_steadyState.(SP.Δ_range, Ref(params), "", SP.noPhonons, SP.include3rdLevel, false)
+    return calc_steadyState.(SP.Δ_range, Ref(params), "", false)
 end
 
 
@@ -805,10 +802,7 @@ end
 Perform time evolution of the atomic and phononic degrees of freedom
 """
 function calc_timeEvolution(Δ, params, N, initialState, tspan, dtmax, postfix, noPhonons, include3rdLevel, whichTimeEvolver, save_timeEvol=true)
-    filename = "TE"
-    if noPhonons filename *= "_noPh" end
-    if include3rdLevel filename *= "_w3l" end
-    filename *= "_" * postfix
+    filename = "TE" * postfix
     folder = "timeEvol/"
     
     if isfile(saveDir * folder * filename * ".txt") return load_as_txt(saveDir * folder, filename) end
@@ -883,7 +877,7 @@ end
 Perform time evolution for parameters given by SP
 """
 function calc_timeEvolution(SP, Δ)
-    postfix = get_postfix_timeEvolution(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.incField_wlf, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, SP.include3rdLevel, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
+    postfix = get_postfix_timeEvolution(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.noPhonons, SP.incField_wlf, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, SP.include3rdLevel, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
     params = get_parameterMatrices(SP)
     return calc_timeEvolution(Δ, params, SP.N, SP.initialState, SP.tspan, SP.dtmax, postfix, SP.noPhonons, SP.include3rdLevel, SP.whichTimeEvolver, SP.save_timeEvol)
 end
@@ -893,7 +887,7 @@ end
 Scan time evolutions over the detuning
 """
 function scan_timeEvolution(SP)
-    postfixes = get_postfix_timeEvolution.(SP.Δ_range, SP.ΔvariDescription, SP.dDescription, Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), Ref(SP.tildeG_flags), SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, Ref(SP.tspan), SP.dtmax, SP.include3rdLevel, SP.cDriveDescription, SP.Δc, SP.Ωc, Ref(SP.cDriveArgs))
+    postfixes = get_postfix_timeEvolution.(SP.Δ_range, SP.ΔvariDescription, SP.dDescription, Ref(SP.να), Ref(SP.ηα), SP.noPhonons, Ref(SP.incField_wlf), Ref(SP.tildeG_flags), SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, Ref(SP.tspan), SP.dtmax, SP.include3rdLevel, SP.cDriveDescription, SP.Δc, SP.Ωc, Ref(SP.cDriveArgs))
     params = get_parameterMatrices(SP)
     return calc_timeEvolution.(SP.Δ_range, Ref(params), SP.N, Ref(SP.initialState), Ref(SP.tspan), SP.dtmax, postfixes, SP.noPhonons, SP.include3rdLevel, SP.whichTimeEvolver, SP.save_timeEvol)
 end
@@ -903,11 +897,7 @@ end
 Perform time evolution of the atomic, using the eigenmodes approach
 """
 function calc_timeEvolution_eigenmodes(Δ, fullDrive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, initialState, tspan, dtmax, postfix, noPhonons, save_timeEvol=true)
-    if noPhonons
-        filename = "TE_noPh_eig_" * postfix
-    else
-        filename = "TE_eig_" * postfix
-    end
+    filename = "TE_eig" * postfix
     folder = "timeEvol/"
     
     if isfile(saveDir * folder * filename * ".txt") return load_as_txt(saveDir * folder, filename) end
@@ -934,7 +924,7 @@ end
 Perform time evolution for parameters given by SP, using the eigenmodes approach
 """
 function calc_timeEvolution_eigenmodes(SP, Δ)
-    postfix = get_postfix_timeEvolution(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.incField_wlf, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, SP.include3rdLevel, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
+    postfix = get_postfix_timeEvolution(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.noPhonons, SP.incField_wlf, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, SP.include3rdLevel, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
     drive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = prepare_eigenmodesCalculation(SP)
     return calc_timeEvolution_eigenmodes(Δ, drive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, SP.initialState, SP.tspan, SP.dtmax, postfix, SP.noPhonons, SP.save_timeEvol)
 end
@@ -944,7 +934,7 @@ end
 Scan time evolutions over the detuning, using the eigenmodes approach
 """
 function scan_timeEvolution_eigenmodes(SP)
-    postfixes = get_postfix_timeEvolution.(SP.Δ_range, SP.ΔvariDescription, SP.dDescription, Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), Ref(SP.tildeG_flags), SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, Ref(SP.tspan), SP.dtmax, SP.include3rdLevel, SP.cDriveDescription, SP.Δc, SP.Ωc, Ref(SP.cDriveArgs))
+    postfixes = get_postfix_timeEvolution.(SP.Δ_range, SP.ΔvariDescription, SP.dDescription, Ref(SP.να), Ref(SP.ηα), SP.noPhonons, Ref(SP.incField_wlf), Ref(SP.tildeG_flags), SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, Ref(SP.tspan), SP.dtmax, SP.include3rdLevel, SP.cDriveDescription, SP.Δc, SP.Ωc, Ref(SP.cDriveArgs))
     drive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = prepare_eigenmodesCalculation(SP)
     return calc_timeEvolution_eigenmodes.(SP.Δ_range, Ref(drive), Ref(eigenEnergies), Ref(eigenModesMatrix), Ref(eigenModesMatrix_inv), Ref(SP.initialState), Ref(SP.tspan), SP.dtmax, postfixes, SP.noPhonons, SP.save_timeEvol)
 end
@@ -1028,7 +1018,7 @@ function calc_transmission_indepDecay(SP, Δ)
     else
         if SP.arrayType ∈ ("1Dchain", "randomZ")
             Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array[1:1], SP.ΩDriveOn, (true, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
-            σBα = calc_steadyState(Δ, (Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2), "", SP.noPhonons, false)
+            σBα = calc_steadyState(Δ, (Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2), "", false)
             t1 = transmission(σBα..., tildeΩ, tildeΩα, SP.fiber)
             return t1^SP.N
         else
@@ -1043,7 +1033,7 @@ function calc_transmission_indepDecay(SP, Δ)
                 tildeFα_i  = [tildeFα[α][ind:ind] for α in 1:3]
                 tildeGα1_i = [tildeGα1[α][ind:ind] for α in 1:3]
                 tildeGα2_i = [tildeGα2[α][ind:ind] for α in 1:3]
-                σBα = calc_steadyState(Δ, (Δvari_i, tildeΩ_i, tildeΩα_i, tildeG_i, tildeFα_i, tildeGα1_i, tildeGα2_i), "", SP.noPhonons, false)
+                σBα = calc_steadyState(Δ, (Δvari_i, tildeΩ_i, tildeΩα_i, tildeG_i, tildeFα_i, tildeGα1_i, tildeGα2_i), "", false)
                 push!(ts, transmission(σBα..., tildeΩ_i, tildeΩα_i, SP.fiber))
             end
             return prod(ts)
@@ -1073,7 +1063,7 @@ function scan_transmission_indepDecay(SP)
         if SP.arrayType ∈ ("1Dchain", "randomZ")
             if typeof(SP.d) == String d = SP.d else d = SP.d[1:1] end
             Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, d, SP.να, SP.ηα, SP.incField_wlf, SP.array[1:1], SP.ΩDriveOn, (true, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
-            σBα = calc_steadyState.(SP.Δ_range, Ref((Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2)), "", SP.noPhonons, false)
+            σBα = calc_steadyState.(SP.Δ_range, Ref((Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2)), "", false)
             t1 = [transmission(σBα_..., tildeΩ, tildeΩα, SP.fiber) for σBα_ in σBα]
             return t1.^SP.N
         else
@@ -1088,7 +1078,7 @@ function scan_transmission_indepDecay(SP)
                 tildeFα_i  = [reshape(tildeFα[α][ind:ind], 1, 1) for α in 1:3]
                 tildeGα1_i = [reshape(tildeGα1[α][ind:ind], 1, 1) for α in 1:3]
                 tildeGα2_i = [reshape(tildeGα2[α][ind:ind], 1, 1) for α in 1:3]
-                σBα = calc_steadyState.(SP.Δ_range, Ref((Δvari_i, tildeΩ_i, tildeΩα_i, tildeG_i, tildeFα_i, tildeGα1_i, tildeGα2_i)), "", SP.noPhonons, false)
+                σBα = calc_steadyState.(SP.Δ_range, Ref((Δvari_i, tildeΩ_i, tildeΩα_i, tildeG_i, tildeFα_i, tildeGα1_i, tildeGα2_i)), "", false)
                 push!(ts, [transmission(σBα_..., tildeΩ_i, tildeΩα_i, SP.fiber) for σBα_ in σBα])
             end
             return reduce(.*, ts)
@@ -1168,6 +1158,9 @@ end
 # ================================================
 #   Functions pertaining to using the atomic array as a quantum memory
 # ================================================
+"""
+Calculate the radiative part of the full coupling matrix
+"""
 function calc_fullCoupling_rm(SP)
     Δvari = get_Δvari(SP.ΔvariDependence, SP.Δvari_args, SP.array)
     if all(SP.ηα .== 0)
@@ -1187,6 +1180,9 @@ function calc_fullCoupling_rm(SP)
 end
 
 
+"""
+Perform time-evolution specifically for the calculation of the memory retrieval error
+"""
 function calc_timeEvolution_forMemoryRetrievalError(SP, Δ, fullCoupling_rm, radDecayRateAndStateNorm_LowerTol)
     if !SP.include3rdLevel throw(ArgumentError("calc_timeEvolution_forMemoryRetrievalError assumes the third level (s) is included")) end
     
@@ -1210,6 +1206,9 @@ function calc_timeEvolution_forMemoryRetrievalError(SP, Δ, fullCoupling_rm, rad
 end
 
 
+"""
+Calculate the radiative decay rate
+"""
 function calc_radiativeDecayRate(SP, state, fullCoupling_rm)
     if SP.noPhonons
         if !SP.include3rdLevel
@@ -1231,6 +1230,9 @@ function calc_radiativeDecayRate(SP, state, fullCoupling_rm)
 end
 
 
+"""
+Calculate the memory retrieval error from the time-dependent (radiative) decay rate
+"""
 function calc_memoryRetrievalError(times, radiativeDecayRates)
     return sum((radiativeDecayRates[1:end-1] .+ radiativeDecayRates[2:end])./2 .* diff(times))
 end
