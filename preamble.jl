@@ -222,7 +222,7 @@ function Base.show(io::IO, SP::SysPar)
     println(io, "")
     
     println(io, "Whether phonons are excluded or not")
-    println(io, "noPhonons: ", noPhonons)
+    println(io, "noPhonons: ", SP.noPhonons)
     println(io, "")
     
     
