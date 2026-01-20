@@ -530,7 +530,7 @@ function Im_Grm_trans_(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, sa
         # so we save the calculation according to that value, rather than the individual z-coordinates
         coords = ro.([r_field[1], r_field[2], r_source[1], r_source[2], r_field[3] - r_source[3]])
         postfix = get_postfix_Im_Grm_trans(ω, coords, derivOrder, α, abstol, fiber.postfix)
-        filename = "IGrmt" * postfix
+        filename = "IGrmt_" * postfix
         folder = "Im_Grm_trans/"
         
         if isfile(saveDir * folder * filename * ".txt") return load_as_txt(saveDir * folder, filename) end
@@ -586,7 +586,7 @@ function Im_Grm_trans_FT(fiber, a, ω, ρ_field, ρ_source, kz, derivOrder=(0, 0
     else
         coords = ro.(vcat(ρ_field, ρ_source, kz))
         postfix = get_postfix_Im_Grm_trans(ω, coords, derivOrder, α, abstol, fiber.postfix)
-        filename = "IGrmtFT" * postfix
+        filename = "IGrmtFT_" * postfix
         folder = "Im_Grm_trans/"
         
         if isfile(saveDir * folder * filename * ".txt") return load_as_txt(saveDir * folder, filename) end

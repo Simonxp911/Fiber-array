@@ -351,8 +351,8 @@ function define_SP_ChangExponential()
     
     # Lamb-Dicke parameters
     # ηα = [0.1377, 0.1826, 0.1219] #Cs
-    ηα = [0.2093, 0.2775, 0.1853] #Sr
-    # ηα = [0.0, 0.0, 0.0]
+    # ηα = [0.2093, 0.2775, 0.1853] #Sr
+    ηα = [0.0, 0.0, 0.0]
     
     # Whether phonons are excluded or not from the calculations (a finite ηα but noPhonons = true will result in including ground state motion into tildeG)
     noPhonons = all(ηα .== 0)
@@ -435,14 +435,14 @@ function define_SP_ChangExponential()
     if interpolate_Im_Grm_trans interpolation_Im_Grm_trans = interpolation1D_Im_Grm_trans(fiber, Int(ceil(arrayL/0.1)) + 1, ρa, 0.1, ηα) else interpolation_Im_Grm_trans = nothing end
     
     # Type of control drive the third level transition
-    cDriveType = "hyperbolic" # "constant", "planeWave", "hyperbolic"
-    cDriveDescription = "hyp" # "cst", "plW", "hyp"
+    cDriveType = "constant" # "constant", "planeWave", "hyperbolic"
+    cDriveDescription = "cst" # "cst", "plW", "hyp"
     
     # Detuning of the control drive with respect to the e-s transition
     Δc = 0
     
     # Rabi frequency of the control drive with respect to the e-s transition
-    Ωc = 0.005
+    Ωc = 0.1
     
     # Additional arguments for the control drive ("planeWave" requires a momentum vector)
     cDriveArgs = (kc = ωa*[-1, 0, 0], N_sites=N_sites, a=a)
@@ -611,7 +611,6 @@ function main()
     # SP = define_SP_artificial()
     # show(SP)
     
-    rename()
     
     # plot_propConst_inOutMom(ωρfn_ranges)
     # plot_coupling_strengths(SP)
@@ -632,7 +631,7 @@ function main()
     # plot_GnmFourierTransformed(SP)
     # plot_compareGnmEigenEnergies(SP)
     # plot_lossWithGnmEigenEnergies(SP)
-    # plot_memoryEfficiency(SP)
+    plot_memoryEfficiency(SP)
     
     return nothing
 end
@@ -893,7 +892,7 @@ function plot_imperfectArray_transmission_vs_Δ(SP)
     if SP.n_inst == 1 throw(ArgumentError("plot_imperfectArray_transmission_vs_Δ requires n_inst > 1")) end
     
     postfix = get_postfix_imperfectArray_transmission(SP.Δ_specs, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.noPhonons, SP.incField_wlf, SP.n_inst, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix)
-    filename = "T_phase" * postfix
+    filename = "T_phase_" * postfix
     folder = "imperfectArray_T_phase/"
     
     if isfile(saveDir * folder * filename * ".txt") 
@@ -997,7 +996,7 @@ function plot_compareImperfectArray_transmission_vs_Δ(SP)
             # arrayDescription = arrayDescript(arrayType, N_sites, SP.ρa, SP.a, ff, pos_unc)
             
             postfix = get_postfix_imperfectArray_transmission(SP.Δ_specs, SP.ΔvariDescription, SP.dDescription, SP.να, ηα, SP.noPhonons, SP.incField_wlf, SP.n_inst, SP.tildeG_flags, arrayDescription, SP.fiber.postfix)
-            filename = "T_phase" * postfix
+            filename = "T_phase_" * postfix
             folder = "imperfectArray_T_phase/"
         
             if isfile(saveDir * folder * filename * ".txt") 
@@ -1126,7 +1125,7 @@ function plot_effectiveBetaFactor(SP)
         arrayDescription = arrayDescript(arrayType, N_sites, SP.ρa, SP.a, ff, SP.pos_unc)
         ηα = SP.ηα .* ηαFactor_list[i]
         postfix = get_postfix_imperfectArray_transmission(SP.Δ_specs, SP.ΔvariDescription, SP.dDescription, SP.να, ηα, SP.noPhonons, SP.incField_wlf, SP.n_inst, SP.tildeG_flags, arrayDescription, SP.fiber.postfix)
-        filename = "T_phase" * postfix
+        filename = "T_phase_" * postfix
         folder = "imperfectArray_T_phase/"
     
         if isfile(saveDir * folder * filename * ".txt")
@@ -1204,7 +1203,7 @@ function plot_effectiveBetaFactor_perfectArray(SP)
         arrayDescription = arrayDescript(SP.arrayType, N, SP.ρa, SP.a, 1.0, 0.0)
         postfixes = get_postfix_steadyState.(SP.Δ_range, SP.ΔvariDescription, SP.dDescription, Ref(SP.να), Ref(SP.ηα), SP.noPhonons, Ref(SP.incField_wlf), Ref(SP.tildeG_flags), arrayDescription, SP.fiber.postfix, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, Ref(SP.cDriveArgs))
         for (j, postfix) in enumerate(postfixes)
-            if SP.noPhonons filename = "sigma" * postfix else filename = "sigmaBalpha" * postfix end
+            filename = "SS_" * postfix
             folder = "steadyStates/"
             if isfile(saveDir * folder * filename * ".jld2")
                 σBα = load_as_jld2(saveDir * folder, filename)
@@ -1297,7 +1296,7 @@ function plot_effectiveBetaFactor_vs_eta(SP)
         να = SP.να * ναFactor
         ηα = SP.ηα / sqrt(ναFactor)
         postfix = get_postfix_imperfectArray_transmission(SP.Δ_specs, SP.ΔvariDescription, SP.dDescription, να, ηα, SP.noPhonons, SP.incField_wlf, SP.n_inst, SP.tildeG_flags, arrayDescription, SP.fiber.postfix)
-        filename = "T_phase" * postfix
+        filename = "T_phase_" * postfix
         folder = "imperfectArray_T_phase/"
     
         if isfile(saveDir * folder * filename * ".txt")
@@ -1673,13 +1672,12 @@ function plot_memoryEfficiency(SP)
     Δ = SP.Δc + eps(Float64)
     radDecayRateAndStateNorm_LowerTol = (1e-6, 0.01)
     N_sites_list = 10:10:200
-    # N_sites_list = 1:10
     ϵs = []
     for N_sites in N_sites_list
         arrayDescription = arrayDescript(SP.arrayType, N_sites, SP.ρa, SP.a, SP.ff, SP.pos_unc)
         
         postfix = get_postfix_memoryEfficiency(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.noPhonons, SP.incField_wlf, SP.tildeG_flags, arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
-        filename = "memEff" * postfix
+        filename = "memEff_" * postfix
         folder = "memoryEfficiency/"
 
         if isfile(saveDir * folder * filename * ".txt")
@@ -1782,7 +1780,6 @@ end
         # normal interacting case with uniform Ωc (normally 1/N^2 scaling)
         # normal interacting case with hyperbolic Ωc (normally exp(-N) scaling) 
 
-# Make it so that when you choose a "description" in SP, you don't also need to separately choose the setting?
 
 
 ### Minor things TODO:

@@ -27,7 +27,7 @@ end
 
 function scan_propConst(SP, overwrite_bool=false)
     postfix = get_postfix_scan_propConst(SP.ω_specs, SP.ρf_specs, SP.n_specs)
-    filename = "kappa" * postfix
+    filename = "kappa_" * postfix
     
     if isfile(saveDir * filename * ".jld2")
         if overwrite_bool 
@@ -750,7 +750,7 @@ end
 Calculate the steady state values of atomic coherences σ and the atom-phonon correlations Bα
 """
 function calc_steadyState(Δ, params, postfix, save_steadyState=true)
-    filename = "SS" * postfix
+    filename = "SS_" * postfix
     folder = "steadyStates/"
     
     if isfile(saveDir * folder * filename * ".jld2") return load_as_jld2(saveDir * folder, filename) end
@@ -802,7 +802,7 @@ end
 Perform time evolution of the atomic and phononic degrees of freedom
 """
 function calc_timeEvolution(Δ, params, N, initialState, tspan, dtmax, postfix, noPhonons, include3rdLevel, whichTimeEvolver, save_timeEvol=true)
-    filename = "TE" * postfix
+    filename = "TE_" * postfix
     folder = "timeEvol/"
     
     if isfile(saveDir * folder * filename * ".txt") return load_as_txt(saveDir * folder, filename) end
@@ -897,7 +897,7 @@ end
 Perform time evolution of the atomic, using the eigenmodes approach
 """
 function calc_timeEvolution_eigenmodes(Δ, fullDrive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, initialState, tspan, dtmax, postfix, noPhonons, save_timeEvol=true)
-    filename = "TE_eig" * postfix
+    filename = "TE_eig_" * postfix
     folder = "timeEvol/"
     
     if isfile(saveDir * folder * filename * ".txt") return load_as_txt(saveDir * folder, filename) end
