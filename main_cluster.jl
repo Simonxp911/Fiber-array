@@ -105,7 +105,7 @@ function imperfectArray_transmission_vs_Δ(SP)
     ts = MPI.gather(ts, comm, root=root)
     
     if myRank == root
-        postfix = get_postfix_imperfectArray_transmission(SP.Δ_specs, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.incField_wlf, SP.n_inst, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix)
+        postfix = get_postfix_imperfectArray_transmission(SP.Δ_specs, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.noPhonons, SP.incField_wlf, SP.n_inst, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix)
         filename = "T_phase_" * postfix
         folder = "imperfectArray_T_phase/"
         
@@ -119,7 +119,7 @@ end
 
 function steadyState_vs_Δ(SP)
     if myRank == root
-        postfixes = get_postfix_steadyState.(SP.Δ_range, SP.ΔvariDescription, SP.dDescription, Ref(SP.να), Ref(SP.ηα), Ref(SP.incField_wlf), Ref(SP.tildeG_flags), SP.arrayDescription, SP.fiber.postfix)
+        postfixes = get_postfix_steadyState.(SP.Δ_range, SP.ΔvariDescription, SP.dDescription, Ref(SP.να), Ref(SP.ηα), SP.noPhonons, Ref(SP.incField_wlf), Ref(SP.tildeG_flags), SP.arrayDescription, SP.fiber.postfix)
         params    = get_parameterMatrices(SP)
     else
         postfixes = nothing
@@ -133,7 +133,7 @@ function steadyState_vs_Δ(SP)
     myStartIndex, myEndIndex = myStartIndex_and_myEndIndex(totalNumberOfJobs)
     for index in myStartIndex:myEndIndex
         println("My rank is $myRank, I am working on index = $index")
-        calc_steadyState(SP.Δ_range[index], params, postfixes[index], SP.noPhonons, SP.save_steadyState)
+        calc_steadyState(SP.Δ_range[index], params, postfixes[index])
     end
 end
 
@@ -154,7 +154,7 @@ function memoryEfficiency(SP)
     ϵ = calc_memoryRetrievalError(times, radiativeDecayRates)
     
     
-    postfix = get_postfix_memoryEfficiency(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.incField_wlf, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
+    postfix = get_postfix_memoryEfficiency(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.noPhonons, SP.incField_wlf, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
     filename = "memEff_" * postfix
     folder = "memoryEfficiency/"
     save_as_txt(ϵ, saveDir * folder, filename)
