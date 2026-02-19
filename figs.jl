@@ -217,7 +217,6 @@ function fig_transmission_vs_Δ(Δ_range, T, phase, titl)
     
     # Finish figure
     display(GLMakie.Screen(), fig)
-    save("C:\\Users\\Simon\\Downloads\\transmission_withMotion.png", fig)
 end
 
 
@@ -1346,6 +1345,33 @@ function fig_memoryRetrievalError(N_sites, ϵs, titl)
     lines!(ax1, N_sites, ϵs)
     
     # Finish figure
+    display(GLMakie.Screen(), fig)
+end
+
+
+"""
+Plot the memory retrieval error vs. number of atoms
+for different values of the Lamb-Dicke parameters
+"""
+function fig_compareMemoryRetrievalError(N_sites, ϵs, ϵ_fits, titl, labels)
+    colors = distinguishable_colors(size(ϵs)[1], [RGB(1, 1, 1), RGB(0, 0, 0)], dropseed=true)
+    
+    # Start figure 
+    fig = Figure(size=(700, 500))
+    
+    # Make titles and axes
+    Label(fig[1, 1], titl, tellwidth=false)
+    ax1 = Axis(fig[2, 1], yscale=log10,
+               xlabel=L"$ N_{sites} $", ylabel=L"$ ϵ $")
+    
+    # Plot 
+    for i in 1:size(ϵs)[1]
+        scatter!(ax1, N_sites, ϵs[i, :], color=colors[i], label=labels[i])
+        if !isnothing(ϵ_fits) lines!(ax1, N_sites, ϵ_fits[i, :], color=colors[i]) end
+    end
+    
+    # Finish figure
+    axislegend()
     display(GLMakie.Screen(), fig)
 end
 

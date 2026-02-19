@@ -215,8 +215,8 @@ function define_SP_BerlinSr()
     # ηα = [0, 0, 0]
     
     # Whether phonons are excluded or not from the calculations (a finite ηα but noPhonons = true will result in including ground state motion into tildeG)
-    noPhonons = all(ηα .== 0)
-    # noPhonons = true
+    # noPhonons = all(ηα .== 0)
+    noPhonons = true
     
     # Whether to include a third (metastable) level to facilitate EIT
     include3rdLevel = true
@@ -240,19 +240,19 @@ function define_SP_BerlinSr()
     whichTimeEvolver = "simple"
     
     # Time span and maximum time step allowed in time evolution
-    tspan = (0, 1000)
+    tspan = (0, 100)
     dtmax = 0.01
     
     # Prepare initial state for time evolution, as well as description for postfix
-    initialState = groundstate(N, noPhonons, include3rdLevel)
-    initialStateDescription = "gs"
-    # GaussWidth = sqrt(N)*a0_ul
-    # initialState = Gaussian_sState(N, array, fiber, GaussWidth, noPhonons, include3rdLevel)
-    # # initialState = GaussianState(N, array, 0, N/2*a0_ul, GaussWidth, "e", noPhonons, include3rdLevel)
-    # initialStateDescription = "Ga"
+    # initialState = groundstate(N, noPhonons, include3rdLevel)
+    # initialStateDescription = "gs"
+    GaussWidth = sqrt(N)*a0_ul
+    initialState = Gaussian_sState(N, array, fiber, GaussWidth, noPhonons, include3rdLevel)
+    # initialState = GaussianState(N, array, 0, N/2*a0_ul, GaussWidth, "e", noPhonons, include3rdLevel)
+    initialStateDescription = "Ga"
     
     # Whether to have driving on the g-e transition or not
-    ΩDriveOn = true
+    ΩDriveOn = false
     
     # Atomic dipole moment
     # d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul, array)
@@ -260,6 +260,8 @@ function define_SP_BerlinSr()
     # dDescription = "chiral"
     d = rightCircularDipoleMoment(array)
     dDescription = "rgtCrc"
+    # d = [[1, 0, 0] for site in array]
+    # dDescription = "xPol"
     
     # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
     incField_wlf = [(1, 1, 1), (1, -1, 1)]
@@ -269,7 +271,7 @@ function define_SP_BerlinSr()
     tildeG_flags = (true, true, true)
     
     # Absolute tolerance in the calculations of Im_Grm_trans
-    abstol_Im_Grm_trans = 1e-5
+    abstol_Im_Grm_trans = 1e-7
     
     # Whether to approximate transverse part of radiation GF (real part and imaginary part respectively, usually (true, false))
     approx_Grm_trans = (true, false)
@@ -293,16 +295,14 @@ function define_SP_BerlinSr()
     if interpolate_Im_Grm_trans interpolation_Im_Grm_trans = interpolation1D_Im_Grm_trans(fiber, Int(ceil(arrayL/0.1)) + 1, ρa0_ul, 0.1, ηα) else interpolation_Im_Grm_trans = nothing end
     
     # Type of control drive the third level transition
-    cDriveType = "planeWave" # "constant", "planeWave"
-    cDriveDescription = "plW" # "cst", "plW"
-    # cDriveType = "constant"
-    # cDriveDescription = "cst"
+    cDriveType = "hyperbolic" # "constant", "planeWave", "hyperbolic"
+    cDriveDescription = "hyp" # "cst", "plW", "hyp"
     
     # Detuning of the control drive with respect to the e-s transition
     Δc = 0
     
     # Rabi frequency of the control drive with respect to the e-s transition
-    Ωc = 0.3
+    Ωc = 0.005
     
     # Additional arguments for the control drive ("planeWave" requires a momentum vector)
     cDriveArgs = (kc = ωa*[0.0, 0.9, 0.0], )
@@ -330,12 +330,14 @@ end
 function define_SP_ChangExponential()
     # Fiber and array parameters
     n  = 2
-    ρf = 1.2/ωa
-    ρa = 1.5*ρf
-    a  = 0.25
+    # ρf = 1.2/ωa
+    # ρa = 1.5*ρf
+    # a  = 0.25
+    ρf = 0.1669 #BerlinSr experiment
+    ρa = 0.3991 #BerlinSr experiment
+    a  = 0.2903 #BerlinSr experiment
     # να = [0.0209, 0.0119, 0.0266] #Cs
     να = [14.7297, 8.3784, 18.7838] #Sr
-    # να = [1, 2, 3]
     
     
     # Define the fiber
@@ -351,12 +353,12 @@ function define_SP_ChangExponential()
     
     # Lamb-Dicke parameters
     # ηα = [0.1377, 0.1826, 0.1219] #Cs
-    # ηα = [0.2093, 0.2775, 0.1853] #Sr
-    ηα = [0.0, 0.0, 0.0]
+    ηα = [0.2093, 0.2775, 0.1853] #Sr
+    # ηα = [0.0, 0.0, 0.0]
     
     # Whether phonons are excluded or not from the calculations (a finite ηα but noPhonons = true will result in including ground state motion into tildeG)
-    noPhonons = all(ηα .== 0)
-    # noPhonons = false
+    # noPhonons = all(ηα .== 0)
+    noPhonons = true
     
     # Whether to include a third (metastable) level to facilitate EIT
     include3rdLevel = true
@@ -365,7 +367,7 @@ function define_SP_ChangExponential()
     arrayType = "1Dchain"
     
     # Set number of atomic sites 
-    N_sites = 50
+    N_sites = 5
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
@@ -398,10 +400,10 @@ function define_SP_ChangExponential()
     # d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul, array)
     # d = "chiral"
     # dDescription = "chiral"
-    # d = rightCircularDipoleMoment(array)
-    # dDescription = "rgtCrc"
-    d = [[1, 0, 0] for site in array]
-    dDescription = "xPol"
+    d = rightCircularDipoleMoment(array)
+    dDescription = "rgtCrc"
+    # d = [[1, 0, 0] for site in array]
+    # dDescription = "xPol"
     
     # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
     incField_wlf = [(1, 1, 1), (1, -1, 1)]
@@ -435,14 +437,14 @@ function define_SP_ChangExponential()
     if interpolate_Im_Grm_trans interpolation_Im_Grm_trans = interpolation1D_Im_Grm_trans(fiber, Int(ceil(arrayL/0.1)) + 1, ρa, 0.1, ηα) else interpolation_Im_Grm_trans = nothing end
     
     # Type of control drive the third level transition
-    cDriveType = "constant" # "constant", "planeWave", "hyperbolic"
-    cDriveDescription = "cst" # "cst", "plW", "hyp"
+    cDriveType = "hyperbolic" # "constant", "planeWave", "hyperbolic"
+    cDriveDescription = "hyp" # "cst", "plW", "hyp"
     
     # Detuning of the control drive with respect to the e-s transition
     Δc = 0
     
     # Rabi frequency of the control drive with respect to the e-s transition
-    Ωc = 0.1
+    Ωc = 0.005
     
     # Additional arguments for the control drive ("planeWave" requires a momentum vector)
     cDriveArgs = (kc = ωa*[-1, 0, 0], N_sites=N_sites, a=a)
@@ -631,7 +633,8 @@ function main()
     # plot_GnmFourierTransformed(SP)
     # plot_compareGnmEigenEnergies(SP)
     # plot_lossWithGnmEigenEnergies(SP)
-    plot_memoryEfficiency(SP)
+    # plot_memoryEfficiency(SP)
+    plot_compareMemoryEfficiency(SP)
     
     return nothing
 end
@@ -1690,7 +1693,7 @@ function plot_memoryEfficiency(SP)
     titl = prep_memoryRetrievalError_title(SP, Δ)
     fig_memoryRetrievalError(N_sites_list, ϵs, titl)
     
-    
+
     # # Prepare parameters
     # Δ = SP.Δc + eps(Float64)
     # fullCoupling_rm = calc_fullCoupling_rm(SP)
@@ -1707,9 +1710,73 @@ function plot_memoryEfficiency(SP)
     # fig_complexFunction(times, radiativeDecayRates)
     # fig_complexFunction(times, stateNorm)
     
+end
+
+
+function plot_compareMemoryEfficiency(SP)
+    if !SP.include3rdLevel                throw(ArgumentError("plot_compareMemoryEfficiency assumes the third level (s) is included")) end
+    if SP.initialStateDescription != "Ga" throw(ArgumentError("plot_compareMemoryEfficiency assumes a Gaussian initial state")) end
+    if SP.ΩDriveOn                        throw(ArgumentError("plot_compareMemoryEfficiency assumes the driving on the g-e transition is off")) end
+    
+    # Set parameters
+    Δ = SP.Δc + eps(Float64)
+    radDecayRateAndStateNorm_LowerTol = (1e-6, 0.01)
+    ηα_list = [zeros(3), SP.ηα]
+    labels = [L"no motion$$", L"Sr$$"]
+    N_sites_list = 10:10:200
+    ϵs = zeros(length(ηα_list), length(N_sites_list))
+    
+    # Load data
+    for (i, ηα) in enumerate(ηα_list)
+        for (j, N_sites) in enumerate(N_sites_list)
+            arrayDescription = arrayDescript(SP.arrayType, N_sites, SP.ρa, SP.a, SP.ff, SP.pos_unc)
+            
+            postfix = get_postfix_memoryEfficiency(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, ηα, SP.noPhonons, SP.incField_wlf, SP.tildeG_flags, arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
+            filename = "memEff_" * postfix
+            folder = "memoryEfficiency/"
+
+            if isfile(saveDir * folder * filename * ".txt")
+                ϵs[i, j] = load_as_txt(saveDir * folder, filename)[1]
+            else
+                throw(ArgumentError("The following file can not be found: " * filename))
+            end
+        end
+    end
+    
+    # Make fits
+    model_pol(N, (a, α))          = a*N^α
+    model_pol_asymp(N, (a, α, c)) = a*N^α + c
+    model_exp(N, (a, α))          = a*exp(-α*N)
+    model_exp_asymp(N, (a, α, c)) = a*exp(-α*N) + c
+    p0_pol       = [1.0, -1.0]
+    p0_pol_asymp = [1.0, -1.0, 1e-1]
+    p0_exp       = [0.1, 0.01]
+    p0_exp_asymp = [0.1, 0.01, 1e-1]
+    label_pol(p)       = L", $ %$(round(p[1], digits=3)) * N^{%$(round(p[2], digits=3))} $"
+    label_pol_asymp(p) = L", $ %$(round(p[1], digits=3)) * N^{%$(round(p[2], digits=3))} %$(formatNumberWithSign(round(p[3], digits=3))) $"
+    label_exp(p)       = L", $ %$(round(p[1], digits=3)) * e^{-%$(round(p[2], digits=3)) * N} $"
+    label_exp_asymp(p) = L", $ %$(round(p[1], digits=3)) * e^{-%$(round(p[2], digits=3)) * N} %$(formatNumberWithSign(round(p[3], digits=3))) $"
+    setup_pol       = [model_pol      , p0_pol      , label_pol]
+    setup_pol_asymp = [model_pol_asymp, p0_pol_asymp, label_pol_asymp]
+    setup_exp       = [model_exp      , p0_exp      , label_exp]
+    setup_exp_asymp = [model_exp_asymp, p0_exp_asymp, label_exp_asymp]
+    
+    fitting_interval = 5:20
+    setups = [setup_pol_asymp, setup_pol_asymp]
+    
+    ϵ_fits = fill(NaN, length(ηα_list), length(N_sites_list))
+    for i in eachindex(ηα_list)
+        model, p0, label = setups[i]
+        pmin = fitComplexData(N_sites_list[fitting_interval], ϵs[i, fitting_interval], model, p0)
+        ϵ_fits[i, :] = model.(N_sites_list, Ref(pmin))
+        labels[i] *= label(pmin)
+    end
+    # ϵ_fits = nothing
     
     
-    
+    # Plot
+    titl = prep_memoryRetrievalError_title(SP, Δ)
+    fig_compareMemoryRetrievalError(N_sites_list, ϵs, ϵ_fits, titl, labels)
     
 end
 
@@ -1761,29 +1828,30 @@ end
     # Is there a difference? Are bad effects perhaps less when doing the quantum calculations?
     # Compare Strontium and Caesium
 # Look at effect on quantum memory quality metrics
-    # Presently initializing in a Gaussian state without phonons
-        # how was that state achieved? any driving also would create phonons?
-        # initialize in a Gaussian with phonons? 
-        # give Bαgs same weigth as just \sigmags
     # Figure out why the plots of the excitation distribution don't match at all with Chang's article (also giving different values for ϵ?)
-        # Real part of GF is exact in their calculations?
-    # See if the calculations can be done with a larger time step (to reduce calculation time...)
-        # Optimize in some other way to facilitate calculations including phonons
-        # With Sr parameters we don't need to include phonons - only the ground state motion shifts
-            # Compare those with the calculations already made which have fully included the phonons
-    # Figure out if ϵ can be calculated without time evolution
-        # Decompose in terms of eigenstates
-        # They evolve with just a complex exponential
-        # ϵ should therefore be analytically expressable in terms of this decomposition
+    	# Real part of GF is exact in their calculations?
     # Check infidelity scaling for 
-        # independent decay with uniform Ωc (normally 1/N scaling)
-        # normal interacting case with uniform Ωc (normally 1/N^2 scaling)
-        # normal interacting case with hyperbolic Ωc (normally exp(-N) scaling) 
+        # run for more parameters to see how exponents and plateauing changes
+            # Determine why full Sr parameters give such different results than the ChangExp
+        # run for higher atom numbers when including motion to see if it truly plateaus
+            # Presently, fits with or without a plateau are usually more or less equally good
+            # Slow for hyperbolic Ωc = 0.005, but quite fast for constant Ωc = 0.1
+    # Understand and use "Universal Approach to Optimal Photon Storage in Atomic Media"?
+
+# Check that calculation of Im_Grm_trans is indeed accurate to the setting of abstol_Im_Grm_trans 
+    # Compare with Daniel?
+    # Consider other sources of errors at scale 1e-6?
+    
 
 
 
 ### Minor things TODO:
+# Implement _eigenmodes approach for the case of including a third level
+    # i.e. time evolution, steady state, and memory retrieval efficiency calculations
+
 # Prove that the y-derivatives (of drive and coupling matrices) go to zero
+    # Inversion symmetry around the xz plane
+    # Thus all functions must be even in y and their derivative equal to zero at y = 0
 
 # Check if the decay rates when having eta nonzero and excluding or including phonons is very different
     # Does the addition of phonons increase or decrease the decay rates

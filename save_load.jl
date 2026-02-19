@@ -178,8 +178,8 @@ end
 Function to rename existing data files
 """
 function rename()
-    dataFolder = saveDir * "memoryEfficiency/"
-    replacementPairs = ["__" => "_", ]
+    dataFolder = saveDir * "Im_Grm_trans/"
+    replacementPairs = ["omega_6.283.txt" => "o_2pi.txt", ]
     
     for oldFilename in readdir(dataFolder)
         # newFilename = replace(oldFilename, replacementPairs...)

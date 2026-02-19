@@ -541,6 +541,18 @@ function ΔvariDescript(ΔvariDependence, Δvari_args)
 end
 
 
+"""
+Format a number as a string with an explicit sign
+"""
+function formatNumberWithSign(x)
+    if x < 0
+        return "$x"
+    else
+        return "+$x"
+    end
+end
+
+
 # ================================================
 #   Functions pertaining to Fourier transformation
 # ================================================
@@ -735,7 +747,7 @@ upperConstr.
 """
 function fitComplexData(xdata, ydata, model, p0; ydataDeviations=ones(size(ydata)))
     sumOfSquares(p) = sum(abs2.( (ydata .- model.(xdata, Ref(p)))./ydataDeviations ))
-    res = optimize(sumOfSquares, p0)
+    res = Optim.optimize(sumOfSquares, p0)
     return Optim.minimizer(res)
 end
 # function fitComplexData(xdata, ydata, model, p0; ydataDeviations=ones(size(ydata)), lowerConstr=fill(-Inf, length(p0)), upperConstr=fill(Inf, length(p0)))

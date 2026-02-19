@@ -494,7 +494,7 @@ end
 
 """
 Small wrapper for the calculation of the imaginary part of the transverse part of radiation mode 
-Green's function or its derivatives that exploits the Onsager reciprocity to simpilify calculations
+Green's function or its derivatives that exploits the Onsager reciprocity to simplify calculations
 """
 function Im_Grm_trans(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, save_Im_Grm_trans=true, abstol=1e-5, approx_Im_Grm_trans=false, interpolate_Im_Grm_trans=false, interpolation_Im_Grm_trans=nothing)
     if approx_Im_Grm_trans return imag(G0(ω, r_field, r_source, derivOrder, α)) end
