@@ -1179,6 +1179,49 @@ function Gaussian_sState(N, array, fiber, w, noPh=false, inc3l=false)
 end
 
 
+"""
+Prepare a (spatially) 'triangular' distribution (i.e. amplitudes increase linearly along the array)
+along z of a single excitation in terms of the x-vector for time-evolution.
+
+Whether the excitation is in the e- or the s-state can be determined
+by setting whichState = 'e' or whichState = 's'.
+"""
+function triangleState(N, array, kz, whichState, noPh=false, inc3l=false)
+    zs = [site[3] for site in array]
+    if zs[0] == 0 amplShift = zs[1] else amplShift = 0 end #add a shift to avoid that the first site's amplitude is zero (essentially assuming a 1D chain...)
+    σTriangle = exp.(1im*kz*zs) .* (zs .+ amplShift)
+    σTriangle /= norm(σTriangle)
+    
+    if whichState == "e"
+        σge = σTriangle
+        if inc3l σgs = empty_σVector(N) end
+    elseif whichState == "s"
+        if inc3l == false throw(ArgumentError("triangleState with whichState = 's' prepares an excitation in the s-state and must have inc3l=true")) end
+        σge = empty_σVector(N)
+        σgs = σTriangle
+    end
+    
+    if noPh
+        if !inc3l return pack_σIntox(σge)
+        else      return pack_σgeσgsIntox(σge, σgs) end
+    else
+        Bαge, Bαgs = empty_BαVector(N), empty_BαVector(N)
+        if !inc3l return pack_σBαIntox(σge, Bαge)
+        else      return pack_σgeσgsBαgeBαgsIntox(σge, σgs, Bαge, Bαgs) end
+    end
+end
+
+
+"""
+Prepare a (spatially) 'triangular' distribution (i.e. amplitudes increase linearly along the array)
+along z of a single excitation in the s-state in terms of the x-vector for time-evolution.
+"""
+function triangle_sState(N, array, fiber, noPh=false, inc3l=false)
+    if inc3l == false throw(ArgumentError("triangle_sState prepares an excitation in the s-state and must have inc3l=true")) end
+    return triangleState(N, array, fiber.propagation_constant, "s", noPh, inc3l)
+end
+
+
 # ================================================
 #   Functions pertaining to transport of light through the fiber
 # ================================================
