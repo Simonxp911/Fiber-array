@@ -1188,7 +1188,7 @@ by setting whichState = 'e' or whichState = 's'.
 """
 function triangleState(N, array, kz, whichState, noPh=false, inc3l=false)
     zs = [site[3] for site in array]
-    if zs[0] == 0 amplShift = zs[1] else amplShift = 0 end #add a shift to avoid that the first site's amplitude is zero (essentially assuming a 1D chain...)
+    if zs[1] == 0 amplShift = zs[2] else amplShift = 0 end #add a shift to avoid that the first site's amplitude is zero (essentially assuming a 1D chain...)
     σTriangle = exp.(1im*kz*zs) .* (zs .+ amplShift)
     σTriangle /= norm(σTriangle)
     
