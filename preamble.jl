@@ -9,13 +9,13 @@ using Integrals         #for computing integrals
 using LinearAlgebra     #norm of vectors and other standard linear algebra
 using JLD2              #saving and loading
 using DelimitedFiles    #read/write simple text data files
-# using Plots; pythonplot() #plot using Python-Matplotlib as backend
 # using CairoMakie        #plotting, specialized for making png/pdf output
 using Colors            #for generating distinguishable colors
 using LaTeXStrings      #LaTeX formatting in string in plots
 # using Polylogarithms    #for calculating the linear array FT GF [POSSIBLY FATALLY BUGGED/DEPRECATED]
 # using HomotopyContinuation #for finding fixed points (i.e. solving systems of polynomial equations)
 using Bessels           #Bessel functions for fiber equation and modes
+using SpecialFunctions  #Bessel functions for complex arguments (this package seems no longer to be maintained in contrast to Bessels)
 # using StaticArrays    #implements arrays with static size, which are faster for matrix manipulations of small matrices
 using Printf            #for formatting strings
 using Random            #for random permutations etc.

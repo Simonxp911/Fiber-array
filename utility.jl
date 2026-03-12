@@ -38,7 +38,16 @@ end
 Derivative of the Bessel functions of the first kind, J, of order n evaluated at x
 """
 function dbesselj(derivOrder, n, x)
-    return sum([(-1)^i*binomial(derivOrder, i)*besselj(n - (derivOrder - 2*i), x) for i in 0:derivOrder])/2^derivOrder
+    return sum([(-1)^i*binomial(derivOrder, i)*Bessels.besselj(n - (derivOrder - 2*i), x) for i in 0:derivOrder])/2^derivOrder
+end
+
+
+"""
+Derivative of the Bessel functions of the first kind, J, of order n evaluated at z.
+For complex argument z.
+"""
+function dbesselj(derivOrder, n, z::Complex)
+    return sum([(-1)^i*binomial(derivOrder, i)*SpecialFunctions.besselj(n - (derivOrder - 2*i), z) for i in 0:derivOrder])/2^derivOrder
 end
 
 
@@ -46,7 +55,7 @@ end
 Derivative of the modified Bessel functions of the second kind, K, of order n evaluated at x
 """
 function dbesselk(derivOrder, n, x)
-    return (-1)^derivOrder*sum([binomial(derivOrder, i)*besselk(n - (derivOrder - 2*i), x) for i in 0:derivOrder])/2^derivOrder
+    return (-1)^derivOrder*sum([binomial(derivOrder, i)*Bessels.besselk(n - (derivOrder - 2*i), x) for i in 0:derivOrder])/2^derivOrder
 end
 
 
@@ -54,7 +63,16 @@ end
 Derivative of the Hankel functions H of the j'th kind of order n evaluated at x
 """
 function dbesselh(derivOrder, n, j, x)
-    return sum([(-1)^i*binomial(derivOrder, i)*besselh(n - (derivOrder - 2*i), j, x) for i in 0:derivOrder])/2^derivOrder
+    return sum([(-1)^i*binomial(derivOrder, i)*Bessels.besselh(n - (derivOrder - 2*i), j, x) for i in 0:derivOrder])/2^derivOrder
+end
+
+
+"""
+Derivative of the Hankel functions H of the j'th kind of order n evaluated at z.
+For complex argument z.
+"""
+function dbesselh(derivOrder, n, j, z::Complex)
+    return sum([(-1)^i*binomial(derivOrder, i)*SpecialFunctions.besselh(n - (derivOrder - 2*i), j, z) for i in 0:derivOrder])/2^derivOrder
 end
 
 
@@ -68,9 +86,9 @@ function dbesselsphh(derivOrder, n, j, x)
     
     if derivOrder == 0
         if j == 1
-            return sphericalbesselj(n, x) + 1im*sphericalbessely(n, x)
+            return Bessels.sphericalbesselj(n, x) + 1im*Bessels.sphericalbessely(n, x)
         elseif j == 2
-            return sphericalbesselj(n, x) - 1im*sphericalbessely(n, x)
+            return Bessels.sphericalbesselj(n, x) - 1im*Bessels.sphericalbessely(n, x)
         else
             throw(ArgumentError("The 'kind'-index j (= $j) must take values 1 or 2 in dbesselsphh"))
         end

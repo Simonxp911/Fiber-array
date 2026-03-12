@@ -93,6 +93,7 @@ function fig_arrayIn3D(array, x_range, z_range, ρf)
     xHeight = maximum(x_range) - minimum(x_range)
     Axis3(fig[2, 1], limits=(extrema(z_range), extrema(x_range), extrema(x_range)), 
                      yreversed = true,
+                    #  azimuth = pi/2,
                      xlabel=L"$ z/λ_{a} $", 
                      ylabel=L"$ y/λ_{a} $", 
                      zlabel=L"$ x/λ_{a} $", 
@@ -116,6 +117,8 @@ function fig_arrayIn3D(array, x_range, z_range, ρf)
     surface!(zCyl, yCyl, xCyl, colormap=(:grays, 0.3))
     
     # Finish figure
+    # hidedecorations!()
+    # hidespines!()
     display(GLMakie.Screen(), fig)
 end
 
@@ -847,21 +850,28 @@ end
 """
 Plot any complex function (for example for testing or checking)
 """
-function fig_complexFunction(x, y)
+function fig_complexFunction(x, ys...; titl="", labels=[])
+    colors = distinguishable_colors(length(ys), [RGB(1,1,1), RGB(0,0,0)], dropseed=true)
+    if length(labels) == 0 labels = fill("", length(ys)) end
+    
     # Start figure 
     fig = Figure(size=(1000, 400))
     
     # Make titles and axes
-    Label(fig[1, 1], L"Real part$$", tellwidth=false)
-    Label(fig[1, 2], L"Imaginary part$$", tellwidth=false)
-    ax1 = Axis(fig[2, 1])
-    ax2 = Axis(fig[2, 2])
+    Label(fig[1, 1:2], titl, tellwidth=false)
+    Label(fig[2, 1], L"Real part$$", tellwidth=false)
+    Label(fig[2, 2], L"Imaginary part$$", tellwidth=false)
+    ax1 = Axis(fig[3, 1])
+    ax2 = Axis(fig[3, 2])
     
     # Plot the real and imaginary part separately
-    lines!(ax1, x, real.(y), color=:blue)
-    lines!(ax2, x, imag.(y), color=:red)
+    for (y, color, label) in zip(ys, colors, labels)
+        lines!(ax1, x, real.(y), color=color)
+        lines!(ax2, x, imag.(y), color=color, label=label)
+    end
     
     # Finish figure
+    if !all(labels .== "") axislegend(ax2) end
     display(GLMakie.Screen(), fig)
 end
 
@@ -1362,7 +1372,7 @@ function fig_compareMemoryRetrievalError(N_sites, ϵs, ϵ_fits, titl, labels)
     # Make titles and axes
     Label(fig[1, 1], titl, tellwidth=false)
     ax1 = Axis(fig[2, 1], yscale=log10,
-               xlabel=L"$ N_{sites} $", ylabel=L"$ ϵ $")
+               xlabel=L"$ N_{sites} $", ylabel=L"Infidelity, $ ϵ $")
     
     # Plot 
     for i in 1:size(ϵs)[1]

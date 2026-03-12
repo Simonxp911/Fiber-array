@@ -108,7 +108,7 @@ end
 The s-parameter, used in several fiber-related equations
 """
 function s_parameter(h, q, ρf)
-    return (1/(h*ρf)^2 + 1/(q*ρf)^2)/(dbesselj(1, 1, h*ρf)/(h*ρf*besselj(1, h*ρf)) + dbesselk(1, 1, q*ρf)/(q*ρf*besselk(1, q*ρf)))
+    return (1/(h*ρf)^2 + 1/(q*ρf)^2)/(dbesselj(1, 1, h*ρf)/(h*ρf*dbesselj(0, 1, h*ρf)) + dbesselk(1, 1, q*ρf)/(q*ρf*dbesselk(0, 1, q*ρf)))
 end
 
 
@@ -116,14 +116,14 @@ end
 The fiber guided mode normalization constant
 """
 function norm_constant(n, κ, h, q, s, ρf)
-    J0 = besselj(0, h*ρf)
-    J1 = besselj(1, h*ρf)
-    J2 = besselj(2, h*ρf)
-    J3 = besselj(3, h*ρf)
-    K0 = besselk(0, q*ρf)
-    K1 = besselk(1, q*ρf)
-    K2 = besselk(2, q*ρf)
-    K3 = besselk(3, q*ρf)
+    J0 = dbesselj(0, 0, h*ρf)
+    J1 = dbesselj(0, 1, h*ρf)
+    J2 = dbesselj(0, 2, h*ρf)
+    J3 = dbesselj(0, 3, h*ρf)
+    K0 = dbesselk(0, 0, q*ρf)
+    K1 = dbesselk(0, 1, q*ρf)
+    K2 = dbesselk(0, 2, q*ρf)
+    K3 = dbesselk(0, 3, q*ρf)
     
     C_in_1 = (1 - s)^2*(J0^2 + J1^2) 
     C_in_2 = (1 + s)^2*(J2^2 - J1*J3) 
@@ -648,6 +648,134 @@ function Re_Grm(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, approx_Re
     Re_Grm_tr = Re_Grm_trans(fiber, ω, r_field, r_source, derivOrder, α, approx_Re_Grm_trans)
     
     return G0_lo + Re_Grm_tr
+end
+
+
+# ================================================
+#   Functions pertaining to Chang's expression for ρρ-component of the radiative Green's function
+# ================================================
+"""
+Small wrapper that exploits the Onsager reciprocity to simplify calculations
+of the ρρ-component of the radiative Green's function using Chang's expression
+"""
+function Grm_ρρ_Chang(fiber, ω, r_field, r_source, save_Grm_ρρ_Chang=true, abstol=1e-5)
+    if r_field[3] < r_source[3]
+        return Grm_ρρ_Chang_(fiber, ω, r_source, r_field, save_Grm_ρρ_Chang, abstol)
+    else
+        return Grm_ρρ_Chang_(fiber, ω, r_field, r_source, save_Grm_ρρ_Chang, abstol)
+    end
+end
+
+
+"""
+Calculate the ρρ-component of the radiative Green's function using Chang's expression
+"""
+function Grm_ρρ_Chang_(fiber, ω, r_field, r_source, save_Grm_ρρ_Chang=true, abstol=1e-5)
+    if r_field[1] != r_source[1] || r_field[2] != r_source[2] || r_source[2] != 0
+        throw(ArgumentError("Grm_ρρ_Chang_ expects atoms in 1D chain along the fiber with y = 0"))
+    end
+    
+    # The Green's function only depends on the difference in the z-coordinates, 
+    ρa = r_field[1]
+    Δz = r_field[3] - r_source[3]
+    
+    # So we save the calculation according to that value, rather than the individual z-coordinates
+    postfix = get_postfix_Grm_ρρ_Chang(ω, Δz, abstol, fiber.postfix)
+    filename = "GrmCh_" * postfix
+    folder = "Grm_Chang/"
+    if isfile(saveDir * folder * filename * ".txt") return load_as_txt(saveDir * folder, filename, ComplexF64)[1] end
+    
+    # The +/- and c/cc contour integrations are performed along a semi-infinite line and a quarter circle with infinite radius
+    # We replace infinity by a large R 
+    R = 10*ω
+    
+    # Set up the integrands and the integral domains
+    integrand_r(x, args) = Gtilde_Chang(fiber, ω, ρa, x, args...)*exp(1im*x*Δz)
+    integrand_p(x, args) = imag(integrand_r(-ω + 1im*x, args))
+    # integrand_c(x, args) = integrand_r(-ω + R*exp(1im*x), args)
+    domain_r = (-ω + eps(1.0), ω - eps(1.0))
+    domain_p = (0 + eps(1.0), R)
+    # domain_c = (π/2, π)
+    
+    # Set up the summand consisting of three integrals
+    function summand(m)
+        args = (m,)    
+        if Δz == 0
+            # We set the real part at Δz = 0 (i.e. the frequency shift) to zero 
+            prob_r = IntegralProblem((x, args) -> 1im*imag(integrand_r(x, args)), domain_r, args)
+            # prob_p = IntegralProblem(integrand_p, domain_p, args) 
+            # prob_c = IntegralProblem(integrand_c, domain_c, args)
+            integral_r = Integrals.solve(prob_r, HCubatureJL())
+            # integral_p = Integrals.solve(prob_p, HCubatureJL()) # integral_p contributes only to the real part
+            # integral_c = Integrals.solve(prob_c, HCubatureJL()) # integral_c contributes only to the real part
+            return integral_r.u # + 2*integral_p.u - 2*real(integral_c.u)
+        else
+            prob_r = IntegralProblem(integrand_r, domain_r, args)
+            prob_p = IntegralProblem(integrand_p, domain_p, args)
+            integral_r = Integrals.solve(prob_r, HCubatureJL())
+            integral_p = Integrals.solve(prob_p, HCubatureJL())
+            # integral_c is non-zero only for Δz = 0a
+            return integral_r.u + 2*integral_p.u
+        end
+    end
+    
+    # Start with the free-space contribution
+    ρhat = [1, 0, 0]
+    Grm_ρρ_Chang = ρhat'*G0(ω, r_field, r_source)*ρhat
+    
+    # Perform the combined sum and integrations
+    summand_m = 2im*abstol
+    m = 2 #m = 0 corresponds to the vacuum contribution (added below), m = ±1 corresponds to the guided contribution (not part of the radiation GF)
+    while abs(summand_m) > abstol
+        summand_m = summand(m) + summand(-m)
+        Grm_ρρ_Chang += summand_m/(4π*ω^2)
+        m += 1
+    end
+    
+    if save_Grm_ρρ_Chang save_as_txt(Grm_ρρ_Chang, saveDir * folder, filename) end
+    return Grm_ρρ_Chang
+end
+
+
+"""
+Calculate the individual-mode Fourier-transformed 
+ρρ-component of the radiative Green's function to be used in Chang's expression
+for the full ρρ-component of the radiative Green's function
+"""
+function Gtilde_Chang(fiber, ω, ρa, kz, m)
+    ρf, n = fiber.radius, fiber.refractive_index
+    
+    kp_1 = sqrt(Complex(n^2*ω^2 - kz^2)) #k_perp_in , called \nu_1 in the article
+    kp_2 = sqrt(Complex(    ω^2 - kz^2)) #k_perp_out, called \nu_2 in the article
+    
+    z1  = kp_1*ρf
+    z2  = kp_2*ρf
+    z2a = kp_2*ρa
+    
+    J_1   = dbesselj(0, m, z1)
+    Jp_1  = dbesselj(1, m, z1)
+    J_2   = dbesselj(0, m, z2)
+    Jp_2  = dbesselj(1, m, z2)
+    H_2   = dbesselh(0, m, 1, z2)
+    Hp_2  = dbesselh(1, m, 1, z2)
+    H_2a  = dbesselh(0, m, 1, z2a)
+    Hp_2a = dbesselh(1, m, 1, z2a)
+    
+    Eϕ = -m/(2*kp_2*ρa)*(ω^2*Jp_2*H_2a + kz^2*ρa/ρf*J_2*Hp_2a)
+    Ez = kz*kp_2/2*J_2*Hp_2a
+    Bϕ = 1im*kz*ω/2*(m^2/(kp_2^2*ρa*ρf)*J_2*H_2a + Jp_2*Hp_2a)
+    Bz = -1im*ω*m/(2*ρa)*J_2*H_2a
+    
+    A = m*kz*ω^2*(n^2 - 1)
+    B = 1im*ρf*ω*kp_1*kp_2*(kp_1*J_1*Hp_2 -     kp_2*Jp_1*H_2)
+    C = 1im*ρf*ω*kp_1*kp_2*(kp_1*J_1*Hp_2 - n^2*kp_2*Jp_1*H_2)
+    S =  ρf*kp_1^2*kp_2^2*J_1*Eϕ + m*kz*kp_2^2*J_1*Ez +     1im*ρf*ω*kp_1*kp_2^2*Jp_1*Bz
+    T = -ρf*kp_1^2*kp_2^2*J_1*Bϕ - m*kz*kp_2^2*J_1*Bz + n^2*1im*ρf*ω*kp_1*kp_2^2*Jp_1*Ez
+    
+    am = (A*S - B*T)/(A^2 - B*C)
+    bm = (C*S - A*T)/(A^2 - B*C)
+    
+    return (1im*kz*kp_2*Hp_2*am - ω*m/ρa*H_2*bm)/kp_2^2
 end
 
 

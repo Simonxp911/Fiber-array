@@ -154,6 +154,20 @@ function get_postfix_Im_Grm_trans(ω, coords, derivOrder, α, abstol, fiberPostf
 end
 
 
+"""
+For calculation of the ρρ-component of the radiation mode Green's function using the method in Chang's article
+"""
+function get_postfix_Grm_ρρ_Chang(ω, Δz, abstol, fiberPostfix)
+    postfix_components = [
+        "omega_$(ro(ω))",
+        "Dz_$(ro(Δz))",
+        "abstol_$abstol",
+        fiberPostfix
+    ]
+    return join(postfix_components, "_")
+end
+
+
 function save_as_jld2(data, saveDir, filename)
     JLD2.save(saveDir * filename * ".jld2", "data", data)
 end
@@ -165,12 +179,12 @@ end
 
 
 function save_as_txt(data, saveDir, filename)
-    writedlm(saveDir * filename * ".txt", data, ' ')
+    writedlm(saveDir * filename * ".txt", data)
 end
 
 
-function load_as_txt(saveDir, filename)
-    return readdlm(saveDir * filename * ".txt", ' ', Float64, '\n')
+function load_as_txt(saveDir, filename, datatype=Float64)
+    return readdlm(saveDir * filename * ".txt", '\t', datatype, '\n')
 end
 
 

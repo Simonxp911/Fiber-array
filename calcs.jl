@@ -287,7 +287,7 @@ function get_tildeGs(fiber, d::String, array, tildeG_flags, save_Im_Grm_trans, a
                     if approx_Grm_trans[1]
                         if z_rel != 0
                             r = abs(z_rel)
-                            Re_Grm = -ωa/(4*π)*(2/3*sphericalbessely(0, ωa*r) - 1/3*sphericalbessely(2, ωa*r) + sphericalbessely(2, ωa*r)*eρ_gm^2/(eρ_gm^2 + ez_gm^2))
+                            Re_Grm = -ωa/(4*π)*(2/3*Bessels.sphericalbessely(0, ωa*r) - 1/3*Bessels.sphericalbessely(2, ωa*r) + Bessels.sphericalbessely(2, ωa*r)*eρ_gm^2/(eρ_gm^2 + ez_gm^2))
                         end
                     else
                         throw(ArgumentError("The non-approximate calculation of real part of the transverse part of radiation mode Green's function or its derivatives in get_tildeGs has not been implemented"))
@@ -300,7 +300,7 @@ function get_tildeGs(fiber, d::String, array, tildeG_flags, save_Im_Grm_trans, a
                             Im_Grm_tr = ωa/(6*π)
                         else
                             r = abs(z_rel)
-                            Im_Grm_tr = ωa/(4*π)*((2/3*sphericalbesselj(0, ωa*r) - 1/3*sphericalbesselj(2, ωa*r)) + sphericalbesselj(2, ωa*r)*eρ_gm^2/(eρ_gm^2 + ez_gm^2))
+                            Im_Grm_tr = ωa/(4*π)*((2/3*Bessels.sphericalbesselj(0, ωa*r) - 1/3*Bessels.sphericalbesselj(2, ωa*r)) + Bessels.sphericalbesselj(2, ωa*r)*eρ_gm^2/(eρ_gm^2 + ez_gm^2))
                         end
                     else
                         # Perform the combined sum and integration
