@@ -6,48 +6,20 @@ for a specific value of the fiber radius, ρf, and the index of refraction, n.
 
 It is assumed that the units of ρf and ω are nm and nm^-1 resp.
 """
-function fig_propConst_vs_ω(ω_range, κ, ρf, n)
+function fig_propConst_vs_x(x_range, κs, x_usualValue, titl, xlabl)
     # Start figure 
     fig = Figure(size=(800, 600))
     
     # Make title and axis
-    Label(fig[1, 1], "Propagation constant\n" *
-                    L"$ \rho_{f} = %$(round(ρf, sigdigits=3)) $nm, $ n = %$(round(n, sigdigits=3)) $")
-    ax1 = Axis(fig[2, 1], limits=(extrema(ω_range), nothing), 
-               xlabel=L"$ ω $, [nm$^{-1}$]", 
-               ylabel=L"[nm$^{-1}$]")
+    Label(fig[1, 1], latexstring(L"Propagation constant$$\\\\" * titl), tellwidth=false)
+    ax1 = Axis(fig[2, 1], limits=(extrema(x_range), nothing), 
+               xlabel=xlabl, 
+               ylabel=L"$ \kappa λ_{a} $")
     
-    # Plot the propagation constant, and the lines y = ω and y = nω
-    lines!(ax1, ω_range, κ          , label=L"$ y = κ(ω) $", color=:black)
-    lines!(ax1, ω_range, n * ω_range, label=L"$ y = nω $"       , color=:red)
-    lines!(ax1, ω_range, ω_range    , label=L"$ y = ω $"        , color=:blue)
-    
-    # Finish figure
-    axislegend()
-    display(GLMakie.Screen(), fig)
-end
-
-
-"""
-Plot the inside/outside momenta of the fiber,
-q = sqrt(κ^2 - ω^2), h = sqrt(n^2ω^2 - κ^2)
-
-It is assumed that the units of ω nm^-1 resp.
-"""
-function fig_inout_momenta_vs_ω(ω_range, h, q, n)
-    # Start figure 
-    fig = Figure(size=(800, 600))
-    
-    # Make title and axis
-    Label(fig[1, 1], "Inside/outside momenta of the fiber (h and q) \n" *
-                    L"$ n = %$(round(n, sigdigits=3)) $")
-    Axis(fig[2, 1], limits=(extrema(ω_range), nothing), 
-                    xlabel=L"[nm$^{-1}$]", 
-                    ylabel=L"$ ω $, [nm$^{-1}$]")
-    
-    # Plot the momenta
-    lines!(ω_range, h, label=L"$ h = \sqrt{n^2ω^2 - \kappa^2} $", color=:blue)
-    lines!(ω_range, q, label=L"$ q = \sqrt{\kappa^2 - ω^2} $", color=:red)
+    # Plot the propagation constant
+    lines!(ax1, x_range, κs, label=L"Prop. const.$$")
+    hlines!(ax1, ωa, color=:black, label=L"Light line edge$$")
+    vlines!(ax1, x_usualValue, color=:green, label=L"Usual value$$")
     
     # Finish figure
     axislegend()

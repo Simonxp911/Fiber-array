@@ -5,47 +5,21 @@
 # ================================================
 """
 Find the roots of the fiber eigenequation.
-
-Using either NonlinearSolve or HomotopyContinuation to do so 
-is determined by method = "NLsolve", "HTcont"
 """
-function calc_propConst(ω, ρf, n, method="NLsolve")
+function calc_propConst(ω, ρf, n)
     xspan = (ω + eps(ω), n*ω - eps(n*ω))
     params = (ω, ρf, n)
     
-    if method == "NLsolve"
-        prob = IntervalNonlinearProblem(fiber_equation, xspan, params)
-        sol = NonlinearSolve.solve(prob)
-        return sol.u
-    elseif method == "HTcont"
-        throw(ArgumentError("HomotopyContinuation approach is not implemented in calc_propConst..."))
-    else
-        throw(ArgumentError("method=$method was not recognized in calc_propConst..."))
-    end
+    prob = IntervalNonlinearProblem(fiber_equation, xspan, params)
+    sol = NonlinearSolve.solve(prob)
+    return sol.u
 end
 
 
-function scan_propConst(SP, overwrite_bool=false)
-    postfix = get_postfix_scan_propConst(SP.ω_specs, SP.ρf_specs, SP.n_specs)
-    filename = "kappa_" * postfix
-    
-    if isfile(saveDir * filename * ".jld2")
-        if overwrite_bool 
-            println("The propagation constant for \n   $filename\nhas already been calculated.\n" *
-                    "Recalculating and overwriting in 5 seconds...")
-            sleep(5)
-        else
-            println("Loading propagation constant")
-            return load_as_jld2(saveDir, filename)
-        end
-    end
-    
-    κ = calc_propConst.(reshape(SP.ω_range,  (length(SP.ω_range), 1, 1)),
-                        reshape(SP.ρf_range, (1, length(SP.ρf_range), 1)),
-                        reshape(SP.n_range,  (1, 1, length(SP.n_range))))
-    
-    save_as_jld2(κ, saveDir, filename)
-    return κ
+function scan_propConst(ω_range, ρf_range, n_range)
+    return calc_propConst.(reshape(ω_range,  (length(ω_range), 1, 1)),
+                           reshape(ρf_range, (1, length(ρf_range), 1)),
+                           reshape(n_range,  (1, 1, length(n_range))))
 end
 
 

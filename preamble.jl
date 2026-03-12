@@ -264,23 +264,6 @@ function Base.show(io::IO, SP::SysPar)
 end
 
 
-struct ω_ρf_n_ranges
-    ω_specs::Tuple{Real, Real, Int}  # Specs for driving frequencies for scanning propagation constant etc.
-    ρf_specs::Tuple{Real, Real, Int} # Specs for fiber radii for scanning propagation constant etc.
-    n_specs::Tuple{Real, Real, Int}  # Specs for indices of refraction for scanning propagation constant etc.
-    ω_range::AbstractRange           # Range of driving frequencies for scanning propagation constant etc.
-    ρf_range::AbstractRange          # Range of fiber radii for scanning propagation constant etc.
-    n_range::AbstractRange           # Range of indices of refraction for scanning propagation constant etc.
-    
-    function ω_ρf_n_ranges(ω_specs::Tuple{Real, Real, Int}, ρf_specs::Tuple{Real, Real, Int}, n_specs::Tuple{Real, Real, Int})
-        ω_range  = range(ω_range...)
-        ρf_range = range(ρf_specs...)
-        n_range  = range(n_specs...)
-        return new(ω_specs, ρf_specs, n_specs, ω_range, ρf_range, n_range)
-    end
-end
-
-
 const ωa = 2π
 
 

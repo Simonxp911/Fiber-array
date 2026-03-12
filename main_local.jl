@@ -175,7 +175,7 @@ function define_SP_BerlinSr()
     ω0  = 2π/λ0     #nm^-1, guided mode angular frequency
     γ0  = 2π*7.4    #kHz, free decay rate of Sr88
     ρf0 = 115       #nm, fiber radius
-    n0  = 1.45      #unitless, index of refraction
+    n0  = 1.7      #unitless, index of refraction
     
     # Atomic array specs
     ρa0 = 275   #nm, atomic array radial coordinate
@@ -203,7 +203,7 @@ function define_SP_BerlinSr()
     fiber = Fiber(ρf0_ul, n0, ωa)
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-3, 3, 3000)
+    Δ_specs = (-2, 2, 1000)
     
     # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
     ΔvariDependence = "flat"
@@ -225,7 +225,7 @@ function define_SP_BerlinSr()
     arrayType = "1Dchain"
     
     # Set number of atomic sites 
-    N_sites = 50
+    N_sites = 200
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
@@ -246,10 +246,12 @@ function define_SP_BerlinSr()
     # Prepare initial state for time evolution, as well as description for postfix
     # initialState = groundstate(N, noPhonons, include3rdLevel)
     # initialStateDescription = "gs"
-    GaussWidth = sqrt(N)*a0_ul
-    initialState = Gaussian_sState(N, array, fiber, GaussWidth, noPhonons, include3rdLevel)
-    # initialState = GaussianState(N, array, 0, N/2*a0_ul, GaussWidth, "e", noPhonons, include3rdLevel)
-    initialStateDescription = "Ga"
+    # GaussWidth = sqrt(N)*a0_ul
+    # initialState = Gaussian_sState(N, array, fiber, GaussWidth, noPhonons, include3rdLevel)
+    # # initialState = GaussianState(N, array, 0, N/2*a0_ul, GaussWidth, "e", noPhonons, include3rdLevel)
+    # initialStateDescription = "Ga"
+    initialState = triangle_sState(N, array, fiber, noPhonons, include3rdLevel)
+    initialStateDescription = "tr"
     
     # Whether to have driving on the g-e transition or not
     ΩDriveOn = false
@@ -295,17 +297,17 @@ function define_SP_BerlinSr()
     if interpolate_Im_Grm_trans interpolation_Im_Grm_trans = interpolation1D_Im_Grm_trans(fiber, Int(ceil(arrayL/0.1)) + 1, ρa0_ul, 0.1, ηα) else interpolation_Im_Grm_trans = nothing end
     
     # Type of control drive the third level transition
-    cDriveType = "hyperbolic" # "constant", "planeWave", "hyperbolic"
-    cDriveDescription = "hyp" # "cst", "plW", "hyp"
+    cDriveType = "constant" # "constant", "planeWave", "hyperbolic"
+    cDriveDescription = "cst" # "cst", "plW", "hyp"
     
     # Detuning of the control drive with respect to the e-s transition
     Δc = 0
     
     # Rabi frequency of the control drive with respect to the e-s transition
-    Ωc = 0.005
+    Ωc = 0.1
     
     # Additional arguments for the control drive ("planeWave" requires a momentum vector)
-    cDriveArgs = (kc = ωa*[0.0, 0.9, 0.0], )
+    cDriveArgs = (kc = ωa*[-1, 0, 0], N_sites=N_sites, a=a0_ul)
     
     
     
@@ -330,12 +332,12 @@ end
 function define_SP_ChangExponential()
     # Fiber and array parameters
     n  = 2
-    # ρf = 1.2/ωa
-    # ρa = 1.5*ρf
-    # a  = 0.25
-    ρf = 0.1669 #BerlinSr experiment
-    ρa = 0.3991 #BerlinSr experiment
-    a  = 0.2903 #BerlinSr experiment
+    ρf = 1.2/ωa
+    ρa = 1.5*ρf
+    a  = 0.25
+    # ρf = 0.1669 #BerlinSr experiment
+    # ρa = 0.3991 #BerlinSr experiment
+    # a  = 0.2903 #BerlinSr experiment
     # να = [0.0209, 0.0119, 0.0266] #Cs
     να = [14.7297, 8.3784, 18.7838] #Sr
     
@@ -344,7 +346,7 @@ function define_SP_ChangExponential()
     fiber = Fiber(ρf, n, ωa)
     
     # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-10, 10, 3000)
+    Δ_specs = (-3, 3, 1000)
     
     # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
     ΔvariDependence = "flat"
@@ -367,7 +369,7 @@ function define_SP_ChangExponential()
     arrayType = "1Dchain"
     
     # Set number of atomic sites 
-    N_sites = 5
+    N_sites = 200
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
@@ -388,22 +390,24 @@ function define_SP_ChangExponential()
     # Prepare initial state for time evolution, as well as description for postfix
     # initialState = groundstate(N, noPhonons, include3rdLevel)
     # initialStateDescription = "gs"
-    GaussWidth = sqrt(N)*a
-    initialState = Gaussian_sState(N, array, fiber, GaussWidth, noPhonons, include3rdLevel)
-    # initialState = GaussianState(N, array, 0, N/2*a, GaussWidth, "e", noPhonons, include3rdLevel)
-    initialStateDescription = "Ga"
+    # GaussWidth = sqrt(N)*a
+    # initialState = Gaussian_sState(N, array, fiber, GaussWidth, noPhonons, include3rdLevel)
+    # # initialState = GaussianState(N, array, 0, N/2*a, GaussWidth, "e", noPhonons, include3rdLevel)
+    # initialStateDescription = "Ga"
+    initialState = triangle_sState(N, array, fiber, noPhonons, include3rdLevel)
+    initialStateDescription = "tr"
     
     # Whether to have driving on the g-e transition or not
     ΩDriveOn = false
     
     # Atomic dipole moment
-    # d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul, array)
+    # d = chiralDipoleMoment(Fiber(ρf, n, ωa), ρa, array)
     # d = "chiral"
     # dDescription = "chiral"
-    d = rightCircularDipoleMoment(array)
-    dDescription = "rgtCrc"
-    # d = [[1, 0, 0] for site in array]
-    # dDescription = "xPol"
+    # d = rightCircularDipoleMoment(array)
+    # dDescription = "rgtCrc"
+    d = [[1, 0, 0] for site in array]
+    dDescription = "xPol"
     
     # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
     incField_wlf = [(1, 1, 1), (1, -1, 1)]
@@ -413,7 +417,7 @@ function define_SP_ChangExponential()
     tildeG_flags = (true, true, true)
     
     # Absolute tolerance in the calculations of Im_Grm_trans
-    abstol_Im_Grm_trans = 1e-5
+    abstol_Im_Grm_trans = 1e-7
     
     # Whether to approximate transverse part of radiation GF (real part and imaginary part respectively, usually (true, false))
     approx_Grm_trans = (true, false)
@@ -437,14 +441,14 @@ function define_SP_ChangExponential()
     if interpolate_Im_Grm_trans interpolation_Im_Grm_trans = interpolation1D_Im_Grm_trans(fiber, Int(ceil(arrayL/0.1)) + 1, ρa, 0.1, ηα) else interpolation_Im_Grm_trans = nothing end
     
     # Type of control drive the third level transition
-    cDriveType = "hyperbolic" # "constant", "planeWave", "hyperbolic"
-    cDriveDescription = "hyp" # "cst", "plW", "hyp"
+    cDriveType = "constant" # "constant", "planeWave", "hyperbolic"
+    cDriveDescription = "cst" # "cst", "plW", "hyp"
     
     # Detuning of the control drive with respect to the e-s transition
     Δc = 0
     
     # Rabi frequency of the control drive with respect to the e-s transition
-    Ωc = 0.005
+    Ωc = 0.1
     
     # Additional arguments for the control drive ("planeWave" requires a momentum vector)
     cDriveArgs = (kc = ωa*[-1, 0, 0], N_sites=N_sites, a=a)
@@ -604,17 +608,42 @@ function define_SP_artificial()
                   include3rdLevel, cDriveType, cDriveDescription, Δc, Ωc, cDriveArgs)
 end
 
-    
+
 function main()
     # Define system parameters
     # SP = define_SP_BerlinCs()
-    # SP = define_SP_BerlinSr()
-    SP = define_SP_ChangExponential()
+    SP = define_SP_BerlinSr()
+    # SP = define_SP_ChangExponential()
     # SP = define_SP_artificial()
     # show(SP)
     
     
-    # plot_propConst_inOutMom(ωρfn_ranges)
+    # TEMP
+    
+    # # Test Grm_ρρ_Chang_
+    # # Still not matching previous calculations as it should? (Try to compare with Daniel's code?)
+    # ρa = SP.ρa
+    # z_range = range(0, 10, 30)
+    
+    # r_source = [ρa, 0, 0]
+    # r_fields = [[ρa, 0, z] for z in z_range]
+    # ρhat = [1, 0, 0]
+    
+    # abstol = 1e-5
+    
+    # # @time Grm_vacum = Ref(ρhat').*G0.(ωa, r_fields, Ref(r_source)).*Ref(ρhat)
+    # # @time Grm_apprx = Ref(ρhat').*Grm.(Ref(SP.fiber), ωa, r_fields, Ref(r_source), Ref((0, 0)), 1, true, abstol, Ref((true, false))).*Ref(ρhat)
+    # @time Grm_Chang = Grm_ρρ_Chang.(Ref(SP.fiber), ωa, r_fields, Ref(r_source), true, abstol)
+    
+    
+    # # fig_complexFunction(z_range, Grm_vacum, Grm_apprx, Grm_Chang, labels=["vacuum", "approx", "Chang"])
+    # fig_complexFunction(z_range, Grm_Chang)
+    
+    
+    # TEMP
+    
+    
+    # plot_propConst_inOutMom(SP)
     # plot_coupling_strengths(SP)
     # plot_arrayIn3D(SP)
     # plot_interPairEnergiesWeights(SP)
@@ -634,7 +663,7 @@ function main()
     # plot_compareGnmEigenEnergies(SP)
     # plot_lossWithGnmEigenEnergies(SP)
     # plot_memoryEfficiency(SP)
-    plot_compareMemoryEfficiency(SP)
+    # plot_compareMemoryEfficiency(SP)
     
     return nothing
 end
@@ -643,39 +672,25 @@ end
 # ================================================
 #   Generate figures
 # ================================================
-function plot_propConst_inOutMom(ω_ρf_n_ranges)
-    κ = scan_propConst(ω_ρf_n_ranges)
+function plot_propConst_inOutMom(SP)
+    ω_range  = [ωa]
+    ρf_range = range(0.5*SP.ρf, 2*SP.ρf, 16)
+    n_range  = range(1.3, 2, 15)
     
-    # Plot propConst with a specific choice of ρf and n from the ranges
-    ρf_ind = 1
-    n_ind  = 1
-    fig_propConst_vs_ω(ω_ρf_n_ranges.ω_range, κ[:, ρf_ind, n_ind], ω_ρf_n_ranges.ρf_range[ρf_ind], ω_ρf_n_ranges.n_range[n_ind])
+    κs = scan_propConst(ω_range, ρf_range, n_range)
     
-    # Plot the momenta inside and outside the fiber
-    h = in_momentum.(κ[:, ρf_ind, n_ind], ω_ρf_n_ranges.ω_range, ω_ρf_n_ranges.n_range[n_ind])
-    q = out_momentum.(κ[:, ρf_ind, n_ind], ω_ρf_n_ranges.ω_range)
-    fig_inout_momenta_vs_ω(ω_ρf_n_ranges.ω_range, h, q, ω_ρf_n_ranges.n_range[n_ind])
+    # Plot propConst
+    ω_ind  = 1
+    ρf_ind = 6
+    n_ind  = 4
     
+    κs_plot = κs[ω_ind, :, n_ind]
+    titl = L"$ ω = ω_{a} $, $ n = %$(round(n_range[n_ind], sigdigits=3)) $"
+    fig_propConst_vs_x(ρf_range, κs_plot, ρf_range[ρf_ind], titl, L"$ ρ_{f}/λ_{a} $")
     
-    # ρa_rel = 0.411
-    # # d_type = "rgtCrc"
-    # d_type = "chiral"
-    
-    # ρfs = range(0.05, 0.5, 100)
-    # ρas = ρfs .+ ρa_rel
-    # fibers = Fiber.(ρfs, SP.n, ωa)
-    # if d_type == "rgtCrc"
-    #     ds = fill([1im, 0, 1]/sqrt(2), length(ρfs))
-    # elseif d_type == "chiral"
-    #     ds = [chiralDipoleMoment(fiber, ρa) for (fiber, ρa) in zip(fibers, ρas)]
-    # end
-    
-    # κs = [fiber.propagation_constant for fiber in fibers]
-    # γs = [get_γs(fiber, d, [ρa, 0, 0], SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans) for (ρa, fiber, d) in zip(ρas, fibers, ds)]
-    # βs = [γ_gm/(γ_gm + γ_rm) for (γ_gm, γ_rm) in γs]
-    
-    # # display(GLMakie.Screen(), lines(ρfs, κs, label="ρa_rel=$ρa_rel, d_type=$d_type"))
-    # display(GLMakie.Screen(), lines(ρfs, βs))
+    κs_plot = κs[ω_ind, ρf_ind, :]
+    titl = L"$ ω = ω_{a} $, $ ρ_{f}/λ_{a} = %$(round(ρf_range[ρf_ind], sigdigits=3)) $"
+    fig_propConst_vs_x(n_range , κs_plot, n_range[n_ind], titl, L"$ n $")
     
 end
 
@@ -872,6 +887,7 @@ function plot_transmission_vs_Δ(SP)
     # fig_transmission_vs_Δ(SP.Δ_range, T, tPhase, titl)
     
     T, tPhase, unwrappedPhase, phasePerAtom, phaseSlope = prep_squaredNorm_phase_unwrappedPhase_phasePerAtom_phaseSlope(SP, t)
+    # fig_transmission_vs_Δ(SP.Δ_range, T, tPhase, titl)
     # fig_transmission_vs_Δ_phaseDetails(SP.Δ_range, T, tPhase, unwrappedPhase, phasePerAtom, phaseSlope, titl)
     # fig_transmission_polar(SP.Δ_range, t, titl)
     fig_transmission_vs_Δ_phaseDetails_polar(SP.Δ_range, T, tPhase, t, unwrappedPhase, phaseSlope, titl)
@@ -884,10 +900,10 @@ function plot_transmission_vs_Δ(SP)
     # fig = fig_presentation_transmission_vs_Δ(SP.Δ_range, T, phase, titl)
     # save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Conferences and visits\\Berlin 2025\\talk\\figures\\transmission_N500_linear_negative_zoom1.png", fig, px_per_unit=2)
     
-    n = refractiveIndex.(t, SP.arrayType, SP.N_sites, SP.a)
-    n_real, n_imag = real.(n), imag.(n)
-    groupVel = groupVelocity(n, SP.Δ_range)
-    fig_RefrIndexGroupVelocity_vs_Δ(SP.Δ_range, n_real, n_imag, groupVel, titl)
+    # n = refractiveIndex.(t, SP.arrayType, SP.N_sites, SP.a)
+    # n_real, n_imag = real.(n), imag.(n)
+    # groupVel = groupVelocity(n, SP.Δ_range)
+    # fig_RefrIndexGroupVelocity_vs_Δ(SP.Δ_range, n_real, n_imag, groupVel, titl)
 end
 
 
@@ -1667,9 +1683,9 @@ end
 
 
 function plot_memoryEfficiency(SP)
-    if !SP.include3rdLevel                throw(ArgumentError("plot_memoryEfficiency assumes the third level (s) is included")) end
-    if SP.initialStateDescription != "Ga" throw(ArgumentError("plot_memoryEfficiency assumes a Gaussian initial state")) end
-    if SP.ΩDriveOn                        throw(ArgumentError("plot_memoryEfficiency assumes the driving on the g-e transition is off")) end
+    if !SP.include3rdLevel                       throw(ArgumentError("plot_memoryEfficiency assumes the third level (s) is included")) end
+    if SP.initialStateDescription ∉ ("Ga", "tr") throw(ArgumentError("plot_memoryEfficiency assumes a Gaussian or triangular initial state")) end
+    if SP.ΩDriveOn                               throw(ArgumentError("plot_memoryEfficiency assumes the driving on the g-e transition is off")) end
     
     
     Δ = SP.Δc + eps(Float64)
@@ -1714,9 +1730,9 @@ end
 
 
 function plot_compareMemoryEfficiency(SP)
-    if !SP.include3rdLevel                throw(ArgumentError("plot_compareMemoryEfficiency assumes the third level (s) is included")) end
-    if SP.initialStateDescription != "Ga" throw(ArgumentError("plot_compareMemoryEfficiency assumes a Gaussian initial state")) end
-    if SP.ΩDriveOn                        throw(ArgumentError("plot_compareMemoryEfficiency assumes the driving on the g-e transition is off")) end
+    if !SP.include3rdLevel                       throw(ArgumentError("plot_compareMemoryEfficiency assumes the third level (s) is included")) end
+    if SP.initialStateDescription ∉ ("Ga", "tr") throw(ArgumentError("plot_compareMemoryEfficiency assumes a Gaussian or triangular initial state")) end
+    if SP.ΩDriveOn                               throw(ArgumentError("plot_compareMemoryEfficiency assumes the driving on the g-e transition is off")) end
     
     # Set parameters
     Δ = SP.Δc + eps(Float64)
@@ -1724,6 +1740,7 @@ function plot_compareMemoryEfficiency(SP)
     ηα_list = [zeros(3), SP.ηα]
     labels = [L"no motion$$", L"Sr$$"]
     N_sites_list = 10:10:200
+    # N_sites_list = vcat(10:10:200, 220:20:300, 340:40:420)
     ϵs = zeros(length(ηα_list), length(N_sites_list))
     
     # Load data
@@ -1746,23 +1763,32 @@ function plot_compareMemoryEfficiency(SP)
     # Make fits
     model_pol(N, (a, α))          = a*N^α
     model_pol_asymp(N, (a, α, c)) = a*N^α + c
+    model_pol2(N, (a,))           = a/N^2
+    model_pol2_asymp(N, (a, c))   = a/N^2 + c
     model_exp(N, (a, α))          = a*exp(-α*N)
     model_exp_asymp(N, (a, α, c)) = a*exp(-α*N) + c
-    p0_pol       = [1.0, -1.0]
-    p0_pol_asymp = [1.0, -1.0, 1e-1]
-    p0_exp       = [0.1, 0.01]
-    p0_exp_asymp = [0.1, 0.01, 1e-1]
-    label_pol(p)       = L", $ %$(round(p[1], digits=3)) * N^{%$(round(p[2], digits=3))} $"
-    label_pol_asymp(p) = L", $ %$(round(p[1], digits=3)) * N^{%$(round(p[2], digits=3))} %$(formatNumberWithSign(round(p[3], digits=3))) $"
-    label_exp(p)       = L", $ %$(round(p[1], digits=3)) * e^{-%$(round(p[2], digits=3)) * N} $"
-    label_exp_asymp(p) = L", $ %$(round(p[1], digits=3)) * e^{-%$(round(p[2], digits=3)) * N} %$(formatNumberWithSign(round(p[3], digits=3))) $"
-    setup_pol       = [model_pol      , p0_pol      , label_pol]
-    setup_pol_asymp = [model_pol_asymp, p0_pol_asymp, label_pol_asymp]
-    setup_exp       = [model_exp      , p0_exp      , label_exp]
-    setup_exp_asymp = [model_exp_asymp, p0_exp_asymp, label_exp_asymp]
+    p0_pol        = [10.0, -2.0]
+    p0_pol_asymp  = [10.0, -2.0, 1e-1]
+    p0_pol2       = [10.0]
+    p0_pol2_asymp = [10.0, 1e-1]
+    p0_exp        = [0.1, 0.01]
+    p0_exp_asymp  = [0.1, 0.01, 1e-1]
+    label_pol(p)        = L", $ %$(round(p[1], digits=3)) * N^{%$(round(p[2], digits=3))} $"
+    label_pol_asymp(p)  = L", $ %$(round(p[1], digits=3)) * N^{%$(round(p[2], digits=3))} %$(formatNumberWithSign(round(p[3], digits=3))) $"
+    label_pol2(p)       = L", $ %$(round(p[1], digits=3)) / N^{2} $"
+    label_pol2_asymp(p) = L", $ %$(round(p[1], digits=3)) / N^{2} %$(formatNumberWithSign(round(p[3], digits=3))) $"
+    label_exp(p)        = L", $ %$(round(p[1], digits=3)) * e^{-%$(round(p[2], digits=3)) * N} $"
+    label_exp_asymp(p)  = L", $ %$(round(p[1], digits=3)) * e^{-%$(round(p[2], digits=3)) * N} %$(formatNumberWithSign(round(p[3], digits=3))) $"
+    setup_pol        = [model_pol       , p0_pol       , label_pol]
+    setup_pol_asymp  = [model_pol_asymp , p0_pol_asymp , label_pol_asymp]
+    setup_pol2       = [model_pol2      , p0_pol2      , label_pol2]
+    setup_pol2_asymp = [model_pol2_asymp, p0_pol2_asymp, label_pol2_asymp]
+    setup_exp        = [model_exp       , p0_exp       , label_exp]
+    setup_exp_asymp  = [model_exp_asymp , p0_exp_asymp , label_exp_asymp]
     
     fitting_interval = 5:20
-    setups = [setup_pol_asymp, setup_pol_asymp]
+    # fitting_interval = 5:28
+    setups = [setup_pol, setup_pol]
     
     ϵ_fits = fill(NaN, length(ηα_list), length(N_sites_list))
     for i in eachindex(ηα_list)
@@ -1779,6 +1805,9 @@ function plot_compareMemoryEfficiency(SP)
     fig_compareMemoryRetrievalError(N_sites_list, ϵs, ϵ_fits, titl, labels)
     
 end
+
+
+
 
 
 
@@ -1830,18 +1859,31 @@ end
 # Look at effect on quantum memory quality metrics
     # Figure out why the plots of the excitation distribution don't match at all with Chang's article (also giving different values for ϵ?)
     	# Real part of GF is exact in their calculations?
-    # Check infidelity scaling for 
-        # run for more parameters to see how exponents and plateauing changes
-            # Determine why full Sr parameters give such different results than the ChangExp
-        # run for higher atom numbers when including motion to see if it truly plateaus
-            # Presently, fits with or without a plateau are usually more or less equally good
-            # Slow for hyperbolic Ωc = 0.005, but quite fast for constant Ωc = 0.1
+    # Determine why full Sr parameters give such different results than the ChangExp
+        # It seems higher index of refraction recovers exponential decay
+        # Possibly caused by propagation constant being deeper in the subradiant regime?
+        # Check if a similar propagation constant achieved by changing the fiber dimensions gives similar results (but keep n fixed)
+        # Consider whether the very small but finite radiation decay rate of collective modes at \kappa explains the divergence from exponential decay of \epsilon
+            # That is, does the size of the finite radiation decay rate determine how small \epsilon can be before the exponential scaling stops?
+    # It seems that including (ground state) motion causes the infidelity to plateau
+        # Become more certain that this is true, by running calculations with a higher number of atoms
+        # Check how this plateau scales with Lamb-Dicke parameter (probably scales as the square, since the ground state motion contribution scales like that)
+        # When including motion the 'trick' of hyperbolic control drive does not do much anymore as the loss is anyways happening in the bulk and not the edge
+    # Figure out how lower limit of \epsilon scales with Lambd-Dicke parameter 
+        # Figure out a physical explanantion for this lower limit
+        # Probably something with the lower limit of the collective decay rates
+        # Compare with free space scaling of 1/OD? 
+        # That scaling is for independently decaying atoms and for an optimal shape of the spin wave (approximately this weird linearly increasing population along the array)
+        # For the same kind of initial state, Chang finds a 1/N^2 scaling when including radiative interactions
+        # Why is our situation worse than this, even without motion? 
+            # Simply because of using a Gaussian initial state instead of the ("optimal") linear state?
+            # Check behavior of \epsilon for the linear state using Berlin Sr parameters, with and without motion
+    # WRITE NOTES
     # Understand and use "Universal Approach to Optimal Photon Storage in Atomic Media"?
 
 # Check that calculation of Im_Grm_trans is indeed accurate to the setting of abstol_Im_Grm_trans 
     # Compare with Daniel?
     # Consider other sources of errors at scale 1e-6?
-    
 
 
 
