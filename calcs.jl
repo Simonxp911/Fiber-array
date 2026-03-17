@@ -478,23 +478,23 @@ end
 
 function get_tildeGs_split(SP)
     if all(SP.ηα .== 0)
-        return get_tildeGs_split(SP.fiber, SP.d, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+        return get_tildeGs_split(SP.fiber, SP.d, SP.array, SP.tildeG_flags[3], SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
     else 
-        return get_tildeGs_split(SP.fiber, SP.d, SP.ηα, SP.array, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+        return get_tildeGs_split(SP.fiber, SP.d, SP.ηα, SP.array, SP.tildeG_flags[3], SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
     end
 end
 
 
-function get_tildeGs_split(fiber, d, array, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
-    tildeG_gm = get_tildeGs(fiber, d, array, (true, false, true), save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
-    tildeG_rm = get_tildeGs(fiber, d, array, (false, true, true), save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+function get_tildeGs_split(fiber, d, array, include_Grm_offdiag, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+    tildeG_gm = get_tildeGs(fiber, d, array, (true, false, include_Grm_offdiag), save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+    tildeG_rm = get_tildeGs(fiber, d, array, (false, true, include_Grm_offdiag), save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
     return tildeG_gm, tildeG_rm
 end
 
 
-function get_tildeGs_split(fiber, d, ηα, array, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
-    tildeG_gm, tildeGα1_gm, tildeGα2_gm = get_tildeGs(fiber, d, ηα, array, (true, false, true), save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
-    tildeG_rm, tildeGα1_rm, tildeGα2_rm = get_tildeGs(fiber, d, ηα, array, (false, true, true), save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+function get_tildeGs_split(fiber, d, ηα, array, include_Grm_offdiag, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+    tildeG_gm, tildeGα1_gm, tildeGα2_gm = get_tildeGs(fiber, d, ηα, array, (true, false, include_Grm_offdiag), save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
+    tildeG_rm, tildeGα1_rm, tildeGα2_rm = get_tildeGs(fiber, d, ηα, array, (false, true, include_Grm_offdiag), save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans)
     return tildeG_gm, tildeGα1_gm, tildeGα2_gm, tildeG_rm, tildeGα1_rm, tildeGα2_rm
 end
 

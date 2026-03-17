@@ -139,9 +139,9 @@ end
 
 
 function memoryEfficiency(SP)
-    if !SP.include3rdLevel                throw(ArgumentError("plot_memoryEfficiency assumes the third level (s) is included")) end
-    if SP.initialStateDescription != "Ga" throw(ArgumentError("plot_memoryEfficiency assumes a Gaussian initial state")) end
-    if SP.ΩDriveOn                        throw(ArgumentError("plot_memoryEfficiency assumes the driving on the g-e transition is off")) end
+    if !SP.include3rdLevel                       throw(ArgumentError("memoryEfficiency assumes the third level (s) is included")) end
+    if SP.initialStateDescription ∉ ("Ga", "tr") throw(ArgumentError("memoryEfficiency assumes a Gaussian or triangular initial state")) end
+    if SP.ΩDriveOn                               throw(ArgumentError("memoryEfficiency assumes the driving on the g-e transition is off")) end
     
     # Prepare parameters
     Δ = SP.Δc + eps(Float64)
