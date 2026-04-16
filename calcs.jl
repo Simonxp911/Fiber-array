@@ -668,52 +668,154 @@ function get_Δvari(ΔvariDependence, Δvari_args, array)
 end
 
 
-function get_fullDriveVector(tildeΩ, tildeΩα)
-    N = length(tildeΩ)
-    
-    # Construct the phononic drive
-    D = [zeros(ComplexF64, N^2) for α in 1:3]
-    for α in 1:3
-        for i in 1:N
-            D[α][i + (i - 1)*N] = tildeΩα[α][i]
-        end
-    end
-    
-    # Put together the full drive vector
-    return [tildeΩ
-              D[1]
-              D[2]
-              D[3]]
+function get_fullDriveVector(SP)
+    return get_fullDriveVector(SP.noPhonons, SP.fiber, SP.d, SP.ηα, SP.incField_wlf, SP.array, SP.ΩDriveOn, SP.include3rdLevel)
 end
 
 
-function get_fullCouplingMatrix(Δvari, tildeG, tildeFα, tildeGα1, tildeGα2)
-    N = size(Δvari)[1]
+function get_fullDriveVector(noPhonons, fiber, d, ηα, incField_wlf, array, ΩDriveOn, include3rdLevel)
+    if all(ηα .== 0)
+        tildeΩ = get_tildeΩs(fiber, d, incField_wlf, array, ΩDriveOn)
+    else
+        tildeΩ, tildeΩα = get_tildeΩs(fiber, d, ηα, incField_wlf, array, ΩDriveOn)
+    end
+    N = length(tildeΩ)
     
-    # Construct the excitation-phonon coupling matrices
-    N1α = [zeros(ComplexF64, N, N^2) for α in 1:3]
-    N2α = deepcopy(N1α)
-    M1α = [zeros(ComplexF64, N^2, N) for α in 1:3]
-    M2α = deepcopy(M1α)
-    for α in 1:3
-        for j in 1:N, i in 1:N
-            N1α[α][i, i + (j - 1)*N] = tildeGα1[α][i, j]
-            N2α[α][i, j + (j - 1)*N] = tildeGα2[α][i, j]
-            M1α[α][i + (i - 1)*N, j] = tildeGα1[α][i, j]
-            M2α[α][j + (i - 1)*N, j] = tildeGα2[α][i, j]
+    if include3rdLevel O1 = zeros(ComplexF64, N) end
+    
+    # Construct the phononic drive
+    if !noPhonons
+        O2 = zeros(ComplexF64, N^2)
+        D = [O2 for α in 1:3]
+        for α in 1:3
+            for i in 1:N
+                D[α][i + (i - 1)*N] = tildeΩα[α][i]
+            end
         end
     end
     
-    # Put together the full coupling matrix
-    Nα = N1α + N2α
-    Mα = M1α + M2α
-    tildeG += Δvari
-    Fα = [kron(tildeFα[α] + Δvari, I(N)) for α in 1:3]
-    O = zeros(N^2, N^2)
-    return [tildeG Nα[1] Nα[2] Nα[3]
-             Mα[1] Fα[1]  O     O
-             Mα[2]  O    Fα[2]  O
-             Mα[3]  O     O    Fα[3]]
+    # Put together and return the full drive vector
+    if noPhonons
+        if !include3rdLevel
+            fullDrive = tildeΩ
+        else
+            fullDrive = [tildeΩ
+                         O1]
+        end
+    else
+        if !include3rdLevel
+            fullDrive = [tildeΩ
+                         D[1]
+                         D[2]
+                         D[3]]
+        else
+            fullDrive = [tildeΩ
+                         D[1]
+                         D[2]
+                         D[3]
+                         O1
+                         O2
+                         O2
+                         O2]
+        end
+    end
+    return fullDrive
+end
+
+
+function get_fullCouplingMatrix(SP)
+    return get_fullCouplingMatrix(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.ΩDriveOn, SP.tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
+end
+
+
+function get_fullCouplingMatrix(noPhonons, ΔvariDependence, Δvari_args, fiber, d, να, ηα, incField_wlf, array, ΩDriveOn, tildeG_flags, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans, include3rdLevel, cDriveType, Δc, Ωc, cDriveArgs)
+    if noPhonons
+        if !include3rdLevel Δvari, tildeΩ, tildeG                                                                   = get_parameterMatrices(noPhonons, ΔvariDependence, Δvari_args, fiber, d, να, ηα, incField_wlf, array, ΩDriveOn, tildeG_flags, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans, include3rdLevel, cDriveType, Δc, Ωc, cDriveArgs)
+        else                Δc, Δvari, tildeΩ, tildeΩc, tildeG                                                      = get_parameterMatrices(noPhonons, ΔvariDependence, Δvari_args, fiber, d, να, ηα, incField_wlf, array, ΩDriveOn, tildeG_flags, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans, include3rdLevel, cDriveType, Δc, Ωc, cDriveArgs) end
+    else
+        if !include3rdLevel Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2                             = get_parameterMatrices(noPhonons, ΔvariDependence, Δvari_args, fiber, d, να, ηα, incField_wlf, array, ΩDriveOn, tildeG_flags, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans, include3rdLevel, cDriveType, Δc, Ωc, cDriveArgs)
+        else                Δc, να, Δvari, tildeΩ, tildeΩα, tildeΩc, tildeΩcα, tildeG, tildeFα, tildeGα1, tildeGα2  = get_parameterMatrices(noPhonons, ΔvariDependence, Δvari_args, fiber, d, να, ηα, incField_wlf, array, ΩDriveOn, tildeG_flags, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans, interpolate_Im_Grm_trans, interpolation_Im_Grm_trans, include3rdLevel, cDriveType, Δc, Ωc, cDriveArgs) end
+    end
+    N = size(Δvari)[1] #change to get this directly as an argument..?
+    
+    # The excitation-excitation coupling
+    G = tildeG + Δvari
+    
+    # The two-photon detuning (with Δ set to 0, as it merely represents an irrelevant shift of the diagonal)
+    if include3rdLevel
+        ΔI = -Δc*I(N)
+        DiΩ = Di(tildeΩc)
+    end
+    
+    # The excitation-phonon coupling matrices (without the third level)
+    if !noPhonons
+        O12 = zeros(ComplexF64, N, N^2)
+        O22 = zeros(ComplexF64, N^2, N^2)
+        N1α = [deepcopy(O12) for α in 1:3]
+        N2α = deepcopy(N1α)
+        M1α = [deepcopy(O12)' for α in 1:3]
+        M2α = deepcopy(M1α)
+        for α in 1:3
+            for j in 1:N, i in 1:N
+                N1α[α][i, i + (j - 1)*N] = tildeGα1[α][i, j]
+                N2α[α][i, j + (j - 1)*N] = tildeGα2[α][i, j]
+                M1α[α][i + (i - 1)*N, j] = tildeGα1[α][i, j]
+                M2α[α][j + (i - 1)*N, j] = tildeGα2[α][i, j]
+            end
+        end
+        Nα = N1α + N2α
+        Mα = M1α + M2α
+        Fα = [kron(tildeFα[α] + Δvari, I(N)) for α in 1:3]
+        
+        # The full excitation-phonon coupling matrix (without the third level)
+        A = [G     Nα[1] Nα[2] Nα[3]
+             Mα[1] Fα[1] O22   O22
+             Mα[2] O22   Fα[2] O22
+             Mα[3] O22   O22   Fα[3]]
+    end
+    
+    # The detunings and coupling matrices when including the third level (with Δ set to 0, as it merely represents an irrelevant shift of the diagonal)
+    if include3rdLevel && !noPhonons
+        ΔIα = [(-Δc - να[α])*I(N^2) for α in 1:3]
+        IDiΩ = kron(I(N), DiΩ)
+        Pα = [deepcopy(O12) for α in 1:3]
+        for α in 1:3
+            for i in 1:N
+                Pα[α][i, i + (i - 1)*N] = tildeΩcα[α][i]
+            end
+        end
+        Qα = transpose.(Pα)
+        
+        # The full coupling matrices into and within the third-level sector
+        B = [DiΩ   Pα[1] Pα[2] Pα[3]
+             Qα[1] IDiΩ  O22   O22
+             Qα[2] O22   IDiΩ  O22
+             Qα[3] O22   O22   IDiΩ]
+        
+        C = [ΔI   O12    O12    O12
+             O12' ΔIα[1] O22    O22
+             O12' O22    ΔIα[2] O22
+             O12' O22    O22    ΔIα[3]]
+    end
+    
+    
+    # Put together and return the full coupling matrix
+    if noPhonons
+        if !include3rdLevel
+            fullCoupling = G
+        else
+            fullCoupling = [G    DiΩ
+                            DiΩ' ΔI ]
+        end
+    else
+        if !include3rdLevel
+            fullCoupling = A
+        else
+            fullCoupling = [A  B
+                            B' C]
+        end
+    end
+    return fullCoupling
 end
 
 
@@ -779,7 +881,7 @@ function calc_timeEvolution(Δ, params, N, initialState, tspan, dtmax, postfix, 
     filename = "TE_" * postfix
     folder = "timeEvol/"
     
-    if isfile(saveDir * folder * filename * ".txt") return load_as_txt(saveDir * folder, filename) end
+    # if isfile(saveDir * folder * filename * ".txt") return load_as_txt(saveDir * folder, filename) end
     
     if whichTimeEvolver == "OrdinaryDiffEq"        
         # Prepare the time evolution problem
@@ -815,21 +917,21 @@ function calc_timeEvolution(Δ, params, N, initialState, tspan, dtmax, postfix, 
             if !include3rdLevel
                 EoMs_args = empty_σVector(N), empty_σVector(N), 
                        Δ, params...
-                sol  = timeEvol(EoMs_wrap_noPh, initialState, EoMs_args, timeEvol_args)
+                sol  = timeEvol(EoMs_wrap_noPh, initialState, EoMs_args, timeEvol_args, stepCondition_endOftspan, stepFunc_nothing, "all")
             else
                 EoMs_args = empty_σVector(N), empty_σVector(N), empty_σVector(N), empty_σVector(N), 
                        Δ, params...
-                sol  = timeEvol(EoMs_wrap_noPh_w3l, initialState, EoMs_args, timeEvol_args)
+                sol  = timeEvol(EoMs_wrap_noPh_w3l, initialState, EoMs_args, timeEvol_args, stepCondition_endOftspan, stepFunc_nothing, "all")
             end
         else
             if !include3rdLevel
                 EoMs_args = empty_σVector(N), empty_BαVector(N), empty_σVector(N), empty_BαVector(N), 
                        Δ, params...
-                sol  = timeEvol(EoMs_wrap, initialState, EoMs_args, timeEvol_args)
+                sol  = timeEvol(EoMs_wrap, initialState, EoMs_args, timeEvol_args, stepCondition_endOftspan, stepFunc_nothing, "all")
             else
                 EoMs_args = empty_σVector(N), empty_σVector(N), empty_BαVector(N), empty_BαVector(N), empty_σVector(N), empty_σVector(N), empty_BαVector(N), empty_BαVector(N), 
                        Δ, params...
-                sol  = timeEvol(EoMs_wrap_w3l, initialState, EoMs_args, timeEvol_args)
+                sol  = timeEvol(EoMs_wrap_w3l, initialState, EoMs_args, timeEvol_args, stepCondition_endOftspan, stepFunc_nothing, "all")
             end
         end
         
@@ -870,20 +972,28 @@ end
 """
 Perform time evolution of the atomic, using the eigenmodes approach
 """
-function calc_timeEvolution_eigenmodes(Δ, fullDrive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, initialState, tspan, dtmax, postfix, noPhonons, save_timeEvol=true)
+function calc_timeEvolution_eigenmodes(Δ, fullDrive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, initialState, tspan, dtmax, postfix, noPhonons, include3rdLevel, save_timeEvol=true)
     filename = "TE_eig_" * postfix
     folder = "timeEvol/"
     
-    if isfile(saveDir * folder * filename * ".txt") return load_as_txt(saveDir * folder, filename) end
+    # if isfile(saveDir * folder * filename * ".txt") return load_as_txt(saveDir * folder, filename) end
     
     # Calculate time evolution
     times = range(tspan..., Int(floor((tspan[2] - tspan[1])/dtmax)))
+    σTrajectories = timeEvolution_eigenmodes.(times, Δ, Ref(fullDrive), Ref(eigenEnergies), Ref(eigenModesMatrix), Ref(eigenModesMatrix_inv), Ref(initialState), noPhonons, include3rdLevel)
+    
     if noPhonons
-        σTrajectories = timeEvolution_eigenmodes_noPh.(times, Δ, Ref(tildeΩ), Ref(eigenEnergies), Ref(eigenModesMatrix), Ref(eigenModesMatrix_inv), Ref(initialState))
-        xTrajectories = pack_σIntox.(σTrajectories)
+        if !include3rdLevel
+            xTrajectories = pack_σIntox.(σTrajectories)
+        else
+            xTrajectories = pack_σgeσgsIntox.(σTrajectories)
+        end
     else
-        σBαTrajectories = timeEvolution_eigenmodes.(times, Δ, Ref(fullDrive), Ref(eigenEnergies), Ref(eigenModesMatrix), Ref(eigenModesMatrix_inv), Ref(initialState))
-        xTrajectories = pack_σBαIntox.(σBαTrajectories)
+        if !include3rdLevel
+            xTrajectories = pack_σBαIntox.(σTrajectories)
+        else
+            xTrajectories = pack_σgeσgsBαgeBαgsIntox.(σTrajectories)
+        end
     end
     
     # Pack and save data
@@ -899,8 +1009,8 @@ Perform time evolution for parameters given by SP, using the eigenmodes approach
 """
 function calc_timeEvolution_eigenmodes(SP, Δ)
     postfix = get_postfix_timeEvolution(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.noPhonons, SP.incField_wlf, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, SP.include3rdLevel, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
-    drive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = prepare_eigenmodesCalculation(SP)
-    return calc_timeEvolution_eigenmodes(Δ, drive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, SP.initialState, SP.tspan, SP.dtmax, postfix, SP.noPhonons, SP.save_timeEvol)
+    fullDrive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = prepare_eigenmodesCalculation(SP)
+    return calc_timeEvolution_eigenmodes(Δ, fullDrive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, SP.initialState, SP.tspan, SP.dtmax, postfix, SP.noPhonons, SP.include3rdLevel, SP.save_timeEvol)
 end
 
 
@@ -909,8 +1019,8 @@ Scan time evolutions over the detuning, using the eigenmodes approach
 """
 function scan_timeEvolution_eigenmodes(SP)
     postfixes = get_postfix_timeEvolution.(SP.Δ_range, SP.ΔvariDescription, SP.dDescription, Ref(SP.να), Ref(SP.ηα), SP.noPhonons, Ref(SP.incField_wlf), Ref(SP.tildeG_flags), SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, Ref(SP.tspan), SP.dtmax, SP.include3rdLevel, SP.cDriveDescription, SP.Δc, SP.Ωc, Ref(SP.cDriveArgs))
-    drive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = prepare_eigenmodesCalculation(SP)
-    return calc_timeEvolution_eigenmodes.(SP.Δ_range, Ref(drive), Ref(eigenEnergies), Ref(eigenModesMatrix), Ref(eigenModesMatrix_inv), Ref(SP.initialState), Ref(SP.tspan), SP.dtmax, postfixes, SP.noPhonons, SP.save_timeEvol)
+    fullDrive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = prepare_eigenmodesCalculation(SP)
+    return calc_timeEvolution_eigenmodes.(SP.Δ_range, Ref(fullDrive), Ref(eigenEnergies), Ref(eigenModesMatrix), Ref(eigenModesMatrix_inv), Ref(SP.initialState), Ref(SP.tspan), SP.dtmax, postfixes, SP.noPhonons, SP.include3rdLevel, SP.save_timeEvol)
 end
 
 
@@ -959,8 +1069,8 @@ Calculate the transmission of light through the fiber in the chosen driving mode
 using the eigenmodes approach
 """
 function calc_transmission_eigenmodes(SP, Δ)
-    drive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = prepare_eigenmodesCalculation(SP)
-    return transmission_eigenmodes(Δ, drive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, SP.fiber.propagation_constant_derivative)
+    fullDrive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = prepare_eigenmodesCalculation(SP)
+    return transmission_eigenmodes(Δ, fullDrive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, SP.fiber.propagation_constant_derivative)
 end
 
 
@@ -969,8 +1079,8 @@ Scan the transmission of light through the fiber in the chosen driving mode over
 using the eigenmodes approach
 """
 function scan_transmission_eigenmodes(SP)
-    drive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = prepare_eigenmodesCalculation(SP)
-    return transmission_eigenmodes.(SP.Δ_range, Ref(drive), Ref(eigenEnergies), Ref(eigenModesMatrix), Ref(eigenModesMatrix_inv), SP.fiber.propagation_constant_derivative)
+    fullDrive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = prepare_eigenmodesCalculation(SP)
+    return transmission_eigenmodes.(SP.Δ_range, Ref(fullDrive), Ref(eigenEnergies), Ref(eigenModesMatrix), Ref(eigenModesMatrix_inv), SP.fiber.propagation_constant_derivative)
 end
 
 
@@ -1135,36 +1245,24 @@ end
 """
 Calculate the radiative part of the full coupling matrix
 """
-function calc_fullCoupling_rm(SP)
-    Δvari = get_Δvari(SP.ΔvariDependence, SP.Δvari_args, SP.array)
-    if all(SP.ηα .== 0)
-        _, tildeG_rm = get_tildeGs_split(SP)
-    else 
-        _, _, _, tildeG_rm, tildeGα1_rm, tildeGα2_rm = get_tildeGs_split(SP)
-    end
-    
-    # Get trajectories, couplings matrices, and calculate expectation value to get radiative decay rates
-    if SP.noPhonons
-        fullCoupling_rm = Δvari + tildeG_rm
-    else
-        tildeFα_rm = get_tildeFα(tildeG_rm, SP.να)
-        fullCoupling_rm = get_fullCouplingMatrix(Δvari, tildeG_rm, tildeFα_rm, tildeGα1_rm, tildeGα2_rm)
-    end
-    return fullCoupling_rm
+function calc_fullCoupling_rm_egSector(SP)
+    tildeG_flags = (false, true, SP.tildeG_flags[3])
+    include3rdLevel = false
+    return get_fullCouplingMatrix(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.ΩDriveOn, tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
 end
 
 
 """
 Perform time-evolution specifically for the calculation of the memory retrieval error
 """
-function calc_timeEvolution_forMemoryRetrievalError(SP, Δ, fullCoupling_rm, radDecayRateAndStateNorm_LowerTol)
+function calc_timeEvolution_forMemoryRetrievalError(SP, Δ, fullCoupling_rm_egSector, radDecayRateAndStateNorm_LowerTol)
     if !SP.include3rdLevel throw(ArgumentError("calc_timeEvolution_forMemoryRetrievalError assumes the third level (s) is included")) end
     
     params = get_parameterMatrices(SP)
     timeEvol_args = (tspan=SP.tspan,
                      dtmax=SP.dtmax, 
                      stepFuncValLowerTol=radDecayRateAndStateNorm_LowerTol)
-    stepFunc(t, xt, ΔxΔt, timeEvol_args) = (calc_radiativeDecayRate(SP, xt, fullCoupling_rm), norm(xt)^2)
+    stepFunc(t, xt, ΔxΔt, timeEvol_args) = (calc_radiativeDecayRate(SP, xt, fullCoupling_rm_egSector), norm(xt)^2)
     
     if SP.noPhonons
         EoMs_args = empty_σVector(SP.N), empty_σVector(SP.N), empty_σVector(SP.N), empty_σVector(SP.N), 
@@ -1183,7 +1281,7 @@ end
 """
 Calculate the radiative decay rate
 """
-function calc_radiativeDecayRate(SP, state, fullCoupling_rm)
+function calc_radiativeDecayRate(SP, state, fullCoupling_rm_egSector)
     if SP.noPhonons
         if !SP.include3rdLevel
             σge = unpack_σFromx(state)
@@ -1200,7 +1298,7 @@ function calc_radiativeDecayRate(SP, state, fullCoupling_rm)
         σBαVec = pack_σBαIntoσBαVec(σge, Bαge)
     end
     
-    return real(2*σBαVec'*imag(fullCoupling_rm)*σBαVec)
+    return real(2*σBαVec'*imag(fullCoupling_rm_egSector)*σBαVec)
 end
 
 
@@ -1216,15 +1314,8 @@ end
 #   Miscellaneous
 # ================================================
 function prepare_eigenmodesCalculation(SP)
-    if SP.noPhonons
-        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP)
-        drive = tildeΩ
-        coupling = Δvari + tildeG
-    else 
-        Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP)
-        drive = get_fullDriveVector(tildeΩ, tildeΩα)
-        coupling = get_fullCouplingMatrix(Δvari, tildeG, tildeFα, tildeGα1, tildeGα2)
-    end
-    eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = spectrum_basisMatrices(coupling)
-    return drive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv
+    fullDrive = get_fullDriveVector(SP)
+    fullCoupling = get_fullCouplingMatrix(SP)
+    eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = spectrum_basisMatrices(fullCoupling)
+    return fullDrive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv
 end

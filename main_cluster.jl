@@ -145,11 +145,11 @@ function memoryEfficiency(SP)
     
     # Prepare parameters
     Δ = SP.Δc + eps(Float64)
-    fullCoupling_rm = calc_fullCoupling_rm(SP)
+    fullCoupling_rm_egSector = calc_fullCoupling_rm_egSector(SP)
     radDecayRateAndStateNorm_LowerTol = (1e-6, 0.01)
     
     # Perform time-evolution and calculate memory retrieval error
-    times, states, radDecayRatesAndStateNorm = calc_timeEvolution_forMemoryRetrievalError(SP, Δ, fullCoupling_rm, radDecayRateAndStateNorm_LowerTol)
+    times, states, radDecayRatesAndStateNorm = calc_timeEvolution_forMemoryRetrievalError(SP, Δ, fullCoupling_rm_egSector, radDecayRateAndStateNorm_LowerTol)
     radiativeDecayRates = [x[1] for x in radDecayRatesAndStateNorm]
     ϵ = calc_memoryRetrievalError(times, radiativeDecayRates)
     

@@ -358,6 +358,16 @@ function pack_σgeσgsIntox(σge, σgs)
 end
 
 
+function pack_σgeσgsIntox!(σgeσgs, x)
+    return pack_σgeσgsIntox!(σgeσgs[1], σgeσgs[2], x)
+end
+
+
+function pack_σgeσgsIntox(σgeσgs)
+    return pack_σgeσgsIntox(σgeσgs[1], σgeσgs[2])
+end
+
+
 """
 Pack the σge, σgs, Bαge, and Bαgs entries into the x vector to facilitate NonlinearSolve
 
@@ -383,6 +393,16 @@ function pack_σgeσgsBαgeBαgsIntox(σge, σgs, Bαge, Bαgs)
     x = empty_xVector_w3l(N)
     pack_σgeσgsBαgeBαgsIntox!(σge, σgs, Bαge, Bαgs, x)
     return x
+end
+
+
+function pack_σgeσgsBαgeBαgsIntox!(σgeσgsBαgeBαgs, x)
+    return pack_σgeσgsBαgeBαgsIntox!(σgeσgsBαgeBαgs[1], σgeσgsBαgeBαgs[2], σgeσgsBαgeBαgs[3], σgeσgsBαgeBαgs[4], x)
+end
+
+
+function pack_σgeσgsBαgeBαgsIntox(σgeσgsBαgeBαgs)
+    return pack_σgeσgsBαgeBαgsIntox(σgeσgsBαgeBαgs[1], σgeσgsBαgeBαgs[2], σgeσgsBαgeBαgs[3], σgeσgsBαgeBαgs[4])
 end
 
 
@@ -496,12 +516,127 @@ end
 Unpack the σ and Bα entries from the vectorized σBα
 """
 function unpack_σBαFromσBαVec(σBαVec)
-    N = Int(round(sqrt(length(σBαVec)/3 + 1/36) - 1/6))
+    N = Int(round(sqrt(length(σBαVec)/3 + 1/36) - 1/6)) #if length(σBαVec) = N + 3N^2, then 3*length(σBαVec) + 1/4 = (3N + 1/2)^2, and N is equal to the following
     σ = σBαVec[1:N]
     Bα = [reshape(σBαVec[N + (α - 1)*N^2 + 1:N + α*N^2], (N, N)) for α in 1:3]
     return σ, Bα
 end
 
+
+"""
+Pack the σge and σgs entries into the vectorized σge and σgs
+"""
+function pack_σgeσgsIntoσgeσgsVec(σge, σgs)
+    return vcat(σge, σgs)
+end
+
+
+"""
+Unpack the σge and σgs entries from the vectorized σge and σgs
+"""
+function unpack_σgeσgsFromσgeσgsVec(σgeσgsVec)
+    N = Int(length(σgeσgsVec)/2)
+    σge = σgeσgsVec[1:N]
+    σgs = σgeσgsVec[N + 1:end]
+    return σge, σgs
+end
+
+
+"""
+Pack the σge, σgs, Bαge, and Bαgs entries into the vectorized σge, σgs, Bαge, and Bαgs
+"""
+function pack_σgeσgsBαgeBαgsIntoσgeσgsBαgeBαgsVec(σge, σgs, Bαge, Bαgs)
+    return vcat(σge, vec.(Bαge)..., σgs, vec.(Bαgs)...)
+end
+
+
+"""
+Unpack the σge, σgs, Bαge, and Bαgs entries from the vectorized σge, σgs, Bαge, and Bαgs
+"""
+function unpack_σgeσgsBαgeBαgsFromσgeσgsBαgeBαgsVec(σgeσgsBαgeBαgsVec)
+    N = Int(round(sqrt(length(σgeσgsBαgeBαgsVec)/6 + 1/36) - 1/6)) #if length(σBαVec) = 2(N + 3N^2), then 6*length(σBαVec) + 1 = (6N + 1)^2, and N is equal to the following
+    σge = σgeσgsBαgeBαgsVec[1:N]
+    Bαge = [reshape(σgeσgsBαgeBαgsVec[N + (α - 1)*N^2 + 1:N + α*N^2], (N, N)) for α in 1:3]
+    σgs = σgeσgsBαgeBαgsVec[N + 3N^2 + 1:N + 3N^2 + N]
+    Bαgs = [reshape(σgeσgsBαgeBαgsVec[2N + 3N^2 + (α - 1)*N^2 + 1:2N + 3N^2 + α*N^2], (N, N)) for α in 1:3]
+    return σge, σgs, Bαge, Bαgs
+end
+
+
+"""
+Unpack the vectorized σ from x
+"""
+function unpack_σVecFromx(x)
+    return unpack_σFromx(x)
+end
+
+
+"""
+Unpack the vectorized σBα from x
+"""
+function unpack_σBαVecFromx(x)
+    σ, Bα = unpack_σBαFromx(x)
+    return pack_σBαIntoσBαVec(σ, Bα)
+end
+
+
+"""
+Unpack the vectorized σgeσgs from x
+"""
+function unpack_σgeσgsVecFromx(x)
+    σge, σgs = unpack_σgeσgsFromx(x)
+    return pack_σgeσgsIntoσgeσgsVec(σge, σgs)
+end
+
+
+"""
+Unpack the vectorized σgeσgsBαgeBαgs from x
+"""
+function unpack_σgeσgsBαgeBαgsVecFromx(x)
+    σge, σgs, Bαge, Bαgs = unpack_σgeσgsBαgeBαgsFromx(x)
+    return pack_σgeσgsBαgeBαgsIntoσgeσgsBαgeBαgsVec(σge, σgs, Bαge, Bαgs)
+end
+
+
+"""
+Unpack the vectorized σ, Bα... from x
+"""
+function unpack_VecFromx(x, noPhonons, include3rdLevel)
+    if noPhonons
+        if !include3rdLevel
+            return unpack_σVecFromx(x)
+        else
+            return unpack_σgeσgsVecFromx(x)
+        end
+    else
+        if !include3rdLevel
+            return unpack_σBαVecFromx(x)
+        else
+            return unpack_σgeσgsBαgeBαgsVecFromx(x)
+        end
+    end
+end
+
+
+"""
+Unpack σ, Bα... from the vectorized σ, Bα...
+"""
+function unpack_FromVec(v, noPhonons, include3rdLevel)
+    if noPhonons
+        if !include3rdLevel
+            return v
+        else
+            return unpack_σgeσgsFromσgeσgsVec(v)
+        end
+    else
+        if !include3rdLevel
+            return unpack_σBαFromσBαVec(v)
+        else
+            return unpack_σgeσgsBαgeBαgsFromσgeσgsBαgeBαgsVec(v)
+        end
+    end
+end
+    
 
 # ================================================
 #   Functions pertaining to string labels and descriptions

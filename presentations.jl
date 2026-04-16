@@ -509,3 +509,124 @@ function fig_presentation_GnmEigenModes(zs, eigen_σ, ks, eigen_σ_FT, z_range, 
     display(GLMakie.Screen(), fig)
     return fig
 end
+
+
+"""
+Presentation version of fig_compareMemoryRetrievalError,
+showing the memory retrieval error vs. number of atoms
+for different values of the Lamb-Dicke parameters
+"""
+function fig_presentation_compareMemoryRetrievalError(Ns, ϵs, ϵ_fits, labels, SP)
+    colors = distinguishable_colors(size(ϵs)[1], [RGB(1, 1, 1), RGB(0, 0, 0)], dropseed=true)
+    
+    if SP.cDriveDescription == "cst"
+        titl = "Uniform control drive, " 
+    elseif SP.cDriveDescription == "hyp"
+        titl = "Hyperbolic control drive, " 
+    end
+    
+    if SP.initialStateDescription == "Ga"
+        titl *= "Gaussian initial state"
+    elseif SP.initialStateDescription == "tr"
+        titl *= "triangle initial state"
+    end
+    
+    # titl = "Uniform control drive, motion included" 
+    
+    # Start figure 
+    fig = Figure(size=(400, 300), fontsize=16)
+    
+    # Make titles and axes
+    Label(fig[1, 1], latexstring(titl * "\$\$"), tellwidth=false)
+    ax1 = Axis(fig[2, 1], yscale=log10, #limits=(nothing, (10^-3.2, 10^)),
+               xlabel=L"$ N $", ylabel=L"Infidelity, $ ϵ $")
+    
+    # Plot 
+    for i in 1:size(ϵs)[1]
+        scatter!(ax1, Ns, ϵs[i, :], color=colors[i], label=labels[i])
+        if !isnothing(ϵ_fits) lines!(ax1, Ns, ϵ_fits[i, :], color=colors[i]) end
+    end
+    
+    # Finish figure
+    axislegend()
+    # Legend(fig[2, 2], ax1)
+    display(GLMakie.Screen(), fig)
+    # save("C:\\Users\\Simon\\Downloads\\compMem_$(SP.cDriveDescription)_rhof$(ro(SP.ρf)).png", fig, px_per_unit=4)
+    # save("C:\\Users\\Simon\\Downloads\\compMem_compIndep_$(SP.cDriveDescription)_rhof$(ro(SP.ρf)).png", fig, px_per_unit=4)
+    # save("C:\\Users\\Simon\\Downloads\\compMem_compTrGa_$(SP.cDriveDescription)_rhof$(ro(SP.ρf)).png", fig, px_per_unit=4)
+    # save("C:\\Users\\Simon\\Downloads\\compMem_varyLD_$(SP.cDriveDescription)_$(SP.initialStateDescription)_rhof$(ro(SP.ρf)).png", fig, px_per_unit=4)
+    # save("C:\\Users\\Simon\\Downloads\\compMem_$(SP.cDriveDescription)_$(SP.initialStateDescription)_rhof$(ro(SP.ρf)).png", fig, px_per_unit=4)
+end
+
+
+"""
+Presentation version of fig_propConst_vs_x,
+showing the propagation constant, κ, as a function of frequency, ω, 
+for a specific value of the fiber radius, ρf, and the index of refraction, n.
+
+It is assumed that the units of ρf and ω are nm and nm^-1 resp.
+"""
+function fig_presentation_propConst_vs_x(x_range, κs, x_usualValue, xlabl, SP)
+    if xlabl == L"$ ρ_{f}/λ_{a} $"
+        filename = "varyrho"
+    elseif xlabl == L"$ n $"
+        filename = "varyn"
+    end
+    
+    # Start figure 
+    fig = Figure(size=(400, 300))
+    
+    # Make axis
+    ax1 = Axis(fig[1, 1], limits=(extrema(x_range), nothing), 
+               xlabel=xlabl, 
+               ylabel=L"$ \kappa/ω_{a} $")
+    
+    # Plot the propagation constant
+    lines!(ax1, x_range, κs./ωa)
+    vlines!(ax1, x_usualValue, color=:green, label=L"Usual value$$")
+    
+    # Finish figure
+    axislegend()
+    display(GLMakie.Screen(), fig)
+    # save("C:\\Users\\Simon\\Downloads\\propConst_$(filename)_rhof$(ro(SP.ρf)).png", fig, px_per_unit=4)
+end
+
+
+"""
+Presentation showing the collective decay rates as a function of the dominant k 
+(similar to fig_eigenEnergies_vs_k) 
+"""
+function fig_presentation_collDecayRates_vs_k(dominant_ks, collΓ_gm, collΓ_rm, SP)
+    if SP.ηα == [0, 0, 0]
+        filename = "noMotion"
+    else
+        filename = "withMotion"
+    end
+    
+    # Start figure 
+    fig = Figure(size=(400, 300))
+    
+    # Make title and axis
+    ax1 = Axis(fig[1, 1], limits=(extrema(dominant_ks), (1e-3, 10^1)),
+               ylabel=L"$ \tilde{Γ}_{gm}/γ_{a} $",
+               yscale=log10)
+    ax2 = Axis(fig[2, 1], limits=(extrema(dominant_ks), (10^-1.5, 10^0.5)),
+               xlabel=L"$ λ_{a}k_z $",
+               ylabel=L"$ \tilde{Γ}_{rm}/γ_{a} $",
+               yscale=log10)
+    
+    # Plot
+    scatter!(ax1, dominant_ks, collΓ_gm, color=:blue)
+    scatter!(ax2, dominant_ks, collΓ_rm, color=:red)
+    
+    # Mark the light cone and position of propagation constant
+    for ax in [ax1, ax2]
+        vlines!(ax, [-ωa, ωa], color=:black, linestyle=:dash, linewidth=1, label=L"Light cone$$")
+        vlines!(ax, [SP.fiber.propagation_constant], color=:red, linestyle=:dash, linewidth=1, label=L"Prop. const. $$")
+    end
+    
+    # Finish figure
+    axislegend(ax1, position=:rt)
+    display(GLMakie.Screen(), fig)
+    # save("C:\\Users\\Simon\\Downloads\\collDecayRates_$(filename)_rhof$(ro(SP.ρf)).png", fig, px_per_unit=4)
+end

@@ -14,11 +14,13 @@ function fig_propConst_vs_x(x_range, κs, x_usualValue, titl, xlabl)
     Label(fig[1, 1], latexstring(L"Propagation constant$$\\\\" * titl), tellwidth=false)
     ax1 = Axis(fig[2, 1], limits=(extrema(x_range), nothing), 
                xlabel=xlabl, 
-               ylabel=L"$ \kappa λ_{a} $")
+            #    ylabel=L"$ \kappa λ_{a} $")
+               ylabel=L"$ \kappa/ω_{a} $")
     
     # Plot the propagation constant
-    lines!(ax1, x_range, κs, label=L"Prop. const.$$")
-    hlines!(ax1, ωa, color=:black, label=L"Light line edge$$")
+    # lines!(ax1, x_range, κs, label=L"Prop. const.$$")
+    lines!(ax1, x_range, κs./ωa, label=L"Prop. const.$$")
+    # hlines!(ax1, ωa, color=:black, label=L"Light line edge$$")
     vlines!(ax1, x_usualValue, color=:green, label=L"Usual value$$")
     
     # Finish figure
@@ -1212,7 +1214,9 @@ function fig_transmission_polar(Δ_range, t, titl)
     # Start figure 
     fig = Figure(size=(800, 900))
     Label(fig[1, 1], titl, tellwidth=false)
-    ax1 = Axis(fig[2, 1])
+    ax1 = Axis(fig[2, 1],
+               xlabel=L"Re$ (t) $",
+               ylabel=L"Im$ (t) $")
     
     # Radial lines
     vlines!(0, color=:black, linewidth=0.5, alpha=0.8)

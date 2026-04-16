@@ -174,11 +174,11 @@ function define_SP_BerlinSr()
     λ0  = 689       #nm, guided mode wavelength, transition frequency of Sr
     ω0  = 2π/λ0     #nm^-1, guided mode angular frequency
     γ0  = 2π*7.4    #kHz, free decay rate of Sr88
-    ρf0 = 115       #nm, fiber radius
-    n0  = 1.7      #unitless, index of refraction
+    ρf0 = 200       #nm, fiber radius, 115, 150, 200
+    n0  = 1.45      #unitless, index of refraction
     
     # Atomic array specs
-    ρa0 = 275   #nm, atomic array radial coordinate
+    ρa0 = 300   #nm, atomic array radial coordinate, 275 (115, 150), 300 (200)
     a0  = 200   #nm, atomic array lattice constant
     
     # Trap specs (might be lower than the Cs experiment)
@@ -215,17 +215,17 @@ function define_SP_BerlinSr()
     # ηα = [0, 0, 0]
     
     # Whether phonons are excluded or not from the calculations (a finite ηα but noPhonons = true will result in including ground state motion into tildeG)
-    # noPhonons = all(ηα .== 0)
-    noPhonons = true
+    noPhonons = all(ηα .== 0)
+    # noPhonons = true
     
     # Whether to include a third (metastable) level to facilitate EIT
-    include3rdLevel = true
+    include3rdLevel = false
     
     # Set which kind of array to use ("1Dchain", "doubleChain", "randomZ")
     arrayType = "1Dchain"
     
     # Set number of atomic sites 
-    N_sites = 200
+    N_sites = 7
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
@@ -237,24 +237,25 @@ function define_SP_BerlinSr()
     array, arrayDescription, N = get_array(arrayType, N_sites, ρa0_ul, a0_ul, ff, pos_unc, n_inst)
     
     # Which time evolver to use ("OrdinaryDiffEq", "simple")
-    whichTimeEvolver = "simple"
+    whichTimeEvolver = "OrdinaryDiffEq"
     
     # Time span and maximum time step allowed in time evolution
     tspan = (0, 100)
     dtmax = 0.01
     
     # Prepare initial state for time evolution, as well as description for postfix
-    # initialState = groundstate(N, noPhonons, include3rdLevel)
-    # initialStateDescription = "gs"
+    initialState = groundstate(N, noPhonons, include3rdLevel)
+    initialStateDescription = "gs"
     # GaussWidth = sqrt(N)*a0_ul
     # initialState = Gaussian_sState(N, array, fiber, GaussWidth, noPhonons, include3rdLevel)
     # # initialState = GaussianState(N, array, 0, N/2*a0_ul, GaussWidth, "e", noPhonons, include3rdLevel)
     # initialStateDescription = "Ga"
-    initialState = triangle_sState(N, array, fiber, noPhonons, include3rdLevel)
-    initialStateDescription = "tr"
+    # initialState = triangle_sState(N, array, fiber, noPhonons, include3rdLevel)
+    # # initialState = triangleState(N, array, fiber.propagation_constant, "e", noPhonons, include3rdLevel)
+    # initialStateDescription = "tr"
     
     # Whether to have driving on the g-e transition or not
-    ΩDriveOn = false
+    ΩDriveOn = true
     
     # Atomic dipole moment
     # d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul, array)
@@ -618,32 +619,36 @@ function main()
     # show(SP)
     
     
-    # TEMP
-    
-    # # Test Grm_ρρ_Chang_
-    # # Still not matching previous calculations as it should? (Try to compare with Daniel's code?)
-    # ρa = SP.ρa
-    # z_range = range(0, 10, 30)
-    
-    # r_source = [ρa, 0, 0]
-    # r_fields = [[ρa, 0, z] for z in z_range]
-    # ρhat = [1, 0, 0]
-    
-    # abstol = 1e-5
-    
-    # # @time Grm_vacum = Ref(ρhat').*G0.(ωa, r_fields, Ref(r_source)).*Ref(ρhat)
-    # # @time Grm_apprx = Ref(ρhat').*Grm.(Ref(SP.fiber), ωa, r_fields, Ref(r_source), Ref((0, 0)), 1, true, abstol, Ref((true, false))).*Ref(ρhat)
-    # @time Grm_Chang = Grm_ρρ_Chang.(Ref(SP.fiber), ωa, r_fields, Ref(r_source), true, abstol)
-    
-    
-    # # fig_complexFunction(z_range, Grm_vacum, Grm_apprx, Grm_Chang, labels=["vacuum", "approx", "Chang"])
-    # fig_complexFunction(z_range, Grm_Chang)
-    
     
     # TEMP
     
+    # consider restructuring, such that the x vector only appears in context of EoMs
+        # e.g. giving initial state as σ, Bα instead of x
+    # making σ and σge (etc.) naming consistent...
+    # consider restructuring pack/unpack functions (there are many right now, and it is a bit confusing)
+        # consider removing those that deal with σBα as a tuple
+        # consider removing pack/unpack functions whose name imply their use case and instead use noPhonons and include3rdLevel flags (when these functions are called these flags can just be set in the function call if one-line is needed)
+        # consider making a diagram of all possible pack/unpack and implement them all systematically
+        # allow only going between the σ and Vec or σ and x?
+        # give N as an argument instead of calculating it? Annoying for EoMs? 
+    # consider removing the distinction of σ, Bα and σBα everywhere, i.e. just have one object for the variables and then it should be clear from flags which combination of σ, Bα etc. it contains...
+    # commit 
     
-    # plot_propConst_inOutMom(SP)
+    # clean up code
+        # remove functions that are no longer in use
+        # change function names to reflect new structure, especially in main_local
+    
+    # fix inconsistency of Bα (for both e and s states) between EoM and _eigenmodes time evol...
+    # check if calc_steadyState works, fix if it doesn't
+    
+    # implement calculation of ϵ via _eigenmodes
+    # commit
+    
+    # TEMP
+    
+    
+    
+    # plot_propConst_vs_fiber(SP)
     # plot_coupling_strengths(SP)
     # plot_arrayIn3D(SP)
     # plot_interPairEnergiesWeights(SP)
@@ -672,7 +677,7 @@ end
 # ================================================
 #   Generate figures
 # ================================================
-function plot_propConst_inOutMom(SP)
+function plot_propConst_vs_fiber(SP)
     ω_range  = [ωa]
     ρf_range = range(0.5*SP.ρf, 2*SP.ρf, 16)
     n_range  = range(1.3, 2, 15)
@@ -686,11 +691,13 @@ function plot_propConst_inOutMom(SP)
     
     κs_plot = κs[ω_ind, :, n_ind]
     titl = L"$ ω = ω_{a} $, $ n = %$(round(n_range[n_ind], sigdigits=3)) $"
-    fig_propConst_vs_x(ρf_range, κs_plot, ρf_range[ρf_ind], titl, L"$ ρ_{f}/λ_{a} $")
+    # fig_propConst_vs_x(ρf_range, κs_plot, ρf_range[ρf_ind], titl, L"$ ρ_{f}/λ_{a} $")
+    fig_presentation_propConst_vs_x(ρf_range, κs_plot, ρf_range[ρf_ind], L"$ ρ_{f}/λ_{a} $", SP)
     
     κs_plot = κs[ω_ind, ρf_ind, :]
     titl = L"$ ω = ω_{a} $, $ ρ_{f}/λ_{a} = %$(round(ρf_range[ρf_ind], sigdigits=3)) $"
-    fig_propConst_vs_x(n_range , κs_plot, n_range[n_ind], titl, L"$ n $")
+    # fig_propConst_vs_x(n_range , κs_plot, n_range[n_ind], titl, L"$ n $")
+    fig_presentation_propConst_vs_x(n_range , κs_plot, n_range[n_ind], L"$ n $", SP)
     
 end
 
@@ -702,7 +709,7 @@ end
 
 function plot_interPairEnergiesWeights(SP)
     # We calculate the eigenenergies for a single pair of atoms with a certain distance between them
-    # Likewise, we calculate their effective Rabi frequency (their weigth in the expression for the transmission),
+    # Likewise, we calculate their effective Rabi frequency (their weight in the expression for the transmission),
     # and the amplitude of their contribution to the transmission
     # We also find the probability that any pair of atoms has a certain distance between them, 
     # given a number of atoms randomly distributed in a certain interval
@@ -772,20 +779,13 @@ function plot_interPairEnergiesWeights(SP)
     # Find eigenenergies for a pair of atoms, as well as the weigth of the corresponding contributions to the transmission, the amplitude of those contributions, and the amplitude weigthed with the probability of that specific inter-atom distance
     collΔs, collΓs, weights, amplitudes, amplitudes_prob = zeros(n, N_modes), zeros(n, N_modes), zeros(n, N_modes), zeros(n, N_modes), zeros(n, N_modes)
     for (i, array) in enumerate(arrays)
-        if noPhonons
-            Δvari, tildeΩ, tildeG = get_parameterMatrices(noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, array, SP.ΩDriveOn, SP.tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
-            drive = tildeΩ
-            fullCoupling = Δvari + tildeG
-        else
-            Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, array, SP.ΩDriveOn, SP.tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
-            drive = get_fullDriveVector(tildeΩ, tildeΩα)
-            fullCoupling = get_fullCouplingMatrix(Δvari, tildeG, tildeFα, tildeGα1, tildeGα2)
-        end
+        fullDrive = get_fullDriveVector(SP.fiber, SP.d, SP.ηα, SP.incField_wlf, array, SP.ΩDriveOn)
+        fullCoupling = get_fullCouplingMatrix(noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, array, SP.ΩDriveOn, SP.tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
         
         eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = spectrum_basisMatrices(fullCoupling)
         collΔ, collΓ = collEnergies(eigenEnergies)
         
-        weight, resonances = transmission_eigenmodes_weights_resonances(SP.Δ_range, drive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, SP.fiber.propagation_constant_derivative)
+        weight, resonances = transmission_eigenmodes_weights_resonances(SP.Δ_range, fullDrive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, SP.fiber.propagation_constant_derivative)
         
         # Probability for a certain distance between any pair of atoms 
         # probability = @. 2*(L - interPairDistance[i])/L^2
@@ -1446,8 +1446,7 @@ function plot_GnmEigenModes(SP)
         
     else
         # Get coupling matrix and its spectrum
-        Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP)
-        fullCoupling = get_fullCouplingMatrix(Δvari, tildeG, tildeFα, tildeGα1, tildeGα2)
+        fullCoupling = get_fullCouplingMatrix(SP)
         eigenEnergies, eigenModes = spectrum(fullCoupling)
         
         # Pack the eigenmodes
@@ -1487,17 +1486,15 @@ end
 
 
 function plot_emissionPatternOfGnmeigenModes(SP)
+    if SP.include3rdLevel throw(ArgumentError("plot_emissionPatternOfGnmeigenModes assumes the third level (s) is excluded")) end
+    
+    fullCoupling = get_fullCouplingMatrix(SP)
+    eigenEnergies, eigenModes = spectrum(fullCoupling)
+        
     if SP.noPhonons
-        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP)
-        eigenEnergies, eigen_σs = spectrum(Δvari + tildeG)
         eigen_σBαs = eigenModes
     else
-        Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP)
-        fullCoupling = get_fullCouplingMatrix(Δvari, tildeG, tildeFα, tildeGα1, tildeGα2)
-        eigenEnergies, eigenModes = spectrum(fullCoupling)
         eigen_σBαs = unpack_σBαFromσBαVec.(eigenModes)
-        eigen_σs   = [eigen_σBα[1] for eigen_σBα in eigen_σBαs]
-        eigen_Bαs  = [eigen_σBα[2] for eigen_σBα in eigen_σBαs]
     end
     
     for eigen_σBα in eigen_σBαs
@@ -1556,8 +1553,10 @@ function plot_GnmEigenEnergies(SP)
     
     # titl = L"$ N = %$(SP.N) $, including $ η_{α}^2 $ shift"
     # titl = L"$ N = %$(SP.N) $, without guided modes"
-    # fig = fig_presentation_eigenEnergies_vs_k(dominant_ks, collΔ, abs.(collΓ), weights_abs, SP.fiber.propagation_constant, titl)
+    # fig = fig_presentation_eigenEnergies_vs_k(dominant_ks, collΔ, abs.(collΓ), weights_abs, SP.fiber.propagation_constant, "")
     # save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Conferences and visits\\Berlin 2025\\talk\\figures\\band_N200_log_shifted.png", fig, px_per_unit=2)
+    # flt = dominant_ks .> 3
+    # fig_presentation_collDecayRates_vs_k(dominant_ks[flt], collΓ_gm[flt], collΓ_rm[flt], SP)
 end
 
 
@@ -1640,24 +1639,19 @@ end
 
 
 function plot_lossWithGnmEigenEnergies(SP)
+    if SP.include3rdLevel throw(ArgumentError("plot_lossWithGnmEigenEnergies assumes the third level (s) is excluded")) end
+    
     # σBα_scan = scan_steadyState(SP)
     # t = calc_transmission.(Ref(SP), σBα_scan)
     # r = calc_reflection.(Ref(SP), σBα_scan)
     
-    if SP.noPhonons
-        Δvari, tildeΩ, tildeG = get_parameterMatrices(SP)
-        drive = tildeΩ
-        fullCoupling = Δvari + tildeG
-    else
-        Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP)
-        drive = get_fullDriveVector(tildeΩ, tildeΩα)
-        fullCoupling = get_fullCouplingMatrix(Δvari, tildeG, tildeFα, tildeGα1, tildeGα2)
-    end
+    fullDrive = get_fullDriveVector(SP)
+    fullCoupling = get_fullCouplingMatrix(SP)
     
     eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = spectrum_basisMatrices(fullCoupling)
     collΔ, collΓ = collEnergies(eigenEnergies)
     
-    weights, resonances = transmission_eigenmodes_weights_resonances(SP.Δ_range, drive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, SP.fiber.propagation_constant_derivative)
+    weights, resonances = transmission_eigenmodes_weights_resonances(SP.Δ_range, fullDrive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, SP.fiber.propagation_constant_derivative)
     t = 1 .- sum(resonances)
     r = zeros(ComplexF64, size(t))
     loss, resonances_abs, resonances_abs_max, exci_pops = prep_loss_resonances_pops(t, r, resonances, eigenModesMatrix, SP.noPhonons)
@@ -1709,14 +1703,14 @@ function plot_memoryEfficiency(SP)
     titl = prep_memoryRetrievalError_title(SP, Δ)
     fig_memoryRetrievalError(N_sites_list, ϵs, titl)
     
-
+    
     # # Prepare parameters
     # Δ = SP.Δc + eps(Float64)
-    # fullCoupling_rm = calc_fullCoupling_rm(SP)
+    # fullCoupling_rm_egSector = calc_fullCoupling_rm_egSector(SP)
     # radDecayRateAndStateNorm_LowerTol = (1e-6, 0.01)
     
     # # Perform time-evolution and calculate memory retrieval error
-    # times, states, radDecayRatesAndStateNorm = calc_timeEvolution_forMemoryRetrievalError(SP, Δ, fullCoupling_rm, radDecayRateAndStateNorm_LowerTol)
+    # times, states, radDecayRatesAndStateNorm = calc_timeEvolution_forMemoryRetrievalError(SP, Δ, fullCoupling_rm_egSector, radDecayRateAndStateNorm_LowerTol)
     # radiativeDecayRates = [x[1] for x in radDecayRatesAndStateNorm]
     # stateNorm = [x[2] for x in radDecayRatesAndStateNorm]
     # ϵ = calc_memoryRetrievalError(times, radiativeDecayRates)
@@ -1738,7 +1732,9 @@ function plot_compareMemoryEfficiency(SP)
     Δ = SP.Δc + eps(Float64)
     radDecayRateAndStateNorm_LowerTol = (1e-6, 0.01)
     ηα_list = [zeros(3), SP.ηα]
-    labels = [L"no motion$$", L"Sr$$"]
+    labels = [L"fixed$$", L"moving$$"]
+    # ηα_list = reverse([0.5, 0.75, 1.0, 1.25, 1.5].*Ref(SP.ηα))
+    # labels = reverse([L"50\% $ η_{α} $", L"75\% $ η_{α} $", L"100\% $ η_{α} $", L"125\% $ η_{α} $", L"150\% $ η_{α} $"])
     N_sites_list = 10:10:200
     # N_sites_list = vcat(10:10:200, 220:20:300, 340:40:420)
     ϵs = zeros(length(ηα_list), length(N_sites_list))
@@ -1763,24 +1759,32 @@ function plot_compareMemoryEfficiency(SP)
     # Make fits
     model_pol(N, (a, α))          = a*N^α
     model_pol_asymp(N, (a, α, c)) = a*N^α + c
+    model_pol1(N, (a,))           = a/N
+    model_pol1_asymp(N, (a, c))   = a/N + c
     model_pol2(N, (a,))           = a/N^2
     model_pol2_asymp(N, (a, c))   = a/N^2 + c
     model_exp(N, (a, α))          = a*exp(-α*N)
     model_exp_asymp(N, (a, α, c)) = a*exp(-α*N) + c
     p0_pol        = [10.0, -2.0]
-    p0_pol_asymp  = [10.0, -2.0, 1e-1]
+    p0_pol_asymp  = [2.0, -1.0, 1e-2]
+    p0_pol1       = [10.0]
+    p0_pol1_asymp = [10.0, 1e-1]
     p0_pol2       = [10.0]
     p0_pol2_asymp = [10.0, 1e-1]
     p0_exp        = [0.1, 0.01]
     p0_exp_asymp  = [0.1, 0.01, 1e-1]
     label_pol(p)        = L", $ %$(round(p[1], digits=3)) * N^{%$(round(p[2], digits=3))} $"
     label_pol_asymp(p)  = L", $ %$(round(p[1], digits=3)) * N^{%$(round(p[2], digits=3))} %$(formatNumberWithSign(round(p[3], digits=3))) $"
+    label_pol1(p)       = L", $ %$(round(p[1], digits=3)) / N $"
+    label_pol1_asymp(p) = L", $ %$(round(p[1], digits=3)) / N %$(formatNumberWithSign(round(p[3], digits=3))) $"
     label_pol2(p)       = L", $ %$(round(p[1], digits=3)) / N^{2} $"
     label_pol2_asymp(p) = L", $ %$(round(p[1], digits=3)) / N^{2} %$(formatNumberWithSign(round(p[3], digits=3))) $"
     label_exp(p)        = L", $ %$(round(p[1], digits=3)) * e^{-%$(round(p[2], digits=3)) * N} $"
     label_exp_asymp(p)  = L", $ %$(round(p[1], digits=3)) * e^{-%$(round(p[2], digits=3)) * N} %$(formatNumberWithSign(round(p[3], digits=3))) $"
     setup_pol        = [model_pol       , p0_pol       , label_pol]
     setup_pol_asymp  = [model_pol_asymp , p0_pol_asymp , label_pol_asymp]
+    setup_pol1       = [model_pol1      , p0_pol1      , label_pol1]
+    setup_pol1_asymp = [model_pol1_asymp, p0_pol1_asymp, label_pol1_asymp]
     setup_pol2       = [model_pol2      , p0_pol2      , label_pol2]
     setup_pol2_asymp = [model_pol2_asymp, p0_pol2_asymp, label_pol2_asymp]
     setup_exp        = [model_exp       , p0_exp       , label_exp]
@@ -1789,6 +1793,7 @@ function plot_compareMemoryEfficiency(SP)
     fitting_interval = 5:20
     # fitting_interval = 5:28
     setups = [setup_pol, setup_pol]
+    # setups = [setup_exp_asymp, setup_exp_asymp, setup_exp_asymp, setup_exp_asymp, setup_exp_asymp]
     
     ϵ_fits = fill(NaN, length(ηα_list), length(N_sites_list))
     for i in eachindex(ηα_list)
@@ -1802,7 +1807,8 @@ function plot_compareMemoryEfficiency(SP)
     
     # Plot
     titl = prep_memoryRetrievalError_title(SP, Δ)
-    fig_compareMemoryRetrievalError(N_sites_list, ϵs, ϵ_fits, titl, labels)
+    # fig_compareMemoryRetrievalError(N_sites_list, ϵs, ϵ_fits, titl, labels)
+    fig_presentation_compareMemoryRetrievalError(N_sites_list, ϵs, ϵ_fits, labels, SP)
     
 end
 
@@ -1841,55 +1847,44 @@ end
     # Still at most one excitation and at most one phonon on top of this
     # How?
 
-# Implement include3rdLevel calculations for 
-    # Mode calculations (fullCouplingMatrix)
-    # Others?
-    
-# Study the effect of motion on EIT (seems to be robust against motion)
-    # Motion indeed includes an extra term in the transmission which may be not be zero when the original is, but its contribution is small
-# Understand dark state of the system 
+# Understand dark state of the EIT system 
     # Start without motion to get a simple picture
     # A single dark state on the two-photon resonance (supposedly you also have dark states off resonance?)
     # When including motion, a perfect dark state does not exist?
     # Check steady state distribution of population right on the two-photon resonance, with and without motion, also on the two-photon+phonon resonance
 # Understand group velocity around the EIT window
+    # The group velocity may simply not be well-defined in this case? (it's very erratic and has both negative and huge values)
+    # How does the group velocity behave right on resonance?
 # Compare the classical calculation motional effects with the quantum study
     # Is there a difference? Are bad effects perhaps less when doing the quantum calculations?
     # Compare Strontium and Caesium
 # Look at effect on quantum memory quality metrics
+    # Understand and use "Universal Approach to Optimal Photon Storage in Atomic Media"
+        # Consider finding the optimal shape for the stored excitation given the hyperbolic cDrive to see if we can recover exponential scaling without plateauing
     # Figure out why the plots of the excitation distribution don't match at all with Chang's article (also giving different values for ϵ?)
     	# Real part of GF is exact in their calculations?
-    # Determine why full Sr parameters give such different results than the ChangExp
-        # It seems higher index of refraction recovers exponential decay
-        # Possibly caused by propagation constant being deeper in the subradiant regime?
-        # Check if a similar propagation constant achieved by changing the fiber dimensions gives similar results (but keep n fixed)
-        # Consider whether the very small but finite radiation decay rate of collective modes at \kappa explains the divergence from exponential decay of \epsilon
-            # That is, does the size of the finite radiation decay rate determine how small \epsilon can be before the exponential scaling stops?
-    # It seems that including (ground state) motion causes the infidelity to plateau
-        # Become more certain that this is true, by running calculations with a higher number of atoms
-        # Check how this plateau scales with Lamb-Dicke parameter (probably scales as the square, since the ground state motion contribution scales like that)
-        # When including motion the 'trick' of hyperbolic control drive does not do much anymore as the loss is anyways happening in the bulk and not the edge
-    # Figure out how lower limit of \epsilon scales with Lambd-Dicke parameter 
-        # Figure out a physical explanantion for this lower limit
-        # Probably something with the lower limit of the collective decay rates
-        # Compare with free space scaling of 1/OD? 
-        # That scaling is for independently decaying atoms and for an optimal shape of the spin wave (approximately this weird linearly increasing population along the array)
-        # For the same kind of initial state, Chang finds a 1/N^2 scaling when including radiative interactions
-        # Why is our situation worse than this, even without motion? 
-            # Simply because of using a Gaussian initial state instead of the ("optimal") linear state?
-            # Check behavior of \epsilon for the linear state using Berlin Sr parameters, with and without motion
-    # WRITE NOTES
-    # Understand and use "Universal Approach to Optimal Photon Storage in Atomic Media"?
-
-# Check that calculation of Im_Grm_trans is indeed accurate to the setting of abstol_Im_Grm_trans 
-    # Compare with Daniel?
-    # Consider other sources of errors at scale 1e-6?
-
+        # Finish implementation of Chang's exact GF to see if it has an effect
+            # Presently, the imaginary part of the new implementation does not match the old calculation of the imaginary part (which is supposed to be exact)
+    # Consider finding eigenvectors of fullCoupling when including third level
+        # That is, set up a vector of all expectation values, including those pertaining to the third level,
+        # set up the corresponding interaction matrix, including the control drive which is an interaction between the e and s states,
+        # and then find eigenvectors of this (large) matrix,
+        # such that we can say how much each is populated from some initial state,
+        # and then we can see how the population of different decay rates changes when changing the fiber parameters or control drive
+        # to see if this reveals the transition between different scalings or between having/not having a plateau
+        # Calculate decay rates using the fullCoupling_rm, just as we do when calculating ϵ
+            # Calculate contribution from each eigenmode to ϵ?
+            # Then we can directly get ϵ from an initial state and directly see how parameters affect ϵ?
+            # One might find that a certain eigenmode persists as N is increased (causing the plateau) and one could then look at the structure of this eigenmode to determine the physical origin of this constant contribution to ϵ
+        # Knowing the eigenmodes, and how their contribution to ϵ scales with N, we can find the optimal initial state(s)?
+    # Consider how the parameters of the N-scalings (i.e. front factors and exponents) change with LD-parameters
+        # That is, how do the constants of the scalings themselves scale with LD?
 
 
 ### Minor things TODO:
-# Implement _eigenmodes approach for the case of including a third level
-    # i.e. time evolution, steady state, and memory retrieval efficiency calculations
+# Update titles (and bodies) of functions in main_local
+    # Many functions are deprecated or half-forgotten
+    # Many are messy because they have been left in half-temp state
 
 # Prove that the y-derivatives (of drive and coupling matrices) go to zero
     # Inversion symmetry around the xz plane

@@ -988,7 +988,6 @@ function EoMs!(dσdt, dBαdt, σ, Bα, Δ, Δvari, tildeΩ, tildeΩα, tildeG, t
             for k in 1:N
                     dBαdt[α][i, i] += -1im*( -tildeGα1[α][i, k]*σ[k] )
             end
-            
         end
     end
 end
@@ -1204,41 +1203,19 @@ function steadyState(Δ, Δc, να, Δvari, tildeΩ, tildeΩα, tildeΩc, tilde�
 end
 
 
-"""
-Calculate the time evolution of the atomic coherences (in the case of no phonons)
-using the eigenmodes approach
-"""
-function timeEvolution_eigenmodes_noPh(t, Δ, tildeΩ, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, initialState)
-    # Prepare the initial state (in the real space basis and the eigenmode basis)
-    σ0 = unpack_σFromx(initialState)
+function timeEvolution_eigenmodes(t, Δ, fullDrive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, initialState, noPhonons, include3rdLevel)
+    # Prepare the initial state (in terms of the vectorized σ, Bα...)
+    Vec0 = unpack_VecFromx(initialState, noPhonons, include3rdLevel)
     
     # Prepare the initial state and the steady state in the eigenmode basis
-    tildeσ0 = eigenModesMatrix_inv*σ0
-    tildeσSS = -(eigenModesMatrix_inv*tildeΩ)./(Δ .+ eigenEnergies)
-    
-    # Put together the final result
-    return eigenModesMatrix*( tildeσSS .+ (tildeσ0 - tildeσSS).*exp.(1im*(Δ .+ eigenEnergies)*t) )
-end
-
-
-"""
-Calculate the time evolution of the atomic coherences and the atom-phonon correlations
-using the eigenmodes approach
-"""
-function timeEvolution_eigenmodes(t, Δ, fullDrive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, initialState)
-    # Prepare the initial state (in terms of the vectorized σBα)
-    σBα0 = unpack_σBαFromx(initialState)
-    σBαVec0 = pack_σBαIntoσBαVec(σBα0)
-    
-    # Prepare the initial state and the steady state in the eigenmode basis
-    tildeσBαVec0  = eigenModesMatrix_inv*σBαVec0
-    tildeσBαVecSS = -(eigenModesMatrix_inv*fullDrive)./(Δ .+ eigenEnergies)
+    tildeVec0  = eigenModesMatrix_inv*Vec0
+    tildeVecSS = -(eigenModesMatrix_inv*fullDrive)./(Δ .+ eigenEnergies)
     
     # Find the state at time t
-    σBαVec_t = eigenModesMatrix*( tildeσBαVecSS .+ (tildeσBαVec0 - tildeσBαVecSS).*exp.(1im*(Δ .+ eigenEnergies)*t) )
+    Vec_t = eigenModesMatrix*( tildeVecSS .+ (tildeVec0 - tildeVecSS).*exp.(1im*(Δ .+ eigenEnergies)*t) )
     
-    # Repack and return in the form of σ, Bα
-    return unpack_σBαFromσBαVec(σBαVec_t)
+    # Return in the form of σ, Bα...
+    return unpack_FromVec(Vec_t, noPhonons, include3rdLevel)
 end
 
 
@@ -1371,22 +1348,21 @@ end
 
 """
 Calculate the transmission of light through the guided mode, using the eigenmodes approach 
-(works both with or without including phonons)
 """
-function transmission_eigenmodes(Δ, drive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, κ_prime)
-    driveTimesModes = drive'*eigenModesMatrix
-    modesTimesDrive = eigenModesMatrix_inv*drive
+function transmission_eigenmodes(Δ, fullDrive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, κ_prime)
+    driveTimesModes = fullDrive'*eigenModesMatrix
+    modesTimesDrive = eigenModesMatrix_inv*fullDrive
     return 1 - 3im*π*κ_prime/(2*ωa^2)*sum( [driveTimesModes[i]*modesTimesDrive[i]/(Δ + eigenEnergy) for (i, eigenEnergy) in enumerate(eigenEnergies)] )
 end
 
 
 """
-Calculate the transmission of light through the guided mode, using the eigenmodes approach 
-(works both with or without including phonons)
+Calculate the weights and resonances used in the calculation of the 
+transmission of light through the guided mode, using the eigenmodes approach 
 """
-function transmission_eigenmodes_weights_resonances(Δ_range, drive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, κ_prime)
-    driveTimesModes = drive'*eigenModesMatrix
-    modesTimesDrive = eigenModesMatrix_inv*drive
+function transmission_eigenmodes_weights_resonances(Δ_range, fullDrive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, κ_prime)
+    driveTimesModes = fullDrive'*eigenModesMatrix
+    modesTimesDrive = eigenModesMatrix_inv*fullDrive
     weights    = [3im*π*κ_prime/(2*ωa^2)*driveTimesModes[i]*modesTimesDrive[i] for i in eachindex(eigenEnergies)]
     resonances = [weights[i]./(Δ_range .+ eigenEnergy) for (i, eigenEnergy) in enumerate(eigenEnergies)]
     return weights, resonances 
@@ -1612,9 +1588,7 @@ taking a vectorized version of the system state as input
 function statePopulations(σBαVec, noPhonons)
     if noPhonons return 1.0, 0.0 end
     
-    N = Int((sqrt(12*length(σBαVec) + 1) - 1)/6) #if length(σBαVec) = N + 3N^2, then 12*length(x) + 1 = (6N + 1)^2, and N is equal to the following
-    if norm(σBαVec) != 1
-        σBαVec /= norm(σBαVec)
-    end
-    return norm(σBαVec[1:N])^2, norm(σBαVec[N+1:end])^2
+    σBαVec /= norm(σBαVec)
+    σ, Bα = unpack_σBαFromσBαVec(σBαVec)
+    return norm(σ)^2, norm(Bα)^2
 end
