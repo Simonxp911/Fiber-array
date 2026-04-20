@@ -823,7 +823,7 @@ end
 #   Functions pertaining to the steady state of the atomic and phononic degrees of freedom
 # ================================================
 """
-Calculate the steady state values of atomic coherences σ and the atom-phonon correlations Bα
+Calculate the steady state values of atomic coherences and the atom-phonon correlations (σvar)
 """
 function calc_steadyState(Δ, params, postfix, save_steadyState=true)
     filename = "SS_" * postfix
@@ -831,7 +831,7 @@ function calc_steadyState(Δ, params, postfix, save_steadyState=true)
     
     if isfile(saveDir * folder * filename * ".jld2") return load_as_jld2(saveDir * folder, filename) end
     
-    # Calculate steady state σBα
+    # Calculate steady state 
     result = steadyState(Δ, params...)
     
     if save_steadyState save_as_jld2(result, saveDir * folder, filename) end
@@ -840,7 +840,7 @@ end
 
 
 """
-Calculate the steady state values of atomic coherences σ and the atom-phonon correlations Bα 
+Calculate the steady state values of atomic coherences and the atom-phonon correlations (σvar)
 for parameters given by SP and a given detuning
 """
 function calc_steadyState(SP, Δ)
@@ -851,7 +851,7 @@ end
 
 
 """
-Scan the steady state values of atomic coherences σ and the atom-phonon correlations Bα over the detuning
+Scan the steady state values of atomic coherences and the atom-phonon correlations (σvar) over the detuning
 """
 function scan_steadyState(SP)
     postfixes = get_postfix_steadyState.(SP.Δ_range, SP.ΔvariDescription, SP.dDescription, Ref(SP.να), Ref(SP.ηα), SP.noPhonons, Ref(SP.incField_wlf), Ref(SP.tildeG_flags), SP.arrayDescription, SP.fiber.postfix, SP.include3rdLevel, SP.cDriveDescription, SP.Δc, SP.Ωc, Ref(SP.cDriveArgs))
@@ -862,7 +862,7 @@ end
 
 
 """
-Scan the steady state values of atomic coherences σ and the atom-phonon correlations Bα over the detuning
+Scan the steady state values of atomic coherences and the atom-phonon correlations (σvar) over the detuning
 for a given array (and dipole moments)
 """
 function scan_steadyState(SP, d, array)
@@ -881,71 +881,34 @@ function calc_timeEvolution(Δ, params, N, initialState, tspan, dtmax, postfix, 
     filename = "TE_" * postfix
     folder = "timeEvol/"
     
-    # if isfile(saveDir * folder * filename * ".txt") return load_as_txt(saveDir * folder, filename) end
+    if isfile(saveDir * folder * filename * ".txt") return load_as_txt(saveDir * folder, filename) end
     
+    # Prepare initial state and args for time evolution
+    initialState_x = pack_σvarIntox(initialState, N, noPhonons, include3rdLevel)
+    args = empty_σvar(N, noPhonons, include3rdLevel), empty_σvar(N, noPhonons, include3rdLevel), Δ, params, N, noPhonons, include3rdLevel
+    
+    # Perform time evolution
     if whichTimeEvolver == "OrdinaryDiffEq"        
-        # Prepare the time evolution problem
-        if noPhonons
-            if !include3rdLevel
-                args = empty_σVector(N), empty_σVector(N), 
-                       Δ, params...
-                prob = ODEProblem(EoMs_wrap_noPh, initialState, tspan, args)
-            else
-                args = empty_σVector(N), empty_σVector(N), empty_σVector(N), empty_σVector(N), 
-                       Δ, params...
-                prob = ODEProblem(EoMs_wrap_noPh_w3l, initialState, tspan, args)
-            end
-        else
-            if !include3rdLevel
-                args = empty_σVector(N), empty_BαVector(N), empty_σVector(N), empty_BαVector(N), 
-                       Δ, params...
-                prob = ODEProblem(EoMs_wrap, initialState, tspan, args)
-            else
-                args = empty_σVector(N), empty_σVector(N), empty_BαVector(N), empty_BαVector(N), empty_σVector(N), empty_σVector(N), empty_BαVector(N), empty_BαVector(N), 
-                       Δ, params...
-                prob = ODEProblem(EoMs_wrap_w3l, initialState, tspan, args)
-            end
-        end
-        
-        # Perform the time evolution
+        prob = ODEProblem(EoMs_wrap, initialState_x, tspan, args)
         sol = OrdinaryDiffEq.solve(prob, Tsit5(), dtmax=dtmax)
         
     elseif whichTimeEvolver == "simple"
         timeEvol_args = (tspan=tspan, dtmax=dtmax)
-        
-        if noPhonons
-            if !include3rdLevel
-                EoMs_args = empty_σVector(N), empty_σVector(N), 
-                       Δ, params...
-                sol  = timeEvol(EoMs_wrap_noPh, initialState, EoMs_args, timeEvol_args, stepCondition_endOftspan, stepFunc_nothing, "all")
-            else
-                EoMs_args = empty_σVector(N), empty_σVector(N), empty_σVector(N), empty_σVector(N), 
-                       Δ, params...
-                sol  = timeEvol(EoMs_wrap_noPh_w3l, initialState, EoMs_args, timeEvol_args, stepCondition_endOftspan, stepFunc_nothing, "all")
-            end
-        else
-            if !include3rdLevel
-                EoMs_args = empty_σVector(N), empty_BαVector(N), empty_σVector(N), empty_BαVector(N), 
-                       Δ, params...
-                sol  = timeEvol(EoMs_wrap, initialState, EoMs_args, timeEvol_args, stepCondition_endOftspan, stepFunc_nothing, "all")
-            else
-                EoMs_args = empty_σVector(N), empty_σVector(N), empty_BαVector(N), empty_BαVector(N), empty_σVector(N), empty_σVector(N), empty_BαVector(N), empty_BαVector(N), 
-                       Δ, params...
-                sol  = timeEvol(EoMs_wrap_w3l, initialState, EoMs_args, timeEvol_args, stepCondition_endOftspan, stepFunc_nothing, "all")
-            end
-        end
-        
+        sol = timeEvol(EoMs_wrap, initialState_x, args, timeEvol_args, stepCondition_endOftspan, stepFunc_nothing, "all")
     end
     
     # Pack and save data
-    formattedResult = zeros(length(sol.t), 1 + length(initialState))
+    formattedResult = zeros(length(sol.t), 1 + length(initialState_x))
     formattedResult[:, 1] .= sol.t
     for i in eachindex(sol.t)
         formattedResult[i, 2:end] .= sol.u[i]
     end
     if save_timeEvol save_as_txt(formattedResult, saveDir * folder, filename) end
     
-    return formattedResult
+    # Transform data in to σvar
+    σvar_t = unpack_σvarFromx.(sol.u, N, noPhonons, include3rdLevel)
+        
+    return sol.t, σvar_t
 end
 
 
@@ -972,35 +935,22 @@ end
 """
 Perform time evolution of the atomic, using the eigenmodes approach
 """
-function calc_timeEvolution_eigenmodes(Δ, fullDrive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, initialState, tspan, dtmax, postfix, noPhonons, include3rdLevel, save_timeEvol=true)
+function calc_timeEvolution_eigenmodes(N, Δ, fullDrive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, initialState, tspan, dtmax, postfix, noPhonons, include3rdLevel, save_timeEvol=true)
     filename = "TE_eig_" * postfix
     folder = "timeEvol/"
     
-    # if isfile(saveDir * folder * filename * ".txt") return load_as_txt(saveDir * folder, filename) end
+    if isfile(saveDir * folder * filename * ".txt") return load_as_txt(saveDir * folder, filename) end
     
     # Calculate time evolution
     times = range(tspan..., Int(floor((tspan[2] - tspan[1])/dtmax)))
-    σTrajectories = timeEvolution_eigenmodes.(times, Δ, Ref(fullDrive), Ref(eigenEnergies), Ref(eigenModesMatrix), Ref(eigenModesMatrix_inv), Ref(initialState), noPhonons, include3rdLevel)
-    
-    if noPhonons
-        if !include3rdLevel
-            xTrajectories = pack_σIntox.(σTrajectories)
-        else
-            xTrajectories = pack_σgeσgsIntox.(σTrajectories)
-        end
-    else
-        if !include3rdLevel
-            xTrajectories = pack_σBαIntox.(σTrajectories)
-        else
-            xTrajectories = pack_σgeσgsBαgeBαgsIntox.(σTrajectories)
-        end
-    end
+    σvar_t = timeEvolution_eigenmodes.(times, N, Δ, Ref(fullDrive), Ref(eigenEnergies), Ref(eigenModesMatrix), Ref(eigenModesMatrix_inv), Ref(initialState), noPhonons, include3rdLevel)
+    x_t = pack_σvarIntox.(σvar_t, N, noPhonons, include3rdLevel)
     
     # Pack and save data
-    formattedResult = vectorOfRows2Matrix([vcat(times[i], xTrajectories[i]) for i in eachindex(times)])
+    formattedResult = vectorOfRows2Matrix([vcat(times[i], x_t[i]) for i in eachindex(times)])
     if save_timeEvol save_as_txt(formattedResult, saveDir * folder, filename) end
     
-    return formattedResult
+    return times, σvar_t
 end
 
 
@@ -1010,7 +960,7 @@ Perform time evolution for parameters given by SP, using the eigenmodes approach
 function calc_timeEvolution_eigenmodes(SP, Δ)
     postfix = get_postfix_timeEvolution(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.noPhonons, SP.incField_wlf, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, SP.include3rdLevel, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
     fullDrive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = prepare_eigenmodesCalculation(SP)
-    return calc_timeEvolution_eigenmodes(Δ, fullDrive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, SP.initialState, SP.tspan, SP.dtmax, postfix, SP.noPhonons, SP.include3rdLevel, SP.save_timeEvol)
+    return calc_timeEvolution_eigenmodes(SP.N, Δ, fullDrive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, SP.initialState, SP.tspan, SP.dtmax, postfix, SP.noPhonons, SP.include3rdLevel, SP.save_timeEvol)
 end
 
 
@@ -1020,7 +970,7 @@ Scan time evolutions over the detuning, using the eigenmodes approach
 function scan_timeEvolution_eigenmodes(SP)
     postfixes = get_postfix_timeEvolution.(SP.Δ_range, SP.ΔvariDescription, SP.dDescription, Ref(SP.να), Ref(SP.ηα), SP.noPhonons, Ref(SP.incField_wlf), Ref(SP.tildeG_flags), SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, Ref(SP.tspan), SP.dtmax, SP.include3rdLevel, SP.cDriveDescription, SP.Δc, SP.Ωc, Ref(SP.cDriveArgs))
     fullDrive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = prepare_eigenmodesCalculation(SP)
-    return calc_timeEvolution_eigenmodes.(SP.Δ_range, Ref(fullDrive), Ref(eigenEnergies), Ref(eigenModesMatrix), Ref(eigenModesMatrix_inv), Ref(SP.initialState), Ref(SP.tspan), SP.dtmax, postfixes, SP.noPhonons, SP.include3rdLevel, SP.save_timeEvol)
+    return calc_timeEvolution_eigenmodes.(SP.N, SP.Δ_range, Ref(fullDrive), Ref(eigenEnergies), Ref(eigenModesMatrix), Ref(eigenModesMatrix_inv), Ref(SP.initialState), Ref(SP.tspan), SP.dtmax, postfixes, SP.noPhonons, SP.include3rdLevel, SP.save_timeEvol)
 end
 
 
@@ -1032,15 +982,15 @@ Calculate the transmission of light through the fiber in the chosen driving mode
 
 The function assumes that σBα contains only σ if the Lamb-Dicke parameters are zero
 """
-function calc_transmission(SP, σBα)
+function calc_transmission(SP, σvar)
     if SP.noPhonons
-        if SP.include3rdLevel σBα = σBα[1] end
+        if SP.include3rdLevel σge = σvar[1] else σge = σvar end
         tildeΩ = get_tildeΩs(SP.fiber, SP.d, SP.incField_wlf, SP.array, SP.ΩDriveOn)
-        return transmission(σBα, tildeΩ, SP.fiber)
+        return transmission(σge, tildeΩ, SP.fiber)
     else
-        if SP.include3rdLevel σBα = σBα[[1, 3]] end
+        if SP.include3rdLevel σge, Bαge = σvar[[1, 3]] else σge, Bαge = σvar end
         tildeΩ, tildeΩα = get_tildeΩs(SP.fiber, SP.d, SP.ηα, SP.incField_wlf, SP.array, SP.ΩDriveOn)
-        return transmission(σBα..., tildeΩ, tildeΩα, SP.fiber)
+        return transmission(σge, Bαge, tildeΩ, tildeΩα, SP.fiber)
     end
 end
 
@@ -1051,15 +1001,15 @@ for a given array (and dipole moments)
 
 The function assumes that σBα contains only σ if the Lamb-Dicke parameters are zero
 """
-function calc_transmission(SP, σBα, d, array)
+function calc_transmission(SP, σvar, d, array)
     if SP.noPhonons
-        if SP.include3rdLevel σBα = σBα[1] end
+        if SP.include3rdLevel σge = σvar[1] else σge = σvar end
         tildeΩ = get_tildeΩs(SP.fiber, d, SP.incField_wlf, array, SP.ΩDriveOn)
-        return transmission(σBα, tildeΩ, SP.fiber)
+        return transmission(σge, tildeΩ, SP.fiber)
     else
-        if SP.include3rdLevel σBα = σBα[[1, 3]] end
+        if SP.include3rdLevel σge, Bαge = σvar[[1, 3]] else σge, Bαge = σvar end
         tildeΩ, tildeΩα = get_tildeΩs(SP.fiber, d, SP.ηα, SP.incField_wlf, array, SP.ΩDriveOn)
-        return transmission(σBα..., tildeΩ, tildeΩα, SP.fiber)
+        return transmission(σge, Bαge, tildeΩ, tildeΩα, SP.fiber)
     end
 end
 
@@ -1089,6 +1039,8 @@ Calculate the transmission of light through the fiber in the chosen driving mode
 for the case of independent decay
 """
 function calc_transmission_indepDecay(SP, Δ)
+    if SP.include3rdLevel throw(ArgumentError("calc_transmission_indepDecay assumes the third level (s) is excluded")) end
+    
     if SP.noPhonons
         if SP.arrayType ∈ ("1Dchain", "randomZ")
             γ_gm, γ_rm = get_γs(SP)
@@ -1102,8 +1054,8 @@ function calc_transmission_indepDecay(SP, Δ)
     else
         if SP.arrayType ∈ ("1Dchain", "randomZ")
             Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array[1:1], SP.ΩDriveOn, (true, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
-            σBα = calc_steadyState(Δ, (Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2), "", false)
-            t1 = transmission(σBα..., tildeΩ, tildeΩα, SP.fiber)
+            σvar = calc_steadyState(Δ, (Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2), "", false)
+            t1 = transmission(σvar..., tildeΩ, tildeΩα, SP.fiber)
             return t1^SP.N
         else
             Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.ΩDriveOn, (true, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
@@ -1117,8 +1069,8 @@ function calc_transmission_indepDecay(SP, Δ)
                 tildeFα_i  = [tildeFα[α][ind:ind] for α in 1:3]
                 tildeGα1_i = [tildeGα1[α][ind:ind] for α in 1:3]
                 tildeGα2_i = [tildeGα2[α][ind:ind] for α in 1:3]
-                σBα = calc_steadyState(Δ, (Δvari_i, tildeΩ_i, tildeΩα_i, tildeG_i, tildeFα_i, tildeGα1_i, tildeGα2_i), "", false)
-                push!(ts, transmission(σBα..., tildeΩ_i, tildeΩα_i, SP.fiber))
+                σvar = calc_steadyState(Δ, (Δvari_i, tildeΩ_i, tildeΩα_i, tildeG_i, tildeFα_i, tildeGα1_i, tildeGα2_i), "", false)
+                push!(ts, transmission(σvar..., tildeΩ_i, tildeΩα_i, SP.fiber))
             end
             return prod(ts)
         end
@@ -1131,6 +1083,8 @@ Scan the transmission of light through the fiber in the chosen driving mode for 
 for the case of independent decay
 """
 function scan_transmission_indepDecay(SP)
+    if SP.include3rdLevel throw(ArgumentError("calc_transmission_indepDecay assumes the third level (s) is excluded")) end
+    
     if SP.noPhonons
         if SP.arrayType ∈ ("1Dchain", "randomZ")
             γ_gm, γ_rm = get_γs(SP)
@@ -1147,8 +1101,8 @@ function scan_transmission_indepDecay(SP)
         if SP.arrayType ∈ ("1Dchain", "randomZ")
             if typeof(SP.d) == String d = SP.d else d = SP.d[1:1] end
             Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, d, SP.να, SP.ηα, SP.incField_wlf, SP.array[1:1], SP.ΩDriveOn, (true, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
-            σBα = calc_steadyState.(SP.Δ_range, Ref((Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2)), "", false)
-            t1 = [transmission(σBα_..., tildeΩ, tildeΩα, SP.fiber) for σBα_ in σBα]
+            σvars = calc_steadyState.(SP.Δ_range, Ref((Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2)), "", false)
+            t1 = [transmission(σvar..., tildeΩ, tildeΩα, SP.fiber) for σvar in σvars]
             return t1.^SP.N
         else
             Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2 = get_parameterMatrices(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.ΩDriveOn, (true, true, false), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
@@ -1162,8 +1116,8 @@ function scan_transmission_indepDecay(SP)
                 tildeFα_i  = [reshape(tildeFα[α][ind:ind], 1, 1) for α in 1:3]
                 tildeGα1_i = [reshape(tildeGα1[α][ind:ind], 1, 1) for α in 1:3]
                 tildeGα2_i = [reshape(tildeGα2[α][ind:ind], 1, 1) for α in 1:3]
-                σBα = calc_steadyState.(SP.Δ_range, Ref((Δvari_i, tildeΩ_i, tildeΩα_i, tildeG_i, tildeFα_i, tildeGα1_i, tildeGα2_i)), "", false)
-                push!(ts, [transmission(σBα_..., tildeΩ_i, tildeΩα_i, SP.fiber) for σBα_ in σBα])
+                σvars = calc_steadyState.(SP.Δ_range, Ref((Δvari_i, tildeΩ_i, tildeΩα_i, tildeG_i, tildeFα_i, tildeGα1_i, tildeGα2_i)), "", false)
+                push!(ts, [transmission(σvar..., tildeΩ_i, tildeΩα_i, SP.fiber) for σvar in σvars])
             end
             return reduce(.*, ts)
         end
@@ -1173,10 +1127,8 @@ end
 
 """
 Calculate the reflection of light through the fiber, assuming dipole moments in the xz plane for parameters given by SP
-
-The function assumes that σBα contains only σ if the Lamb-Dicke parameters are zero
 """
-function calc_reflection(SP, σBα)
+function calc_reflection(SP, σvar)
     if typeof(SP.d) == String
         if SP.d == "chiral"
             d = chiralDipoleMoment(SP.fiber, SP.ρa, SP.array)
@@ -1188,13 +1140,13 @@ function calc_reflection(SP, σBα)
     end
     
     if SP.noPhonons
-        if SP.include3rdLevel σBα = σBα[1] end
+        if SP.include3rdLevel σge = σvar[1] else σge = σvar end
         tildeΩ_refl = get_tildeΩs(SP.fiber, d, [(1, 1, -1), (1, -1, -1)], SP.array, SP.ΩDriveOn)
-        return reflection(σBα, tildeΩ_refl, SP.fiber)
+        return reflection(σge, tildeΩ_refl, SP.fiber)
     else
-        if SP.include3rdLevel σBα = σBα[[1, 3]] end
+        if SP.include3rdLevel σge, Bαge = σvar[[1, 3]] else σge, Bαge = σvar end
         tildeΩ_refl, tildeΩα_refl = get_tildeΩs(SP.fiber, d, SP.ηα, [(1, 1, -1), (1, -1, -1)], SP.array, SP.ΩDriveOn)
-        return reflection(σBα..., tildeΩ_refl, tildeΩα_refl, SP.fiber)
+        return reflection(σge, Bαge, tildeΩ_refl, tildeΩα_refl, SP.fiber)
     end
 end
 
@@ -1203,38 +1155,39 @@ end
 #   Functions pertaining to the radiation E-field around the fiber
 # ================================================
 """
-Calculate the intensity of the radiated light for parameters given by SP
+Calculate the intensity of the radiated light 
 
-The function assumes that σBα contains only σ if the Lamb-Dicke parameters are zero
+The function assumes that σvar contains only σge
 """
-function calc_radiation_Efield(σBα, fiber, d, r_field, array, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans::Tuple=(true, true))
+function calc_radiation_Efield(σvar, fiber, d, r_field, array, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans::Tuple=(true, true))
     Grm_rrn = get_Grm_rrns(fiber, r_field, array, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans)
-    return radiation_Efield(σBα, Grm_rrn, d)
+    return radiation_Efield(σvar, Grm_rrn, d)
 end
 
 """
-Calculate the intensity of the radiated light for parameters given by SP
+Calculate the intensity of the radiated light
 
-The function assumes that σBα contains only σ if the Lamb-Dicke parameters are zero
+The function assumes that σvar contains only σge and Bαge
 """
-function calc_radiation_Efield(σBα, fiber, d, ηα, r_field, array, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans::Tuple=(true, true))
+function calc_radiation_Efield(σvar, fiber, d, ηα, r_field, array, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans::Tuple=(true, true))
     tildeGrm_rrn, tildeGα2rm_rrn = get_Grm_rrns(fiber, ηα, r_field, array, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans)
-    return radiation_Efield(σBα..., tildeGrm_rrn, tildeGα2rm_rrn, d)
+    return radiation_Efield(σvar..., tildeGrm_rrn, tildeGα2rm_rrn, d)
 end
 
 
 """
-Calculate the intensity of the radiated light for parameters given by SP
+Scan the intensity of the radiated light for parameters given by SP over the field points given in SP
 
-The function assumes that σBα contains only σ if the Lamb-Dicke parameters are zero
+The function assumes that σvar contains only σge or only σge and Bαge
 """
-function scan_radiation_Efield(SP, σBα, approx_Grm_trans::Tuple=(true, true))
+function scan_radiation_Efield(SP, σvar, approx_Grm_trans::Tuple=(true, true))
+    if SP.include3rdLevel throw(ArgumentError("scan_radiation_Efield assumes the third level (s) is excluded")) end
     if SP.d == "chiral" d = chiralDipoleMoment(SP.fiber, SP.ρa, SP.array) else d = SP.d end
     
     if SP.noPhonons
-        return calc_radiation_Efield.(Ref(σBα), Ref(SP.fiber), Ref(d), SP.r_fields, Ref(SP.array), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, Ref(approx_Grm_trans))
+        return calc_radiation_Efield.(Ref(σvar), Ref(SP.fiber), Ref(d), SP.r_fields, Ref(SP.array), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, Ref(approx_Grm_trans))
     else
-        return calc_radiation_Efield.(Ref(σBα), Ref(SP.fiber), Ref(d), Ref(SP.ηα), SP.r_fields, Ref(SP.array), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, Ref(approx_Grm_trans))
+        return calc_radiation_Efield.(Ref(σvar), Ref(SP.fiber), Ref(d), Ref(SP.ηα), SP.r_fields, Ref(SP.array), SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, Ref(approx_Grm_trans))
     end
 end
 
@@ -1258,23 +1211,22 @@ Perform time-evolution specifically for the calculation of the memory retrieval 
 function calc_timeEvolution_forMemoryRetrievalError(SP, Δ, fullCoupling_rm_egSector, radDecayRateAndStateNorm_LowerTol)
     if !SP.include3rdLevel throw(ArgumentError("calc_timeEvolution_forMemoryRetrievalError assumes the third level (s) is included")) end
     
+    # Prepare time evolution
     params = get_parameterMatrices(SP)
     timeEvol_args = (tspan=SP.tspan,
                      dtmax=SP.dtmax, 
                      stepFuncValLowerTol=radDecayRateAndStateNorm_LowerTol)
     stepFunc(t, xt, ΔxΔt, timeEvol_args) = (calc_radiativeDecayRate(SP, xt, fullCoupling_rm_egSector), norm(xt)^2)
+    initialState_x = pack_σvarIntox(SP.initialState, SP.N, SP.noPhonons, SP.include3rdLevel)
+    args = empty_σvar(N, noPhonons, include3rdLevel), empty_σvar(N, noPhonons, include3rdLevel), Δ, params, N, noPhonons, include3rdLevel
     
-    if SP.noPhonons
-        EoMs_args = empty_σVector(SP.N), empty_σVector(SP.N), empty_σVector(SP.N), empty_σVector(SP.N), 
-                    Δ, params...
-        sol = timeEvol(EoMs_wrap_noPh_w3l, SP.initialState, EoMs_args, timeEvol_args, stepCondition_stepFuncVal_isSmall, stepFunc, "timeAndStepFuncVal")
-    else
-        EoMs_args = empty_σVector(SP.N), empty_σVector(SP.N), empty_BαVector(SP.N), empty_BαVector(SP.N), empty_σVector(SP.N), empty_σVector(SP.N), empty_BαVector(SP.N), empty_BαVector(SP.N), 
-                    Δ, params...
-        sol = timeEvol(EoMs_wrap_w3l, SP.initialState, EoMs_args, timeEvol_args, stepCondition_stepFuncVal_isSmall, stepFunc, "timeAndStepFuncVal")
-    end
+    # Perform time evolution
+    sol = timeEvol(EoMs_wrap, initialState_x, args, timeEvol_args, stepCondition_stepFuncVal_isSmall, stepFunc, "timeAndStepFuncVal")
     
-    return sol.t, sol.u, sol.stepFuncVal
+    # Transform data in to σvar
+    σvar_t = unpack_σvarFromx.(sol.u, N, noPhonons, include3rdLevel)
+        
+    return sol.t, σvar_t, sol.stepFuncVal
 end
 
 
@@ -1282,23 +1234,18 @@ end
 Calculate the radiative decay rate
 """
 function calc_radiativeDecayRate(SP, state, fullCoupling_rm_egSector)
-    if SP.noPhonons
-        if !SP.include3rdLevel
-            σge = unpack_σFromx(state)
-        else
-            σge, σgs = unpack_σgeσgsFromx(state)
-        end
-        σBαVec = σge
+    σvar = unpack_σvarFromx(state, SP.N, SP.noPhonons, SP.include3rdLevel)
+    if !SP.include3rdLevel 
+        σvar_egSector = σvar
     else
-        if !SP.include3rdLevel
-            σge, Bαge = unpack_σBαFromx(state)
+        if SP.noPhonons
+            σvar_egSector = σvar[1:1]
         else
-            σge, σgs, Bαge, Bαgs = unpack_σgeσgsBαgeBαgsFromx(state)
+            σvar_egSector = σvar[1:2]
         end
-        σBαVec = pack_σBαIntoσBαVec(σge, Bαge)
     end
-    
-    return real(2*σBαVec'*imag(fullCoupling_rm_egSector)*σBαVec)
+    σvarVec_egSector = pack_σvarIntoσvarVec(σvar_egSector, SP.noPhonons, false)
+    return real(2*σvarVec_egSector'*imag(fullCoupling_rm_egSector)*σvarVec_egSector)
 end
 
 

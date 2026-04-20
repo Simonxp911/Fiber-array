@@ -267,6 +267,26 @@ end
 
 
 """
+Prepare an empty x-vector (i.e. all entries are zero)
+"""
+function empty_xVector(N, noPhonons, include3rdLevel)
+    if noPhonons
+        if !include3rdLevel
+            return empty_xVector_noPh(N)
+        else
+            return empty_xVector_noPh_w3l(N)
+        end
+    else
+        if !include3rdLevel
+            return empty_xVector(N)
+        else
+            return empty_xVector_w3l(N)
+        end
+    end
+end
+
+
+"""
 Prepare an empty σ vector (i.e. all entries are zero)
 """
 function empty_σVector(N)
@@ -283,21 +303,39 @@ end
 
 
 """
+Prepare an empty σvar (i.e. all entries are zero)
+"""
+function empty_σvar(N, noPhonons, include3rdLevel)
+    if noPhonons
+        if !include3rdLevel
+            return (empty_σVector(N), )
+        else
+            return empty_σVector(N), empty_σVector(N)
+        end
+    else
+        if !include3rdLevel
+            return empty_σVector(N), empty_BαVector(N)
+        else
+            return empty_σVector(N), empty_BαVector(N), empty_σVector(N), empty_BαVector(N)
+        end
+    end
+end
+
+
+"""
 Pack the σ entries into the x vector to facilitate NonlinearSolve
 
 Assumes that σ is an N-vector, and x is a 2N-vector
 """
-function pack_σIntox!(σ, x)
-    N = length(σ)
+function pack_σIntox!(σ, x, N)
     @. x[1     : N]   = real(σ)
     @. x[1 + N : 2*N] = imag(σ)
 end
 
 
-function pack_σIntox(σ)
-    N = length(σ)
+function pack_σIntox(σ, N)
     x = empty_xVector_noPh(N)
-    pack_σIntox!(σ, x)
+    pack_σIntox!(σ, x, N)
     return x
 end
 
@@ -307,8 +345,7 @@ Pack the σ and Bα entries into the x vector to facilitate NonlinearSolve
 
 Assumes that σ is an N-vector, Bα is a 3-vector consisting of NxN-matrices, and x is a 2(N + 3N^2)-vector
 """
-function pack_σBαIntox!(σ, Bα, x)
-    N = length(σ)
+function pack_σBαIntox!(σ, Bα, x, N)
     @. x[1     : N]   = real(σ)
     @. x[1 + N : 2*N] = imag(σ)
     for α in 1:3, i in 1:N, j in 1:N
@@ -318,21 +355,10 @@ function pack_σBαIntox!(σ, Bα, x)
 end
 
 
-function pack_σBαIntox(σ, Bα)
-    N = length(σ)
+function pack_σBαIntox(σ, Bα, N)
     x = empty_xVector(N)
-    pack_σBαIntox!(σ, Bα, x)
+    pack_σBαIntox!(σ, Bα, x, N)
     return x
-end
-
-
-function pack_σBαIntox!(σBα, x)
-    return pack_σBαIntox!(σBα[1], σBα[2], x)
-end
-
-
-function pack_σBαIntox(σBα)
-    return pack_σBαIntox(σBα[1], σBα[2])
 end
 
 
@@ -341,8 +367,7 @@ Pack the σge and σgs entries into the x vector to facilitate NonlinearSolve
 
 Assumes that σge and σgs are N-vectors, and x is a 4N-vector
 """
-function pack_σgeσgsIntox!(σge, σgs, x)
-    N = length(σge)
+function pack_σgeσgsIntox!(σge, σgs, x, N)
     @. x[1      :   N] = real(σge)
     @. x[1 +   N: 2*N] = imag(σge)
     @. x[1 + 2*N: 3*N] = real(σgs)
@@ -350,59 +375,73 @@ function pack_σgeσgsIntox!(σge, σgs, x)
 end
 
 
-function pack_σgeσgsIntox(σge, σgs)
-    N = length(σge)
+function pack_σgeσgsIntox(σge, σgs, N)
     x = empty_xVector_noPh_w3l(N)
-    pack_σgeσgsIntox!(σge, σgs, x)
+    pack_σgeσgsIntox!(σge, σgs, x, N)
     return x
 end
 
 
-function pack_σgeσgsIntox!(σgeσgs, x)
-    return pack_σgeσgsIntox!(σgeσgs[1], σgeσgs[2], x)
-end
-
-
-function pack_σgeσgsIntox(σgeσgs)
-    return pack_σgeσgsIntox(σgeσgs[1], σgeσgs[2])
-end
-
-
 """
-Pack the σge, σgs, Bαge, and Bαgs entries into the x vector to facilitate NonlinearSolve
+Pack the σge, Bαge, σgs, and Bαgs entries into the x vector to facilitate NonlinearSolve
 
 Assumes that σge and σgs are N-vectors, Bαge and Bαgs are 3-vectors consisting of NxN-matrices, and x is a 4(N + 3N^2)-vector
 """
-function pack_σgeσgsBαgeBαgsIntox!(σge, σgs, Bαge, Bαgs, x)
-    N = length(σge)
+function pack_σgeBαgeσgsBαgsIntox!(σge, Bαge, σgs, Bαgs, x, N)
     @. x[1      :   N] = real(σge)
     @. x[1 +   N: 2*N] = imag(σge)
-    @. x[1 + 2*N: 3*N] = real(σgs)
-    @. x[1 + 3*N: 4*N] = imag(σgs)
+    @. x[1 + 2*N + 6*N^2: 3*N + 6*N^2] = real(σgs)
+    @. x[1 + 3*N + 6*N^2: 4*N + 6*N^2] = imag(σgs)
     for α in 1:3, i in 1:N, j in 1:N
-        x[i + (j - 1)*N + 4*N         + (α - 1)*N^2] = real(Bαge[α][i, j])
-        x[i + (j - 1)*N + 4*N + 3*N^2 + (α - 1)*N^2] = imag(Bαge[α][i, j])
+        x[i + (j - 1)*N + 2*N         + (α - 1)*N^2] = real(Bαge[α][i, j])
+        x[i + (j - 1)*N + 2*N + 3*N^2 + (α - 1)*N^2] = imag(Bαge[α][i, j])
         x[i + (j - 1)*N + 4*N + 6*N^2 + (α - 1)*N^2] = real(Bαgs[α][i, j])
         x[i + (j - 1)*N + 4*N + 9*N^2 + (α - 1)*N^2] = imag(Bαgs[α][i, j])
     end
 end
 
 
-function pack_σgeσgsBαgeBαgsIntox(σge, σgs, Bαge, Bαgs)
-    N = length(σge)
+function pack_σgeBαgeσgsBαgsIntox(σge, Bαge, σgs, Bαgs, N)
     x = empty_xVector_w3l(N)
-    pack_σgeσgsBαgeBαgsIntox!(σge, σgs, Bαge, Bαgs, x)
+    pack_σgeBαgeσgsBαgsIntox!(σge, Bαge, σgs, Bαgs, x, N)
     return x
 end
 
 
-function pack_σgeσgsBαgeBαgsIntox!(σgeσgsBαgeBαgs, x)
-    return pack_σgeσgsBαgeBαgsIntox!(σgeσgsBαgeBαgs[1], σgeσgsBαgeBαgs[2], σgeσgsBαgeBαgs[3], σgeσgsBαgeBαgs[4], x)
+"""
+Pack the σvar entries into the x vector to facilitate NonlinearSolve
+"""
+function pack_σvarIntox!(σvar::Tuple, x, N, noPhonons, include3rdLevel)
+    if noPhonons
+        if !include3rdLevel
+            pack_σIntox!(σvar[1], x, N)
+        else
+            pack_σgeσgsIntox!(σvar[1], σvar[2], x, N)
+        end
+    else
+        if !include3rdLevel
+            pack_σBαIntox!(σvar[1], σvar[2], x, N)
+        else
+            pack_σgeBαgeσgsBαgsIntox!(σvar[1], σvar[2], σvar[3], σvar[4], x, N)
+        end
+    end
 end
 
 
-function pack_σgeσgsBαgeBαgsIntox(σgeσgsBαgeBαgs)
-    return pack_σgeσgsBαgeBαgsIntox(σgeσgsBαgeBαgs[1], σgeσgsBαgeBαgs[2], σgeσgsBαgeBαgs[3], σgeσgsBαgeBαgs[4])
+function pack_σvarIntox(σvar::Tuple, N, noPhonons, include3rdLevel)
+    if noPhonons
+        if !include3rdLevel
+            return pack_σIntox(σvar[1], N)
+        else
+            return pack_σgeσgsIntox(σvar[1], σvar[2], N)
+        end
+    else
+        if !include3rdLevel
+            return pack_σBαIntox(σvar[1], σvar[2], N)
+        else
+            return pack_σgeBαgeσgsBαgsIntox(σvar[1], σvar[2], σvar[3], σvar[4], N)
+        end
+    end
 end
 
 
@@ -411,18 +450,16 @@ Unpack the σ entries from the x vector
 
 Assumes that σ is an N-vector, and x is a 2N-vector
 """
-function unpack_σFromx!(σ, x)
-    N = length(σ)
+function unpack_σFromx!(σ, x, N)
     for i in 1:N
         σ[i] = x[i] + 1im*x[i + N]
     end
 end
 
 
-function unpack_σFromx(x)
-    N = Int(length(x)/2) #if length(x) = 2N
+function unpack_σFromx(x, N)
     σ = empty_σVector(N)
-    unpack_σFromx!(σ, x)
+    unpack_σFromx!(σ, x, N)
     return σ
 end
 
@@ -432,8 +469,7 @@ Unpack the σ and Bα entries from the x vector
 
 Assumes that σ is an N-vector, Bα is a 3-vector consisting of NxN-matrices, and x is a 2(N + 3N^2)-vector
 """
-function unpack_σBαFromx!(σ, Bα, x)
-    N = length(σ)
+function unpack_σBαFromx!(σ, Bα, x, N)
     for i in 1:N
         σ[i] = x[i] + 1im*x[i + N]
         for α in 1:3, j in 1:N
@@ -443,10 +479,9 @@ function unpack_σBαFromx!(σ, Bα, x)
 end
 
 
-function unpack_σBαFromx(x)
-    N = Int((sqrt(6*length(x) + 1) - 1)/6) #if length(x) = 2(N + 3N^2), then 6*length(x) + 1 = (6N + 1)^2, and N is equal to the following
+function unpack_σBαFromx(x, N)
     σ, Bα = empty_σVector(N), empty_BαVector(N)
-    unpack_σBαFromx!(σ, Bα, x)
+    unpack_σBαFromx!(σ, Bα, x, N)
     return σ, Bα
 end
 
@@ -456,8 +491,7 @@ Unpack the σge, σgs entries from the x vector
 
 Assumes that σge and σgs are N-vectors, and x is a 4N-vector
 """
-function unpack_σgeσgsFromx!(σge, σgs, x)
-    N = length(σge)
+function unpack_σgeσgsFromx!(σge, σgs, x, N)
     for i in 1:N
         σge[i] = x[i]       + 1im*x[i +   N]
         σgs[i] = x[i + 2*N] + 1im*x[i + 3*N]
@@ -465,37 +499,71 @@ function unpack_σgeσgsFromx!(σge, σgs, x)
 end
 
 
-function unpack_σgeσgsFromx(x)
-    N = Int(length(x)/4) #if length(x) = 4N
+function unpack_σgeσgsFromx(x, N)
     σge, σgs = empty_σVector(N), empty_σVector(N)
-    unpack_σgeσgsFromx!(σge, σgs, x)
+    unpack_σgeσgsFromx!(σge, σgs, x, N)
     return σge, σgs
 end
 
 
 """
-Unpack the σge, σgs, Bαge, and Bαgs entries from the x vector
+Unpack the σge, Bαge, σgs, and Bαgs entries from the x vector
 
 Assumes that σge and σgs are N-vectors, Bαge and Bαgs are 3-vectors consisting of NxN-matrices, and x is a 4(N + 3N^2)-vector
 """
-function unpack_σgeσgsBαgeBαgsFromx!(σge, σgs, Bαge, Bαgs, x)
-    N = length(σge)
+function unpack_σgeBαgeσgsBαgsFromx!(σge, Bαge, σgs, Bαgs, x, N)
     for i in 1:N
         σge[i] = x[i]       + 1im*x[i   + N]
-        σgs[i] = x[i + 2*N] + 1im*x[i + 3*N]
+        σgs[i] = x[i + 2*N + 6*N^2] + 1im*x[i + 3*N + 6*N^2]
         for α in 1:3, j in 1:N
-            Bαge[α][i, j] = x[i + (j - 1)*N + 4*N         + (α - 1)*N^2] + 1im*x[i + (j - 1)*N + 4*N + 3*N^2 + (α - 1)*N^2]
+            Bαge[α][i, j] = x[i + (j - 1)*N + 2*N         + (α - 1)*N^2] + 1im*x[i + (j - 1)*N + 2*N + 3*N^2 + (α - 1)*N^2]
             Bαgs[α][i, j] = x[i + (j - 1)*N + 4*N + 6*N^2 + (α - 1)*N^2] + 1im*x[i + (j - 1)*N + 4*N + 9*N^2 + (α - 1)*N^2]
         end
     end
 end
 
 
-function unpack_σgeσgsBαgeBαgsFromx(x)
-    N = Int((sqrt(3*length(x) + 1) - 1)/6) #if length(x) = 4(N + 3N^2), then 3*length(x) + 1 = (6N + 1)^2, and N is equal to the following
-    σge, σgs, Bαge, Bαgs = empty_σVector(N), empty_σVector(N), empty_BαVector(N), empty_BαVector(N)
-    unpack_σgeσgsBαgeBαgsFromx!(σge, σgs, Bαge, Bαgs, x)
-    return σge, σgs, Bαge, Bαgs
+function unpack_σgeBαgeσgsBαgsFromx(x, N)
+    σge, Bαge, σgs, Bαgs = empty_σVector(N), empty_BαVector(N), empty_σVector(N), empty_BαVector(N)
+    unpack_σgeBαgeσgsBαgsFromx!(σge, Bαge, σgs, Bαgs, x, N)
+    return σge, Bαge, σgs, Bαgs
+end
+
+
+"""
+Unpack the σvar entries from the x vector
+"""
+function unpack_σvarFromx!(σvar::Tuple, x, N, noPhonons, include3rdLevel)
+    if noPhonons
+        if !include3rdLevel
+            unpack_σFromx!(σvar[1], x, N)
+        else
+            unpack_σgeσgsFromx!(σvar[1], σvar[2], x, N)
+        end
+    else
+        if !include3rdLevel
+            unpack_σBαFromx!(σvar[1], σvar[2], x, N)
+        else
+            unpack_σgeBαgeσgsBαgsFromx!(σvar[1], σvar[2], σvar[3], σvar[4], x, N)
+        end
+    end
+end
+
+
+function unpack_σvarFromx(x, N, noPhonons, include3rdLevel)
+    if noPhonons
+        if !include3rdLevel
+            return (unpack_σFromx(x, N), )
+        else
+            return unpack_σgeσgsFromx(x, N)
+        end
+    else
+        if !include3rdLevel
+            return unpack_σBαFromx(x, N)
+        else
+            return unpack_σgeBαgeσgsBαgsFromx(x, N)
+        end
+    end
 end
 
 
@@ -504,22 +572,6 @@ Pack the σ and Bα entries into the vectorized σBα
 """
 function pack_σBαIntoσBαVec(σ, Bα)
     return vcat(σ, vec.(Bα)...)
-end
-
-
-function pack_σBαIntoσBαVec(σBα)
-    return vcat(σBα[1], vec.(σBα[2])...)
-end
-
-
-"""
-Unpack the σ and Bα entries from the vectorized σBα
-"""
-function unpack_σBαFromσBαVec(σBαVec)
-    N = Int(round(sqrt(length(σBαVec)/3 + 1/36) - 1/6)) #if length(σBαVec) = N + 3N^2, then 3*length(σBαVec) + 1/4 = (3N + 1/2)^2, and N is equal to the following
-    σ = σBαVec[1:N]
-    Bα = [reshape(σBαVec[N + (α - 1)*N^2 + 1:N + α*N^2], (N, N)) for α in 1:3]
-    return σ, Bα
 end
 
 
@@ -532,10 +584,47 @@ end
 
 
 """
+Pack the σge, Bαge, σgs, and Bαgs entries into the vectorized σge, Bαge, σgs, and Bαgs
+"""
+function pack_σgeBαgeσgsBαgsIntoσgeBαgeσgsBαgsVec(σge, Bαge, σgs, Bαgs)
+    return vcat(σge, vec.(Bαge)..., σgs, vec.(Bαgs)...)
+end
+
+
+"""
+Pack σvar into the vectorized σvar
+"""
+function pack_σvarIntoσvarVec(σvar, noPhonons, include3rdLevel)
+    if noPhonons
+        if !include3rdLevel
+            return σvar[1]
+        else
+            return pack_σgeσgsIntoσgeσgsVec(σvar[1], σvar[2])
+        end
+    else
+        if !include3rdLevel
+            return pack_σBαIntoσBαVec(σvar[1], σvar[2])
+        else
+            return pack_σgeBαgeσgsBαgsIntoσgeBαgeσgsBαgsVec(σvar[1], σvar[2], σvar[3], σvar[4])
+        end
+    end
+end
+
+
+"""
+Unpack the σ and Bα entries from the vectorized σBα
+"""
+function unpack_σBαFromσBαVec(σBαVec, N)
+    σ = σBαVec[1:N]
+    Bα = [reshape(σBαVec[1 + N + (α - 1)*N^2:N + α*N^2], (N, N)) for α in 1:3]
+    return σ, Bα
+end
+
+
+"""
 Unpack the σge and σgs entries from the vectorized σge and σgs
 """
-function unpack_σgeσgsFromσgeσgsVec(σgeσgsVec)
-    N = Int(length(σgeσgsVec)/2)
+function unpack_σgeσgsFromσgeσgsVec(σgeσgsVec, N)
     σge = σgeσgsVec[1:N]
     σgs = σgeσgsVec[N + 1:end]
     return σge, σgs
@@ -543,100 +632,54 @@ end
 
 
 """
-Pack the σge, σgs, Bαge, and Bαgs entries into the vectorized σge, σgs, Bαge, and Bαgs
+Unpack the σge, Bαge, σgs, and Bαgs entries from the vectorized σge, Bαge, σgs, and Bαgs
 """
-function pack_σgeσgsBαgeBαgsIntoσgeσgsBαgeBαgsVec(σge, σgs, Bαge, Bαgs)
-    return vcat(σge, vec.(Bαge)..., σgs, vec.(Bαgs)...)
+function unpack_σgeBαgeσgsBαgsFromσgeBαgeσgsBαgsVec(σgeBαgeσgsBαgsVec, N)
+    σge = σgeBαgeσgsBαgsVec[1:N]
+    Bαge = [reshape(σgeBαgeσgsBαgsVec[1 + N + (α - 1)*N^2:N + α*N^2], (N, N)) for α in 1:3]
+    σgs = σgeBαgeσgsBαgsVec[1 + N + 3N^2:N + 3N^2 + N]
+    Bαgs = [reshape(σgeBαgeσgsBαgsVec[1 + 2N + 3N^2 + (α - 1)*N^2:2N + 3N^2 + α*N^2], (N, N)) for α in 1:3]
+    return σge, Bαge, σgs, Bαgs
 end
 
 
 """
-Unpack the σge, σgs, Bαge, and Bαgs entries from the vectorized σge, σgs, Bαge, and Bαgs
+Unpack σvar from the vectorized σvar
 """
-function unpack_σgeσgsBαgeBαgsFromσgeσgsBαgeBαgsVec(σgeσgsBαgeBαgsVec)
-    N = Int(round(sqrt(length(σgeσgsBαgeBαgsVec)/6 + 1/36) - 1/6)) #if length(σBαVec) = 2(N + 3N^2), then 6*length(σBαVec) + 1 = (6N + 1)^2, and N is equal to the following
-    σge = σgeσgsBαgeBαgsVec[1:N]
-    Bαge = [reshape(σgeσgsBαgeBαgsVec[N + (α - 1)*N^2 + 1:N + α*N^2], (N, N)) for α in 1:3]
-    σgs = σgeσgsBαgeBαgsVec[N + 3N^2 + 1:N + 3N^2 + N]
-    Bαgs = [reshape(σgeσgsBαgeBαgsVec[2N + 3N^2 + (α - 1)*N^2 + 1:2N + 3N^2 + α*N^2], (N, N)) for α in 1:3]
-    return σge, σgs, Bαge, Bαgs
-end
-
-
-"""
-Unpack the vectorized σ from x
-"""
-function unpack_σVecFromx(x)
-    return unpack_σFromx(x)
-end
-
-
-"""
-Unpack the vectorized σBα from x
-"""
-function unpack_σBαVecFromx(x)
-    σ, Bα = unpack_σBαFromx(x)
-    return pack_σBαIntoσBαVec(σ, Bα)
-end
-
-
-"""
-Unpack the vectorized σgeσgs from x
-"""
-function unpack_σgeσgsVecFromx(x)
-    σge, σgs = unpack_σgeσgsFromx(x)
-    return pack_σgeσgsIntoσgeσgsVec(σge, σgs)
-end
-
-
-"""
-Unpack the vectorized σgeσgsBαgeBαgs from x
-"""
-function unpack_σgeσgsBαgeBαgsVecFromx(x)
-    σge, σgs, Bαge, Bαgs = unpack_σgeσgsBαgeBαgsFromx(x)
-    return pack_σgeσgsBαgeBαgsIntoσgeσgsBαgeBαgsVec(σge, σgs, Bαge, Bαgs)
-end
-
-
-"""
-Unpack the vectorized σ, Bα... from x
-"""
-function unpack_VecFromx(x, noPhonons, include3rdLevel)
+function unpack_σvarFromσvarVec(σvarVec, N, noPhonons, include3rdLevel)
     if noPhonons
         if !include3rdLevel
-            return unpack_σVecFromx(x)
+            return (σvarVec, )
         else
-            return unpack_σgeσgsVecFromx(x)
+            return unpack_σgeσgsFromσgeσgsVec(σvarVec, N)
         end
     else
         if !include3rdLevel
-            return unpack_σBαVecFromx(x)
+            return unpack_σBαFromσBαVec(σvarVec, N)
         else
-            return unpack_σgeσgsBαgeBαgsVecFromx(x)
+            return unpack_σgeBαgeσgsBαgsFromσgeBαgeσgsBαgsVec(σvarVec, N)
         end
     end
 end
 
 
 """
-Unpack σ, Bα... from the vectorized σ, Bα...
+Pack the vectorized σvar into x
 """
-function unpack_FromVec(v, noPhonons, include3rdLevel)
-    if noPhonons
-        if !include3rdLevel
-            return v
-        else
-            return unpack_σgeσgsFromσgeσgsVec(v)
-        end
-    else
-        if !include3rdLevel
-            return unpack_σBαFromσBαVec(v)
-        else
-            return unpack_σgeσgsBαgeBαgsFromσgeσgsBαgeBαgsVec(v)
-        end
-    end
+function pack_σvarVecIntox(σvarVec, N, noPhonons, include3rdLevel)
+    σvar = unpack_σvarFromσvarVec(σvarVec, N, noPhonons, include3rdLevel)
+    return pack_σvarIntox(σvar, N, noPhonons, include3rdLevel)
 end
-    
+
+
+"""
+Unpack the vectorized σvar from x
+"""
+function unpack_σvarVecFromx(x, N, noPhonons, include3rdLevel)
+    σvar = unpack_σvarFromx(x, N, noPhonons, include3rdLevel)
+    return pack_σvarIntoσvarVec(σvar, noPhonons, include3rdLevel)
+end
+
 
 # ================================================
 #   Functions pertaining to string labels and descriptions

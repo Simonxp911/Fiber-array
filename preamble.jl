@@ -97,7 +97,7 @@ struct SysPar
     tspan::Tuple{Real, Real}                        # Time span (min and max value) for time evolution
     dtmax::Real                                     # Maximum allowed time step for time evolution
     
-    initialState::Vector{<:Real}                    # Initial state for time evolution
+    initialState::Tuple                             # Initial state for time evolution
     initialStateDescription::String                 # Description of initial state for postfix
     
     ΩDriveOn::Bool                                  # Whether to have driving on the g-e transition or not
@@ -155,7 +155,7 @@ struct SysPar
                     Δ_specs::Tuple{Real, Real, Int},
                     ΔvariDependence::String, Δvari_args::Union{Tuple, Nothing}, ΔvariDescription::String,
                     whichTimeEvolver::String, tspan::Tuple{Real, Real}, dtmax::Real,
-                    initialState::Vector, initialStateDescription::String,
+                    initialState::Tuple, initialStateDescription::String,
                     ΩDriveOn::Bool,
                     arrayType::String, N_sites::Int, ρa::Real, a::Real, ff::Real, pos_unc::Union{Real, Vector}, n_inst::Int, array::Vector, arrayDescription::String, N::Int,
                     να::Vector, ηα::Vector, noPhonons::Bool,

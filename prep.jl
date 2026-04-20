@@ -3,13 +3,9 @@
 """
 Prepare the atomic coherences (in the case of no phonons)
 """
-function prep_times_σTrajectories(xTrajectories, N)
-    times = xTrajectories[:, 1]
-    
-    σTrajectories_t = unpack_σFromx.(eachrow(xTrajectories[:, 2:end]))
-    
-    σTrajectories = [[σTrajectories_t[t][i] for t in eachindex(times)] for i in 1:N]
-    return times, σTrajectories
+function prep_times_σgeTrajectories(σvar_t, N)
+    σgeTrajectories = [[σvar_t[t][1][i] for t in eachindex(σvar_t)] for i in 1:N]
+    return σgeTrajectories
 end
 
 
@@ -17,46 +13,32 @@ end
 Prepare the atomic coherences (in the case of no phonons)
 including the third level
 """
-function prep_times_σgeσgsTrajectories(xTrajectories, N)
-    times = xTrajectories[:, 1]
-    
-    σgeTrajectories_t = unpack_σFromx.(eachrow(xTrajectories[:, 2:1+2*N]))
-    σgsTrajectories_t = unpack_σFromx.(eachrow(xTrajectories[:, 2+2*N:1+4*N]))
-    
-    σgeTrajectories = [[σgeTrajectories_t[t][i] for t in eachindex(times)] for i in 1:N]
-    σgsTrajectories = [[σgsTrajectories_t[t][i] for t in eachindex(times)] for i in 1:N]
-    return times, σgeTrajectories, σgsTrajectories
+function prep_times_σgeσgsTrajectories(σvar_t, N)
+    σgeTrajectories = [[σvar_t[t][1][i] for t in eachindex(σvar_t)] for i in 1:N]
+    σgsTrajectories = [[σvar_t[t][2][i] for t in eachindex(σvar_t)] for i in 1:N]
+    return σgeTrajectories, σgsTrajectories
 end
 
 
 """
 Prepare the atomic coherences and the atom-phonon correlations 
 """
-function prep_times_σBαTrajectories(xTrajectories, N)
-    times = xTrajectories[:, 1]
-    
-    σBαTrajectories = unpack_σBαFromx.(eachrow(xTrajectories[:, 2:end]))
-    
-    σTrajectories  =  [[σBαTrajectories[t][1][i]    for t in eachindex(times)] for i in 1:N]
-    BαTrajectories = [[[σBαTrajectories[t][2][α][i] for t in eachindex(times)] for i in 1:N^2] for α in 1:3]
-    return times, σTrajectories, BαTrajectories
+function prep_times_σgeBαgeTrajectories(σvar_t, N)
+    σgeTrajectories  = [[ σvar_t[t][1][i] for t in eachindex(σvar_t)] for i in 1:N]
+    BαgeTrajectories = [[[σvar_t[t][2][α][i] for t in eachindex(σvar_t)] for i in 1:N^2] for α in 1:3]
+    return σgeTrajectories, BαgeTrajectories
 end
 
 
 """
 Prepare the atomic coherences and the atom-phonon correlations 
 """
-function prep_times_σgeσgsBαgeBαgsTrajectories(xTrajectories, N)
-    times = xTrajectories[:, 1]
-    
-    σgeBαgeTrajectories = unpack_σBαFromx.(eachrow(hcat(xTrajectories[:, 2:1+2*N], xTrajectories[:, 2+4*N:1+4*N+6*N^2])))
-    σgsBαgsTrajectories = unpack_σBαFromx.(eachrow(hcat(xTrajectories[:, 2+2*N:1+4*N], xTrajectories[:, 2+4*N+6*N^2:end])))
-    
-    σgeTrajectories  =  [[σgeBαgeTrajectories[t][1][i]    for t in eachindex(times)] for i in 1:N]
-    σgsTrajectories  =  [[σgsBαgsTrajectories[t][1][i]    for t in eachindex(times)] for i in 1:N]
-    BαgeTrajectories = [[[σgeBαgeTrajectories[t][2][α][i] for t in eachindex(times)] for i in 1:N^2] for α in 1:3]
-    BαgsTrajectories = [[[σgsBαgsTrajectories[t][2][α][i] for t in eachindex(times)] for i in 1:N^2] for α in 1:3]
-    return times, σgeTrajectories, σgsTrajectories, BαgeTrajectories, BαgsTrajectories
+function prep_times_σgeBαgeσgsBαgsTrajectories(σvar_t, N)
+    σgeTrajectories  = [[ σvar_t[t][1][i] for t in eachindex(σvar_t)] for i in 1:N]
+    BαgeTrajectories = [[[σvar_t[t][2][α][i] for t in eachindex(σvar_t)] for i in 1:N^2] for α in 1:3]
+    σgsTrajectories  = [[ σvar_t[t][3][i] for t in eachindex(σvar_t)] for i in 1:N]
+    BαgsTrajectories = [[[σvar_t[t][4][α][i] for t in eachindex(σvar_t)] for i in 1:N^2] for α in 1:3]
+    return σgeTrajectories, BαgeTrajectories, σgsTrajectories, BαgsTrajectories
 end
 
 
@@ -155,11 +137,11 @@ end
 Prepare the loss, absolute value of resonances, maximum absolute value of resonances, 
 and excitation-sector populations
 """
-function prep_loss_resonances_pops(t, r, resonances, eigenModesMatrix, noPhonons)
+function prep_loss_resonances_pops(t, r, resonances, eigenModesMatrix, N, noPhonons)
     loss = 1 .- abs2.(t) .- abs2.(r)
     resonances_abs = broadcast(x -> abs.(x), resonances)
     resonances_abs_max = maximum.(resonances_abs)
-    exci_pops = [x[1] for x in statePopulations.(eachcol(eigenModesMatrix), Ref(noPhonons))]
+    exci_pops = [x[1] for x in statePopulations.(eachcol(eigenModesMatrix), N, Ref(noPhonons))]
     return loss, resonances_abs, resonances_abs_max, exci_pops
 end
 

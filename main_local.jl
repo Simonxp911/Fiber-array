@@ -219,7 +219,7 @@ function define_SP_BerlinSr()
     # noPhonons = true
     
     # Whether to include a third (metastable) level to facilitate EIT
-    include3rdLevel = false
+    include3rdLevel = true
     
     # Set which kind of array to use ("1Dchain", "doubleChain", "randomZ")
     arrayType = "1Dchain"
@@ -622,21 +622,12 @@ function main()
     
     # TEMP
     
-    # consider restructuring, such that the x vector only appears in context of EoMs
-        # e.g. giving initial state as σ, Bα instead of x
-    # making σ and σge (etc.) naming consistent...
-    # consider restructuring pack/unpack functions (there are many right now, and it is a bit confusing)
-        # consider removing those that deal with σBα as a tuple
-        # consider removing pack/unpack functions whose name imply their use case and instead use noPhonons and include3rdLevel flags (when these functions are called these flags can just be set in the function call if one-line is needed)
-        # consider making a diagram of all possible pack/unpack and implement them all systematically
-        # allow only going between the σ and Vec or σ and x?
-        # give N as an argument instead of calculating it? Annoying for EoMs? 
-    # consider removing the distinction of σ, Bα and σBα everywhere, i.e. just have one object for the variables and then it should be clear from flags which combination of σ, Bα etc. it contains...
-    # commit 
-    
     # clean up code
         # remove functions that are no longer in use
         # change function names to reflect new structure, especially in main_local
+        # remove naming that signifies the case but rather use flags to determine it
+        # fragment long files
+        # make σ and σge (etc.) naming consistent...
     
     # fix inconsistency of Bα (for both e and s states) between EoM and _eigenmodes time evol...
     # check if calc_steadyState works, fix if it doesn't
@@ -652,8 +643,8 @@ function main()
     # plot_coupling_strengths(SP)
     # plot_arrayIn3D(SP)
     # plot_interPairEnergiesWeights(SP)
-    # plot_σBαTrajectories_σBαSS(SP)
-    # plot_transmission_vs_Δ(SP)
+    # plot_trajectories_SS(SP)
+    plot_transmission_vs_Δ(SP)
     # plot_imperfectArray_transmission_vs_Δ(SP)
     # plot_compareImperfectArray_transmission_vs_Δ(SP)
     # plot_effectiveBetaFactor(SP)
@@ -779,7 +770,7 @@ function plot_interPairEnergiesWeights(SP)
     # Find eigenenergies for a pair of atoms, as well as the weigth of the corresponding contributions to the transmission, the amplitude of those contributions, and the amplitude weigthed with the probability of that specific inter-atom distance
     collΔs, collΓs, weights, amplitudes, amplitudes_prob = zeros(n, N_modes), zeros(n, N_modes), zeros(n, N_modes), zeros(n, N_modes), zeros(n, N_modes)
     for (i, array) in enumerate(arrays)
-        fullDrive = get_fullDriveVector(SP.fiber, SP.d, SP.ηα, SP.incField_wlf, array, SP.ΩDriveOn)
+        fullDrive = get_fullDriveVector(SP.noPhonons, SP.fiber, SP.d, SP.ηα, SP.incField_wlf, array, SP.ΩDriveOn, SP.include3rdLevel)
         fullCoupling = get_fullCouplingMatrix(noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, array, SP.ΩDriveOn, SP.tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
         
         eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = spectrum_basisMatrices(fullCoupling)
@@ -846,30 +837,30 @@ function plot_interPairEnergiesWeights(SP)
 end
 
 
-function plot_σBαTrajectories_σBαSS(SP)
+function plot_trajectories_SS(SP)
     # Δ = 1.0
     Δ = SP.Δc + eps(Float64)
-    σBα_SS = calc_steadyState(SP, Δ)
-    xTrajectories = calc_timeEvolution(SP, Δ)
-    # xTrajectories = calc_timeEvolution_eigenmodes(SP, Δ)
+    σvar_SS = calc_steadyState(SP, Δ)
+    times, σvar_t = calc_timeEvolution(SP, Δ)
+    # times, σvar_t = calc_timeEvolution_eigenmodes(SP, Δ)
     
     if SP.noPhonons
-        if SP.include3rdLevel 
-            times, σgeTrajectories, σgsTrajectories = prep_times_σgeσgsTrajectories(xTrajectories, SP.N)
-            fig_σTrajectories_σSS(times, σgeTrajectories, σBα_SS[1])
-            fig_σTrajectories_σSS(times, σgsTrajectories, σBα_SS[2])
+        if !SP.include3rdLevel 
+            σgeTrajectories = prep_times_σgeTrajectories(σvar_t, SP.N)
+            fig_σTrajectories_σSS(times, σgeTrajectories, σvar_SS)
         else
-            times, σTrajectories = prep_times_σTrajectories(xTrajectories, SP.N)
-            fig_σTrajectories_σSS(times, σTrajectories, σBα_SS)
+            σgeTrajectories, σgsTrajectories = prep_times_σgeσgsTrajectories(σvar_t, SP.N)
+            fig_σTrajectories_σSS(times, σgeTrajectories, σvar_SS[1])
+            fig_σTrajectories_σSS(times, σgsTrajectories, σvar_SS[2])
         end
     else
-        if SP.include3rdLevel
-            times, σgeTrajectories, σgsTrajectories, BαgeTrajectories, BαgsTrajectories = prep_times_σgeσgsBαgeBαgsTrajectories(xTrajectories, SP.N)
-            fig_σBαTrajectories_σBαSS(times, σgeTrajectories, BαgeTrajectories, σBα_SS[[1, 3]]...)
-            fig_σBαTrajectories_σBαSS(times, σgsTrajectories, BαgsTrajectories, σBα_SS[[2, 4]]...)
+        if !SP.include3rdLevel
+            σgeTrajectories, BαgeTrajectories = prep_times_σgeBαgeTrajectories(σvar_t, SP.N)
+            fig_σBαTrajectories_σBαSS(times, σgeTrajectories, BαgeTrajectories, σvar_SS...)
         else
-            times, σTrajectories, BαTrajectories = prep_times_σBαTrajectories(xTrajectories, SP.N)
-            fig_σBαTrajectories_σBαSS(times, σTrajectories, BαTrajectories, σBα_SS...)
+            σgeTrajectories, BαgeTrajectories, σgsTrajectories, BαgsTrajectories = prep_times_σgeBαgeσgsBαgsTrajectories(σvar_t, SP.N)
+            fig_σBαTrajectories_σBαSS(times, σgeTrajectories, BαgeTrajectories, σvar_SS[[1, 3]]...)
+            fig_σBαTrajectories_σBαSS(times, σgsTrajectories, BαgsTrajectories, σvar_SS[[2, 4]]...)
         end
     end
 end
@@ -877,9 +868,9 @@ end
 
 function plot_transmission_vs_Δ(SP)
     titl = prep_transmission_title(SP)
-    σBα_scan = scan_steadyState(SP)
+    σvar_SS_scan = scan_steadyState(SP)
     
-    t = calc_transmission.(Ref(SP), σBα_scan)
+    t = calc_transmission.(Ref(SP), σvar_SS_scan)
     # t = scan_transmission_eigenmodes(SP)
     # t = scan_transmission_indepDecay(SP)
     
@@ -892,7 +883,7 @@ function plot_transmission_vs_Δ(SP)
     # fig_transmission_polar(SP.Δ_range, t, titl)
     fig_transmission_vs_Δ_phaseDetails_polar(SP.Δ_range, T, tPhase, t, unwrappedPhase, phaseSlope, titl)
     
-    # r = calc_reflection.(Ref(SP), σBα_scan)
+    # r = calc_reflection.(Ref(SP), σvar_SS_scan)
     # R, rPhase = prep_squaredNorm_phase(r)
     # fig_transmissionAndReflection_vs_Δ(SP.Δ_range, T, tPhase, R, rPhase, titl)
     
@@ -920,13 +911,13 @@ function plot_imperfectArray_transmission_vs_Δ(SP)
         ts = []
         if typeof(SP.d) == String
             for array in SP.array
-                σBα_scan = scan_steadyState(SP, SP.d, array)
-                push!(ts, calc_transmission.(Ref(SP), σBα_scan, Ref(SP.d), Ref(array)))
+                σvar_SS_scan = scan_steadyState(SP, SP.d, array)
+                push!(ts, calc_transmission.(Ref(SP), σvar_SS_scan, Ref(SP.d), Ref(array)))
             end
         else
             for (d, array) in zip(SP.d, SP.array)
-                σBα_scan = scan_steadyState(SP, d, array)
-                push!(ts, calc_transmission.(Ref(SP), σBα_scan, Ref(d), Ref(array)))
+                σvar_SS_scan = scan_steadyState(SP, d, array)
+                push!(ts, calc_transmission.(Ref(SP), σvar_SS_scan, Ref(d), Ref(array)))
             end
         end
         
@@ -1225,15 +1216,14 @@ function plot_effectiveBetaFactor_perfectArray(SP)
             filename = "SS_" * postfix
             folder = "steadyStates/"
             if isfile(saveDir * folder * filename * ".jld2")
-                σBα = load_as_jld2(saveDir * folder, filename)
-                steady
+                σvar_SS = load_as_jld2(saveDir * folder, filename)
                 
                 if SP.noPhonons
                     tildeΩ = get_tildeΩs(SP.fiber, SP.d, SP.incField_wlf, array, SP.ΩDriveOn)
-                    ts[i, j] = transmission(σBα, tildeΩ, SP.fiber)
+                    ts[i, j] = transmission(σvar_SS, tildeΩ, SP.fiber)
                 else
                     tildeΩ, tildeΩα = get_tildeΩs(SP.fiber, SP.d, SP.ηα, SP.incField_wlf, array, SP.ΩDriveOn)
-                    ts[i, j] = transmission(σBα..., tildeΩ, tildeΩα, SP.fiber)
+                    ts[i, j] = transmission(σvar_SS..., tildeΩ, tildeΩα, SP.fiber)
                 end
                 Ts[i, j], phases[i, j] = prep_squaredNorm_phase(ts[i, j])
             else
@@ -1358,12 +1348,12 @@ function plot_steadyState_radiation_Efield(SP)
     # Get steady state and its Fourier transform
     # Δ = 0.1775
     Δ = 0.326
-    σBα_SS = calc_steadyState(SP, Δ)
-    if SP.noPhonons σ_SS = σBα_SS else σ_SS = σBα_SS[1] end
+    σvar_SS = calc_steadyState(SP, Δ)
+    if SP.noPhonons σ_SS = σvar_SS else σ_SS = σvar_SS[1] end
     ks, σ_SS_FT = discFourierTransform(σ_SS, SP.a)
     
     # Get emission intensity pattern for plotting
-    E = scan_radiation_Efield(SP, σBα_SS)
+    E = scan_radiation_Efield(SP, σvar_SS)
     intensity = norm.(E).^2
     
     # Get parameter matrices (only considers the excitation part of the Hilbert space)
@@ -1450,7 +1440,7 @@ function plot_GnmEigenModes(SP)
         eigenEnergies, eigenModes = spectrum(fullCoupling)
         
         # Pack the eigenmodes
-        eigen_σBαs = unpack_σBαFromσBαVec.(eigenModes)
+        eigen_σBαs = unpack_σBαFromσBαVec.(eigenModes, SP.N)
         eigen_σs   = [eigen_σBα[1] for eigen_σBα in eigen_σBαs]
         eigen_Bαs  = [eigen_σBα[2] for eigen_σBα in eigen_σBαs]
         eigen_diagBαs = [diag.(eigen_Bα) for eigen_Bα in eigen_Bαs]
@@ -1494,7 +1484,7 @@ function plot_emissionPatternOfGnmeigenModes(SP)
     if SP.noPhonons
         eigen_σBαs = eigenModes
     else
-        eigen_σBαs = unpack_σBαFromσBαVec.(eigenModes)
+        eigen_σBαs = unpack_σBαFromσBαVec.(eigenModes, SP.N)
     end
     
     for eigen_σBα in eigen_σBαs
@@ -1641,9 +1631,9 @@ end
 function plot_lossWithGnmEigenEnergies(SP)
     if SP.include3rdLevel throw(ArgumentError("plot_lossWithGnmEigenEnergies assumes the third level (s) is excluded")) end
     
-    # σBα_scan = scan_steadyState(SP)
-    # t = calc_transmission.(Ref(SP), σBα_scan)
-    # r = calc_reflection.(Ref(SP), σBα_scan)
+    # σvar_SS_scan = scan_steadyState(SP)
+    # t = calc_transmission.(Ref(SP), σvar_SS_scan)
+    # r = calc_reflection.(Ref(SP), σvar_SS_scan)
     
     fullDrive = get_fullDriveVector(SP)
     fullCoupling = get_fullCouplingMatrix(SP)
@@ -1654,7 +1644,7 @@ function plot_lossWithGnmEigenEnergies(SP)
     weights, resonances = transmission_eigenmodes_weights_resonances(SP.Δ_range, fullDrive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, SP.fiber.propagation_constant_derivative)
     t = 1 .- sum(resonances)
     r = zeros(ComplexF64, size(t))
-    loss, resonances_abs, resonances_abs_max, exci_pops = prep_loss_resonances_pops(t, r, resonances, eigenModesMatrix, SP.noPhonons)
+    loss, resonances_abs, resonances_abs_max, exci_pops = prep_loss_resonances_pops(t, r, resonances, eigenModesMatrix, SP.N, SP.noPhonons)
     titl = prep_transmissionWithGnmEigenEnergies_title(SP)
     
     # flt = resonances_abs_max .> 0.01

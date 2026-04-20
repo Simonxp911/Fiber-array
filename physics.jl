@@ -1016,7 +1016,7 @@ Implements the equations of motion for the atomic and phononic degrees of freedo
 to first order in the driving and to second order in the Lamb-Dicke parameter
 including a third metastable level to facilitate EIT
 """ 
-function EoMs!(dσgedt, dσgsdt, dBαgedt, dBαgsdt, σge, σgs, Bαge, Bαgs, 
+function EoMs!(dσgedt, dBαgedt, dσgsdt, dBαgsdt, σge, Bαge, σgs, Bαgs, 
                Δ, Δc, να, Δvari, tildeΩ, tildeΩα, tildeΩc, tildeΩcα, tildeG, tildeFα, tildeGα1, tildeGα2)
     N = length(σge)
     for i in 1:N
@@ -1047,79 +1047,20 @@ end
 
 
 """
-Wraps the EoMs to conform with the requirements of NonlinearSolve (in the case of no phonons).
-
-args = dσdt, σ, Δ, Δvari, tildeΩ, tildeG
-"""
-function EoMs_wrap_noPh(dxdt, x, args, t)
-    # Unpack σ from x
-    unpack_σFromx!(args[2], x)
-    
-    # Calculate and update dσdt
-    EoMs!(args...)
-        
-    # Pack dσdt into dxdt
-    pack_σIntox!(args[1], dxdt)
-    
-    return dxdt
-end
-
-
-"""
 Wraps the EoMs to conform with the requirements of NonlinearSolve.
 
-args = dσdt, dBαdt, σ, Bα, Δ, Δvari, tildeΩ, tildeΩα, tildeG, tildeFα, tildeGα1, tildeGα2
+args = dσvardt, σvar, Δ, params, N, noPhonons, include3rdLevel
+(params are the different coupling matrices, drives, etc.)
 """
 function EoMs_wrap(dxdt, x, args, t)
-    # Unpack σ, Bα from x
-    unpack_σBαFromx!(args[3:4]..., x)
+    # Unpack σ from x
+    unpack_σvarFromx!(args[2], x, args[5], args[6], args[7])
     
-    # Calculate and update dσdt, dBαdt
-    EoMs!(args...)
+    # Calculate and update dσdt
+    EoMs!(args[1]..., args[2]..., args[3], args[4]...)
         
-    # Pack dσdt and dBαdt into dxdt
-    pack_σBαIntox!(args[1:2]..., dxdt)
-    
-    return dxdt
-end
-
-
-"""
-Wraps the EoMs to conform with the requirements of NonlinearSolve (in the case of no phonons).
-For the case of including a third metastable level to facilitate EIT.
-
-args = dσgedt, dσgsdt, σge, σgs, Δ, Δc, Δvari, tildeΩ, tildeΩc, tildeG
-"""
-function EoMs_wrap_noPh_w3l(dxdt, x, args, t)
-    # Unpack σge, σgs, Bαge, and Bαgs from x
-    unpack_σgeσgsFromx!(args[3:4]..., x)
-    
-    # Calculate and update dσdt, dBαdt
-    EoMs!(args...)
-        
-    # Pack dσgedt, dσgsdt, dBαgedt, and dBαgsdt into dxdt
-    pack_σgeσgsIntox!(args[1:2]..., dxdt)
-    
-    return dxdt
-end
-
-
-"""
-Wraps the EoMs to conform with the requirements of NonlinearSolve.
-For the case of including a third metastable level to facilitate EIT.
-
-args = dσgedt, dσgsdt, dBαgedt, dBαgsdt, σge, σgs, Bαge, Bαgs, 
-       Δ, Δc, να, Δvari, tildeΩ, tildeΩα, tildeΩc, tildeΩcα, tildeG, tildeFα, tildeGα1, tildeGα2
-"""
-function EoMs_wrap_w3l(dxdt, x, args, t)
-    # Unpack σge, σgs, Bαge, and Bαgs from x
-    unpack_σgeσgsBαgeBαgsFromx!(args[5:8]..., x)
-    
-    # Calculate and update dσdt, dBαdt
-    EoMs!(args...)
-        
-    # Pack dσgedt, dσgsdt, dBαgedt, and dBαgsdt into dxdt
-    pack_σgeσgsBαgeBαgsIntox!(args[1:4]..., dxdt)
+    # Pack dσdt into dxdt
+    pack_σvarIntox!(args[1], dxdt, args[5], args[6], args[7])
     
     return dxdt
 end
@@ -1203,32 +1144,36 @@ function steadyState(Δ, Δc, να, Δvari, tildeΩ, tildeΩα, tildeΩc, tilde�
 end
 
 
-function timeEvolution_eigenmodes(t, Δ, fullDrive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, initialState, noPhonons, include3rdLevel)
+"""
+Calculate the time evolution of the atomic coherences and the atom-phonon correlations
+using the eigenmodes approach
+"""
+function timeEvolution_eigenmodes(t, N, Δ, fullDrive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, initialState, noPhonons, include3rdLevel)
     # Prepare the initial state (in terms of the vectorized σ, Bα...)
-    Vec0 = unpack_VecFromx(initialState, noPhonons, include3rdLevel)
+    Vec0 = pack_σvarIntoσvarVec(initialState, noPhonons, include3rdLevel)
     
     # Prepare the initial state and the steady state in the eigenmode basis
     tildeVec0  = eigenModesMatrix_inv*Vec0
     tildeVecSS = -(eigenModesMatrix_inv*fullDrive)./(Δ .+ eigenEnergies)
     
-    # Find the state at time t
+    # Find the state at time t (and return to the original basis)
     Vec_t = eigenModesMatrix*( tildeVecSS .+ (tildeVec0 - tildeVecSS).*exp.(1im*(Δ .+ eigenEnergies)*t) )
     
-    # Return in the form of σ, Bα...
-    return unpack_FromVec(Vec_t, noPhonons, include3rdLevel)
+    # Return in the form of σvar
+    return unpack_σvarFromσvarVec(Vec_t, N, noPhonons, include3rdLevel)
 end
 
 
 """
 Prepare the groundstate in terms of the x-vector for time-evolution
 """
-function groundstate(N, noPh=false, inc3l=false)
-    if noPh
-        if !inc3l return empty_xVector_noPh(N)
-        else      return empty_xVector_noPh_w3l(N) end
+function groundstate(N, noPhonons, include3rdLevel)
+    if noPhonons
+        if !include3rdLevel return (empty_σVector(N), )
+        else                return empty_σVector(N), empty_σVector(N) end
     else
-        if !inc3l return empty_xVector(N)
-        else      return empty_xVector_w3l(N) end
+        if !include3rdLevel return empty_σVector(N), empty_BαVector(N)
+        else                return empty_σVector(N), empty_BαVector(N), empty_σVector(N), empty_BαVector(N) end
     end
 end
 
@@ -1243,7 +1188,7 @@ and has a momentum (i.e. phase) given by kz.
 Whether the excitation is in the e- or the s-state can be determined
 by setting whichState = 'e' or whichState = 's'.
 """
-function GaussianState(N, array, kz, zc, w, whichState, noPh=false, inc3l=false)
+function GaussianState(N, array, kz, zc, w, whichState, noPhonons, include3rdLevel)
     zs = [site[3] for site in array]
     σGauss = exp.(1im*kz*zs).*exp.(-(zs .- zc).^2/(2*w^2))
     σGauss /= norm(σGauss)
@@ -1257,13 +1202,13 @@ function GaussianState(N, array, kz, zc, w, whichState, noPh=false, inc3l=false)
         σgs = σGauss
     end
     
-    if noPh
-        if !inc3l return pack_σIntox(σge)
-        else      return pack_σgeσgsIntox(σge, σgs) end
+    if noPhonons
+        if !include3rdLevel return (σge, )
+        else                return σge, σgs end
     else
         Bαge, Bαgs = empty_BαVector(N), empty_BαVector(N)
-        if !inc3l return pack_σBαIntox(σge, Bαge)
-        else      return pack_σgeσgsBαgeBαgsIntox(σge, σgs, Bαge, Bαgs) end
+        if !include3rdLevel return σge, Bαge
+        else                return σge, Bαge, σgs, Bαgs end
     end
 end
 
@@ -1275,12 +1220,12 @@ in terms of the x-vector for time-evolution.
 The Gaussian is centered in the middle of the array (with respect to the z-axis), with a width given by w
 and has a momentum (i.e. phase) given by the fiber propagation constant.
 """
-function Gaussian_sState(N, array, fiber, w, noPh=false, inc3l=false)
-    if inc3l == false throw(ArgumentError("Gaussian_sState prepares an excitation in the s-state and must have inc3l=true")) end
+function Gaussian_sState(N, array, fiber, w, noPhonons, include3rdLevel)
+    if include3rdLevel == false throw(ArgumentError("Gaussian_sState prepares an excitation in the s-state and must have inc3l=true")) end
     
     zs = [site[3] for site in array]
     zc = (maximum(zs) - minimum(zs))/2
-    return GaussianState(N, array, fiber.propagation_constant, zc, w, "s", noPh, inc3l)
+    return GaussianState(N, array, fiber.propagation_constant, zc, w, "s", noPhonons, include3rdLevel)
 end
 
 
@@ -1291,7 +1236,7 @@ along z of a single excitation in terms of the x-vector for time-evolution.
 Whether the excitation is in the e- or the s-state can be determined
 by setting whichState = 'e' or whichState = 's'.
 """
-function triangleState(N, array, kz, whichState, noPh=false, inc3l=false)
+function triangleState(N, array, kz, whichState, noPhonons, include3rdLevel)
     zs = [site[3] for site in array]
     if zs[1] == 0 amplShift = zs[2] else amplShift = 0 end #add a shift to avoid that the first site's amplitude is zero (essentially assuming a 1D chain...)
     σTriangle = exp.(1im*kz*zs) .* (zs .+ amplShift)
@@ -1306,13 +1251,13 @@ function triangleState(N, array, kz, whichState, noPh=false, inc3l=false)
         σgs = σTriangle
     end
     
-    if noPh
-        if !inc3l return pack_σIntox(σge)
-        else      return pack_σgeσgsIntox(σge, σgs) end
+    if noPhonons
+        if !include3rdLevel return (σge,)
+        else                return σge, σgs end
     else
         Bαge, Bαgs = empty_BαVector(N), empty_BαVector(N)
-        if !inc3l return pack_σBαIntox(σge, Bαge)
-        else      return pack_σgeσgsBαgeBαgsIntox(σge, σgs, Bαge, Bαgs) end
+        if !include3rdLevel return σge, Bαge
+        else                return σge, Bαge, σgs, Bαgs end
     end
 end
 
@@ -1321,9 +1266,9 @@ end
 Prepare a (spatially) 'triangular' distribution (i.e. amplitudes increase linearly along the array)
 along z of a single excitation in the s-state in terms of the x-vector for time-evolution.
 """
-function triangle_sState(N, array, fiber, noPh=false, inc3l=false)
-    if inc3l == false throw(ArgumentError("triangle_sState prepares an excitation in the s-state and must have inc3l=true")) end
-    return triangleState(N, array, fiber.propagation_constant, "s", noPh, inc3l)
+function triangle_sState(N, array, fiber, noPhonons, include3rdLevel)
+    if include3rdLevel == false throw(ArgumentError("triangle_sState prepares an excitation in the s-state and must have inc3l=true")) end
+    return triangleState(N, array, fiber.propagation_constant, "s", noPhonons, include3rdLevel)
 end
 
 
@@ -1333,16 +1278,16 @@ end
 """
 Calculates the transmission through the guided mode (in the case of no phonons)
 """
-function transmission(σ, tildeΩ, fiber)
-    return 1 + 3im*π*fiber.propagation_constant_derivative/(2*ωa^2)*sum( conj(tildeΩ).*σ )
+function transmission(σge, tildeΩ, fiber)
+    return 1 + 3im*π*fiber.propagation_constant_derivative/(2*ωa^2)*sum( conj(tildeΩ).*σge )
 end
 
 
 """
 Calculates the transmission through the guided mode
 """
-function transmission(σ, Bα, tildeΩ, tildeΩα, fiber)
-    return 1 + 3im*π*fiber.propagation_constant_derivative/(2*ωa^2)*sum( conj(tildeΩ).*σ + sum([conj(tildeΩα[α]).*di(Bα[α]) for α in 1:3]) )
+function transmission(σge, Bαge, tildeΩ, tildeΩα, fiber)
+    return 1 + 3im*π*fiber.propagation_constant_derivative/(2*ωa^2)*sum( conj(tildeΩ).*σge + sum([conj(tildeΩα[α]).*di(Bαge[α]) for α in 1:3]) )
 end
 
 
@@ -1395,8 +1340,8 @@ assuming the atoms to be polarized in xz plane,
 assuming the driving to be in the (l=1,f=1)+(l=-1,f=1) mode (H forward)
 (in the case of no phonons)
 """
-function reflection(σ, tildeΩ_refl, fiber)
-    return 3im*π*fiber.propagation_constant_derivative/(2*ωa^2)*sum( conj(tildeΩ_refl).*σ )
+function reflection(σge, tildeΩ_refl, fiber)
+    return 3im*π*fiber.propagation_constant_derivative/(2*ωa^2)*sum( conj(tildeΩ_refl).*σge )
 end
 
 
@@ -1405,8 +1350,8 @@ Calculates the emission amplitude for the H-backward mode, corresponding to the 
 assuming the atoms to be polarized in xz plane,
 assuming the driving to be in the (l=1,f=1)+(l=-1,f=1) mode (H forward)
 """
-function reflection(σ, Bα, tildeΩ_refl, tildeΩα_refl, fiber)
-    return 3im*π*fiber.propagation_constant_derivative/(2*ωa^2)*sum( conj(tildeΩ_refl).*σ + sum([conj(tildeΩα_refl[α]).*di(Bα[α]) for α in 1:3]) )
+function reflection(σge, Bαge, tildeΩ_refl, tildeΩα_refl, fiber)
+    return 3im*π*fiber.propagation_constant_derivative/(2*ωa^2)*sum( conj(tildeΩ_refl).*σge + sum([conj(tildeΩα_refl[α]).*di(Bαge[α]) for α in 1:3]) )
 end
 
 
@@ -1415,7 +1360,7 @@ Calculates the emission amplitudes in each of the four guided modes (assuming a 
 assuming the driving to be in the (l=1,f=1)+(l=-1,f=1) mode (H forward)
 (in the case of no phonons)
 """
-function guidedEmissions(σ, fiber, d, array)
+function guidedEmissions(σge, fiber, d, array)
     emissions = []
     for incField_wlf in [[(1, 1,  1), (1, -1,  1)],
                          [(1, 1, -1), (1, -1, -1)],
@@ -1423,9 +1368,9 @@ function guidedEmissions(σ, fiber, d, array)
                          [(1, 1, -1), (1,  1, -1)]]
         tildeΩ = get_tildeΩs(fiber, d, incField_wlf, array, true)
         if incField_wlf == [(1, 1,  1), (1, -1,  1)]
-            push!(emissions, 1 + 3im*π*fiber.propagation_constant_derivative/(2*ωa^2)*sum( conj(tildeΩ).*σ ))
+            push!(emissions, 1 + 3im*π*fiber.propagation_constant_derivative/(2*ωa^2)*sum( conj(tildeΩ).*σge ))
         else
-            push!(emissions,     3im*π*fiber.propagation_constant_derivative/(2*ωa^2)*sum( conj(tildeΩ).*σ ))
+            push!(emissions,     3im*π*fiber.propagation_constant_derivative/(2*ωa^2)*sum( conj(tildeΩ).*σge ))
         end
     end
     return emissions
@@ -1436,7 +1381,7 @@ end
 Calculates the emission amplitudes in each of the four guided modes (assuming a 'single-mode' fiber),
 assuming the driving to be in the (l=1,f=1)+(l=-1,f=1) mode (H-forward)
 """
-function guidedEmissions(σ, Bα, fiber, d, ηα, array)
+function guidedEmissions(σge, Bαge, fiber, d, ηα, array)
     emissions = []
     for incField_wlf in [[(1, 1,  1), (1, -1,  1)],
                          [(1, 1, -1), (1, -1, -1)],
@@ -1444,9 +1389,9 @@ function guidedEmissions(σ, Bα, fiber, d, ηα, array)
                          [(1, 1, -1), (1,  1, -1)]]
         tildeΩ, tildeΩα = get_tildeΩs(fiber, d, ηα, incField_wlf, array, true)
         if incField_wlf == [(1, 1,  1), (1, -1,  1)]
-            push!(emissions, 1 + 3im*π*fiber.propagation_constant_derivative/(2*ωa^2)*sum( conj(tildeΩ).*σ + sum([conj(tildeΩα[α]).*di(Bα[α]) for α in 1:3]) ))
+            push!(emissions, 1 + 3im*π*fiber.propagation_constant_derivative/(2*ωa^2)*sum( conj(tildeΩ).*σge + sum([conj(tildeΩα[α]).*di(Bαge[α]) for α in 1:3]) ))
         else
-            push!(emissions,     3im*π*fiber.propagation_constant_derivative/(2*ωa^2)*sum( conj(tildeΩ).*σ + sum([conj(tildeΩα[α]).*di(Bα[α]) for α in 1:3]) ))
+            push!(emissions,     3im*π*fiber.propagation_constant_derivative/(2*ωa^2)*sum( conj(tildeΩ).*σge + sum([conj(tildeΩα[α]).*di(Bαge[α]) for α in 1:3]) ))
         end
     end
     return emissions
@@ -1495,18 +1440,18 @@ end
 Calculate the radiated E-field, assuming no incoming radiation field
 (in the case of no phonons)
 """
-function radiation_Efield(σ, Grm_rrn, d)
+function radiation_Efield(σge, Grm_rrn, d)
     d_mag = sqrt(3π/ωa^3)
-    return ωa^2*d_mag*sum( Grm_rrn.*d.*σ )
+    return ωa^2*d_mag*sum( Grm_rrn.*d.*σge )
 end
 
 
 """
 Calculate the radiated E-field, assuming no incoming radiation field
 """
-function radiation_Efield(σ, Bα, tildeGrm_rrn, tildeGα2rm_rrn, d)
+function radiation_Efield(σge, Bα, tildeGrm_rrn, tildeGα2rm_rrn, d)
     d_mag = sqrt(3π/ωa^3)
-    return ωa^2*d_mag*sum( tildeGrm_rrn.*d.*σ + sum([tildeGα2rm_rrn[α].*d.*di(Bα[α]) for α in 1:3]) )
+    return ωa^2*d_mag*sum( tildeGrm_rrn.*d.*σge + sum([tildeGα2rm_rrn[α].*d.*di(Bα[α]) for α in 1:3]) )
 end
 
 
@@ -1585,10 +1530,10 @@ end
 Calculate the weight ('population') in the excitation and excitation+phonon sectors respectively,
 taking a vectorized version of the system state as input
 """
-function statePopulations(σBαVec, noPhonons)
+function statePopulations(σBαVec, N, noPhonons)
     if noPhonons return 1.0, 0.0 end
     
     σBαVec /= norm(σBαVec)
-    σ, Bα = unpack_σBαFromσBαVec(σBαVec)
+    σ, Bα = unpack_σBαFromσBαVec(σBαVec, N)
     return norm(σ)^2, norm(Bα)^2
 end
