@@ -621,14 +621,7 @@ function main()
     
     
     # TEMP
-    
-    # clean up code
-        # remove functions that are no longer in use
-        # change function names to reflect new structure, especially in main_local
-        # remove naming that signifies the case but rather use flags to determine it
-        # fragment long files
-        # make σ and σge (etc.) naming consistent...
-    
+        
     # fix inconsistency of Bα (for both e and s states) between EoM and _eigenmodes time evol...
     # check if calc_steadyState works, fix if it doesn't
     
@@ -644,11 +637,11 @@ function main()
     # plot_arrayIn3D(SP)
     # plot_interPairEnergiesWeights(SP)
     # plot_trajectories_SS(SP)
-    plot_transmission_vs_Δ(SP)
+    # plot_transmission_vs_Δ(SP)
     # plot_imperfectArray_transmission_vs_Δ(SP)
     # plot_compareImperfectArray_transmission_vs_Δ(SP)
     # plot_effectiveBetaFactor(SP)
-    # plot_effectiveBetaFactor_vs_eta(SP)
+    # plot_effectiveBetaFactor_vs_η(SP)
     # plot_effectiveBetaFactor_perfectArray(SP)
     # plot_steadyState_radiation_Efield(SP)
     # plot_radiation_Efield(SP)
@@ -1278,7 +1271,7 @@ function plot_effectiveBetaFactor_perfectArray(SP)
 end
 
 
-function plot_effectiveBetaFactor_vs_eta(SP)
+function plot_effectiveBetaFactor_vs_η(SP)
     if SP.n_inst == 1 throw(ArgumentError("plot_effectiveBetaFactor requires n_inst > 1")) end
     
     ff_list = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]#[1:7]
@@ -1872,9 +1865,9 @@ end
 
 
 ### Minor things TODO:
-# Update titles (and bodies) of functions in main_local
-    # Many functions are deprecated or half-forgotten
-    # Many are messy because they have been left in half-temp state
+# Update titles (and bodies) of functions in main_local (as well as their corresponding fig_'s)
+    # Many functions are messy or half-forgotten
+    # Some should be split into separate functions
 
 # Prove that the y-derivatives (of drive and coupling matrices) go to zero
     # Inversion symmetry around the xz plane

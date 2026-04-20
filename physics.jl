@@ -1456,7 +1456,7 @@ end
 
 
 # ================================================
-#   Functions pertaining to the eigenmodes of coupling matrix
+#   Functions pertaining to the eigenmodes of a coupling matrix
 # ================================================
 """
 Find the eigenvalues and -vectors of a coupling matrix (i.e. the collective energies and modes)

@@ -30,31 +30,6 @@ end
 
 
 """
-Plot a coupling strength's magnitude and phase as a function of a relative spatial coordinate
-"""
-function fig_coupling_vs_x(x_range, coupling, x_label, y_label)
-    # Start figure 
-    fig = Figure(size=(800, 600))
-    
-    # Make axes
-    ax1 = Axis(fig[1, 1], limits=(extrema(x_range), nothing), 
-               xlabel=x_label, 
-               ylabel=latexstring(y_label * ", magnitude"))
-    ax2 = Axis(fig[1, 2], limits=(extrema(x_range), nothing), 
-               xlabel=x_label, 
-               ylabel=latexstring(y_label * ", phase"))
-    
-    # Plot the coupling's magnitude and phase
-    lines!(ax1, x_range, abs.(coupling) , label=L"$ |C| $" , color=:blue)
-    lines!(ax2, x_range, angle.(coupling), label=L"arg$ (C) $", color=:red)
-    
-    # Finish figure
-    axislegend.([ax1, ax2])
-    display(GLMakie.Screen(), fig)
-end
-
-
-"""
 Plot the atomic array and the fiber in 3D
 """
 function fig_arrayIn3D(array, x_range, z_range, ρf)
@@ -237,6 +212,40 @@ function fig_transmission_vs_Δ_phaseDetails(Δ_range, T, phase, unwrappedPhase,
     lines!(ax5, Δ_range[1:end-1] .+ diff(Δ_range)./2, phaseSlope, color=:black)
     
     # Finish figure
+    display(GLMakie.Screen(), fig)
+end
+
+
+"""
+Plot the transmission in a polar plot.
+"""
+function fig_transmission_polar(Δ_range, t, titl)
+    # Start figure 
+    fig = Figure(size=(800, 900))
+    Label(fig[1, 1], titl, tellwidth=false)
+    ax1 = Axis(fig[2, 1],
+               xlabel=L"Re$ (t) $",
+               ylabel=L"Im$ (t) $")
+    
+    # Radial lines
+    vlines!(0, color=:black, linewidth=0.5, alpha=0.8)
+    hlines!(0, color=:black, linewidth=0.5, alpha=0.8)
+    ablines!(ax1, [0, 0], [1, -1], color=:black, linewidth=0.5, alpha=0.8)
+    
+    # Concentric circles
+    for radius in 0.25:0.25:1
+        arc!(ax1, Point2f(0), radius, 0.0, 2π, color=:black, linewidth=0.5 + (radius == 1)*0.5, alpha=0.8)
+        text!(ax1, radius, 0, text=string(radius))
+    end
+    
+    # Detuning colorbar
+    Colorbar(fig[3, 1], limits=extrema(Δ_range), colormap=:gist_rainbow, vertical=false, flipaxis=false, label=L"$ Δ/γ_{a} $")
+    
+    # Plot transmission and 1 - res
+    lines!(ax1, real.(t), imag.(t), colormap=:gist_rainbow, color=Δ_range, linewidth=3)
+    
+    # Finish figure
+    colsize!(fig.layout, 1, Aspect(2, 1.0))
     display(GLMakie.Screen(), fig)
 end
 
@@ -851,58 +860,6 @@ end
 
 
 """
-Plot the magnitude and phase of the atomic coherences along the fiber
-"""
-function fig_σ_vs_z(zs, σ, titl)
-    # Start figure 
-    fig = Figure(size=(800, 700))
-    
-    # Make title and axis
-    Label(fig[1, 1:2], titl, tellwidth=false)
-    Label(fig[2, 1], L"Magnitude$$", tellwidth=false)
-    Label(fig[2, 2], L"Phase$$", tellwidth=false)
-    ax1 = Axis(fig[3, 1], xlabel=L"$ z/λ_{a} $")
-    ax2 = Axis(fig[3, 2], xlabel=L"$ z/λ_{a} $")
-    
-    # Plot real space 
-    lines!(ax1, zs, abs.(σ)  , color=:blue)
-    lines!(ax2, zs, angle.(σ), color=:red)
-    
-    # Finish figure
-    display(GLMakie.Screen(), fig)
-end
-
-
-"""
-Plot the magnitude and phase of the atomic coherences along the fiber
-"""
-function fig_σgeσgs_vs_z(zs, σge, σgs, titl)
-    # Start figure 
-    fig = Figure(size=(800, 700))
-    
-    # Make title and axis
-    Label(fig[1, 1:3], titl, tellwidth=false)
-    Label(fig[2, 2], L"Magnitude$$", tellwidth=false)
-    Label(fig[2, 3], L"Phase$$", tellwidth=false)
-    Label(fig[3, 1], L"$ σ^{ge} $", rotation = pi/2, tellheight=false)
-    Label(fig[4, 1], L"$ σ^{gs} $", rotation = pi/2, tellheight=false)
-    ax1 = Axis(fig[3, 2])
-    ax2 = Axis(fig[3, 3])
-    ax3 = Axis(fig[4, 2], xlabel=L"$ z/λ_{a} $")
-    ax4 = Axis(fig[4, 3], xlabel=L"$ z/λ_{a} $")
-    
-    # Plot 
-    lines!(ax1, zs, abs.(σge)  , color=:blue)
-    lines!(ax2, zs, angle.(σge), color=:red)
-    lines!(ax3, zs, abs.(σgs)  , color=:blue)
-    lines!(ax4, zs, angle.(σgs), color=:red)
-    
-    # Finish figure
-    display(GLMakie.Screen(), fig)
-end
-
-
-"""
 Plot the eigenvectors of a coupling matrix in real space, as well as their Fourier transform.
 Furthermore, plot the emission pattern of that mode.
 """
@@ -1147,34 +1104,6 @@ end
 Plot resonances contributing to the transmission, together with the transmission itself,
 in a polar plot.
 """
-# function fig_transAndResonances_polar(Δ_range, t, resonances, titl)
-#     # Make a prep function instead of calculating abs and angle here?
-    
-    
-#     # Start figure 
-#     fig = Figure(size=(800, 900))
-#     Label(fig[1, 1:4], titl, tellwidth=false)
-    
-#     # Plot transmission and 1 - res
-#     ax1 = PolarAxis(fig[2, 1])#, rlimits=(0, 1))
-#     trans_line = lines!(ax1, angle.(t), abs.(t), color=:red)
-#     for res in resonances
-#         lines!(ax1, angle.(1 .- res), abs.(1 .- res), alpha=0.9)
-#     end
-#     Legend(fig[2, 2], [trans_line], [L"$ t $"])
-    
-#     # Plot 1 - t and resonances
-#     ax2 = PolarAxis(fig[2, 3])#, rlimits=(0, 1))
-#     trans_line = lines!(ax2, angle.(1 .- t), abs.(1 .- t), color=:red)
-#     for res in resonances
-#         lines!(ax2, angle.(res), abs.(res), alpha=0.9)
-#     end
-#     Legend(fig[2, 4], [trans_line], [L"$ 1 - t $"])
-    
-#     # Finish figure
-#     display(GLMakie.Screen(), fig)
-# end
-
 function fig_transAndResonances_polar(Δ_range, t, resonances, titl)
     # Start figure 
     fig = Figure(size=(800, 900))
@@ -1200,40 +1129,6 @@ function fig_transAndResonances_polar(Δ_range, t, resonances, titl)
     for res in resonances
         lines!(ax1, real.(1 .- res), imag.(1 .- res), colormap=:gist_rainbow, color=Δ_range, alpha=0.9)
     end
-    
-    # Finish figure
-    colsize!(fig.layout, 1, Aspect(2, 1.0))
-    display(GLMakie.Screen(), fig)
-end
-
-
-"""
-Plot the transmission in a polar plot.
-"""
-function fig_transmission_polar(Δ_range, t, titl)
-    # Start figure 
-    fig = Figure(size=(800, 900))
-    Label(fig[1, 1], titl, tellwidth=false)
-    ax1 = Axis(fig[2, 1],
-               xlabel=L"Re$ (t) $",
-               ylabel=L"Im$ (t) $")
-    
-    # Radial lines
-    vlines!(0, color=:black, linewidth=0.5, alpha=0.8)
-    hlines!(0, color=:black, linewidth=0.5, alpha=0.8)
-    ablines!(ax1, [0, 0], [1, -1], color=:black, linewidth=0.5, alpha=0.8)
-    
-    # Concentric circles
-    for radius in 0.25:0.25:1
-        arc!(ax1, Point2f(0), radius, 0.0, 2π, color=:black, linewidth=0.5 + (radius == 1)*0.5, alpha=0.8)
-        text!(ax1, radius, 0, text=string(radius))
-    end
-    
-    # Detuning colorbar
-    Colorbar(fig[3, 1], limits=extrema(Δ_range), colormap=:gist_rainbow, vertical=false, flipaxis=false, label=L"$ Δ/γ_{a} $")
-    
-    # Plot transmission and 1 - res
-    lines!(ax1, real.(t), imag.(t), colormap=:gist_rainbow, color=Δ_range, linewidth=3)
     
     # Finish figure
     colsize!(fig.layout, 1, Aspect(2, 1.0))
