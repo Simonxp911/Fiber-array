@@ -150,6 +150,9 @@ function define_SP_BerlinCs()
     # Additional arguments for the control drive ("planeWave" requires a momentum vector)
     cDriveArgs = (kc = ωa*[-0.9, 0, 0], )
     
+    # Lower tolerances of the radiative decay rate and state norm used to stop time evolution for calculation of memory retrieval error 
+    radDecayRateAndStateNorm_LowerTol = (1e-6, 0.01)
+    
     
     return SysPar(ρf0_ul, n0, ωa,
                   fiber,
@@ -165,7 +168,8 @@ function define_SP_BerlinCs()
                   save_steadyState, save_timeEvol,
                   interpolation_Im_Grm_trans,
                   z_range, x_range, y_fix,
-                  include3rdLevel, cDriveType, cDriveDescription, Δc, Ωc, cDriveArgs) 
+                  include3rdLevel, cDriveType, cDriveDescription, Δc, Ωc, cDriveArgs,
+                  radDecayRateAndStateNorm_LowerTol) 
 end
 
 
@@ -215,8 +219,8 @@ function define_SP_BerlinSr()
     # ηα = [0, 0, 0]
     
     # Whether phonons are excluded or not from the calculations (a finite ηα but noPhonons = true will result in including ground state motion into tildeG)
-    noPhonons = all(ηα .== 0)
-    # noPhonons = true
+    # noPhonons = all(ηα .== 0)
+    noPhonons = true
     
     # Whether to include a third (metastable) level to facilitate EIT
     include3rdLevel = true
@@ -225,7 +229,7 @@ function define_SP_BerlinSr()
     arrayType = "1Dchain"
     
     # Set number of atomic sites 
-    N_sites = 7
+    N_sites = 13
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
@@ -244,18 +248,18 @@ function define_SP_BerlinSr()
     dtmax = 0.01
     
     # Prepare initial state for time evolution, as well as description for postfix
-    initialState = groundstate(N, noPhonons, include3rdLevel)
-    initialStateDescription = "gs"
+    # initialState = groundstate(N, noPhonons, include3rdLevel)
+    # initialStateDescription = "gs"
     # GaussWidth = sqrt(N)*a0_ul
     # initialState = Gaussian_sState(N, array, fiber, GaussWidth, noPhonons, include3rdLevel)
     # # initialState = GaussianState(N, array, 0, N/2*a0_ul, GaussWidth, "e", noPhonons, include3rdLevel)
     # initialStateDescription = "Ga"
-    # initialState = triangle_sState(N, array, fiber, noPhonons, include3rdLevel)
-    # # initialState = triangleState(N, array, fiber.propagation_constant, "e", noPhonons, include3rdLevel)
-    # initialStateDescription = "tr"
+    initialState = triangle_sState(N, array, fiber, noPhonons, include3rdLevel)
+    # initialState = triangleState(N, array, fiber.propagation_constant, "e", noPhonons, include3rdLevel)
+    initialStateDescription = "tr"
     
     # Whether to have driving on the g-e transition or not
-    ΩDriveOn = true
+    ΩDriveOn = false
     
     # Atomic dipole moment
     # d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul, array)
@@ -310,6 +314,9 @@ function define_SP_BerlinSr()
     # Additional arguments for the control drive ("planeWave" requires a momentum vector)
     cDriveArgs = (kc = ωa*[-1, 0, 0], N_sites=N_sites, a=a0_ul)
     
+    # Lower tolerances of the radiative decay rate and state norm used to stop time evolution for calculation of memory retrieval error 
+    radDecayRateAndStateNorm_LowerTol = (1e-6, 0.01)
+    
     
     
     return SysPar(ρf0_ul, n0, ωa,
@@ -326,7 +333,8 @@ function define_SP_BerlinSr()
                   save_steadyState, save_timeEvol,
                   interpolation_Im_Grm_trans,
                   z_range, x_range, y_fix,
-                  include3rdLevel, cDriveType, cDriveDescription, Δc, Ωc, cDriveArgs)
+                  include3rdLevel, cDriveType, cDriveDescription, Δc, Ωc, cDriveArgs,
+                  radDecayRateAndStateNorm_LowerTol)
 end
 
 
@@ -454,6 +462,9 @@ function define_SP_ChangExponential()
     # Additional arguments for the control drive ("planeWave" requires a momentum vector)
     cDriveArgs = (kc = ωa*[-1, 0, 0], N_sites=N_sites, a=a)
     
+    # Lower tolerances of the radiative decay rate and state norm used to stop time evolution for calculation of memory retrieval error 
+    radDecayRateAndStateNorm_LowerTol = (1e-6, 0.01)
+    
     
     return SysPar(ρf, n, ωa,
                   fiber,
@@ -469,7 +480,8 @@ function define_SP_ChangExponential()
                   save_steadyState, save_timeEvol,
                   interpolation_Im_Grm_trans,
                   z_range, x_range, y_fix,
-                  include3rdLevel, cDriveType, cDriveDescription, Δc, Ωc, cDriveArgs)
+                  include3rdLevel, cDriveType, cDriveDescription, Δc, Ωc, cDriveArgs,
+                  radDecayRateAndStateNorm_LowerTol)
 end
 
 
@@ -591,6 +603,9 @@ function define_SP_artificial()
     # Additional arguments for the control drive ("planeWave" requires a momentum vector)
     cDriveArgs = (kc = ωa*[-1, 0, 0], )
     
+    # Lower tolerances of the radiative decay rate and state norm used to stop time evolution for calculation of memory retrieval error 
+    radDecayRateAndStateNorm_LowerTol = (1e-6, 0.01)
+    
     
     return SysPar(ρf, n, ωa,
                   fiber,
@@ -606,7 +621,8 @@ function define_SP_artificial()
                   save_steadyState, save_timeEvol,
                   interpolation_Im_Grm_trans,
                   z_range, x_range, y_fix,
-                  include3rdLevel, cDriveType, cDriveDescription, Δc, Ωc, cDriveArgs)
+                  include3rdLevel, cDriveType, cDriveDescription, Δc, Ωc, cDriveArgs,
+                  radDecayRateAndStateNorm_LowerTol)
 end
 
 
@@ -622,11 +638,15 @@ function main()
     
     # TEMP
         
-    # fix inconsistency of Bα (for both e and s states) between EoM and _eigenmodes time evol...
-    # check if calc_steadyState works, fix if it doesn't
-    
     # implement calculation of ϵ via _eigenmodes
     # commit
+    
+    # implement plotting contribution to ϵ vs eigenmodes
+    # find optimal initial state from this
+    # commit
+    
+    # fix inconsistency of Bα (for both e and s states) between EoM and _eigenmodes time evol...
+    # check if calc_steadyState works, fix if it doesn't
     
     # TEMP
     
@@ -651,7 +671,7 @@ function main()
     # plot_GnmFourierTransformed(SP)
     # plot_compareGnmEigenEnergies(SP)
     # plot_lossWithGnmEigenEnergies(SP)
-    # plot_memoryEfficiency(SP)
+    plot_memoryEfficiency(SP)
     # plot_compareMemoryEfficiency(SP)
     
     return nothing
@@ -1687,21 +1707,10 @@ function plot_memoryEfficiency(SP)
     fig_memoryRetrievalError(N_sites_list, ϵs, titl)
     
     
-    # # Prepare parameters
     # Δ = SP.Δc + eps(Float64)
-    # fullCoupling_rm_egSector = calc_fullCoupling_rm_egSector(SP)
-    # radDecayRateAndStateNorm_LowerTol = (1e-6, 0.01)
-    
-    # # Perform time-evolution and calculate memory retrieval error
-    # times, states, radDecayRatesAndStateNorm = calc_timeEvolution_forMemoryRetrievalError(SP, Δ, fullCoupling_rm_egSector, radDecayRateAndStateNorm_LowerTol)
-    # radiativeDecayRates = [x[1] for x in radDecayRatesAndStateNorm]
-    # stateNorm = [x[2] for x in radDecayRatesAndStateNorm]
-    # ϵ = calc_memoryRetrievalError(times, radiativeDecayRates)
-    
-    # # Print and plot
+    # # ϵ = calc_memoryRetrievalError(SP, Δ)
+    # ϵ = calc_memoryRetrievalError_eigenmodes(SP, Δ)
     # println(ϵ)
-    # fig_complexFunction(times, radiativeDecayRates)
-    # fig_complexFunction(times, stateNorm)
     
 end
 

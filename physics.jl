@@ -1195,9 +1195,9 @@ function GaussianState(N, array, kz, zc, w, whichState, noPhonons, include3rdLev
     
     if whichState == "e"
         σge = σGauss
-        if inc3l σgs = empty_σVector(N) end
+        if include3rdLevel σgs = empty_σVector(N) end
     elseif whichState == "s"
-        if inc3l == false throw(ArgumentError("GaussianState with whichState = 's' prepares an excitation in the s-state and must have inc3l=true")) end
+        if include3rdLevel == false throw(ArgumentError("GaussianState with whichState = 's' prepares an excitation in the s-state and must have include3rdLevel=true")) end
         σge = empty_σVector(N)
         σgs = σGauss
     end
@@ -1221,7 +1221,7 @@ The Gaussian is centered in the middle of the array (with respect to the z-axis)
 and has a momentum (i.e. phase) given by the fiber propagation constant.
 """
 function Gaussian_sState(N, array, fiber, w, noPhonons, include3rdLevel)
-    if include3rdLevel == false throw(ArgumentError("Gaussian_sState prepares an excitation in the s-state and must have inc3l=true")) end
+    if include3rdLevel == false throw(ArgumentError("Gaussian_sState prepares an excitation in the s-state and must have include3rdLevel=true")) end
     
     zs = [site[3] for site in array]
     zc = (maximum(zs) - minimum(zs))/2
@@ -1244,9 +1244,9 @@ function triangleState(N, array, kz, whichState, noPhonons, include3rdLevel)
     
     if whichState == "e"
         σge = σTriangle
-        if inc3l σgs = empty_σVector(N) end
+        if include3rdLevel σgs = empty_σVector(N) end
     elseif whichState == "s"
-        if inc3l == false throw(ArgumentError("triangleState with whichState = 's' prepares an excitation in the s-state and must have inc3l=true")) end
+        if include3rdLevel == false throw(ArgumentError("triangleState with whichState = 's' prepares an excitation in the s-state and must have include3rdLevel=true")) end
         σge = empty_σVector(N)
         σgs = σTriangle
     end
@@ -1267,7 +1267,7 @@ Prepare a (spatially) 'triangular' distribution (i.e. amplitudes increase linear
 along z of a single excitation in the s-state in terms of the x-vector for time-evolution.
 """
 function triangle_sState(N, array, fiber, noPhonons, include3rdLevel)
-    if include3rdLevel == false throw(ArgumentError("triangle_sState prepares an excitation in the s-state and must have inc3l=true")) end
+    if include3rdLevel == false throw(ArgumentError("triangle_sState prepares an excitation in the s-state and must have include3rdLevel=true")) end
     return triangleState(N, array, fiber.propagation_constant, "s", noPhonons, include3rdLevel)
 end
 
@@ -1430,6 +1430,31 @@ function groupVelocity(n, Δ_range)
     end
     dndΔ[end] = (n_real[end] - n_real[end-1])/dΔ
     return 1 ./(n_real +  ωa*dndΔ)
+end
+
+
+# ================================================
+#   Functions pertaining to using the atomic array as an EIT quantum memory
+# ================================================
+"""
+Calculate the memory retrieval error from the time-dependent (radiative) decay rate
+"""
+function memoryRetrievalError(times, radiativeDecayRates)
+    return sum((radiativeDecayRates[1:end-1] .+ radiativeDecayRates[2:end])./2 .* diff(times))
+end
+
+
+"""
+Calculate the memory retrieval error from the time-dependent (radiative) decay rate, using the eigenmodes approach
+"""
+function memoryRetrievalError_eigenmodes(Δ, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, initialState, fullΓrm, noPhonons, include3rdLevel)
+    Vec0 = pack_σvarIntoσvarVec(initialState, noPhonons, include3rdLevel)
+    tildeVec0  = eigenModesMatrix_inv*Vec0
+    
+    tildeΓrm = eigenModesMatrix'*fullΓrm*eigenModesMatrix
+    
+    n_eig = length(eigenEnergies)
+    return real(sum([1im/(eigenEnergies[j] - conj(eigenEnergies[i]))*conj(tildeVec0[i])*tildeΓrm[i, j]*tildeVec0[j] for j in 1:n_eig, i in 1:n_eig]))
 end
 
 

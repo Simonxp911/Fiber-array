@@ -149,6 +149,8 @@ struct SysPar
     Ωc::Real                                        # Rabi frequency of the control drive with respect to the e-s transition
     cDriveArgs::NamedTuple                          # Additional arguments for the control drive
     
+    radDecayRateAndStateNorm_LowerTol::Tuple        # Lower tolerances of the radiative decay rate and state norm used to stop time evolution for calculation of memory retrieval error 
+    
     
     function SysPar(ρf::Real, n::Real, ω::Real,
                     fiber::Fiber,
@@ -164,7 +166,8 @@ struct SysPar
                     save_steadyState::Bool, save_timeEvol::Bool, 
                     interpolation_Im_Grm_trans::Union{Dict, Nothing},
                     z_range::AbstractRange, x_range::AbstractRange, y_fix::Real,
-                    include3rdLevel::Bool, cDriveType::String, cDriveDescription::String, Δc::Real, Ωc::Real, cDriveArgs::NamedTuple)
+                    include3rdLevel::Bool, cDriveType::String, cDriveDescription::String, Δc::Real, Ωc::Real, cDriveArgs::NamedTuple,
+                    radDecayRateAndStateNorm_LowerTol::Tuple)
 
         Δ_range = range(Δ_specs...)
         r_fields = [[x, y_fix, z] for z in z_range, x in x_range]
@@ -182,7 +185,8 @@ struct SysPar
                    save_steadyState, save_timeEvol, 
                    interpolation_Im_Grm_trans,
                    z_range, x_range, y_fix, r_fields,
-                   include3rdLevel, cDriveType, cDriveDescription, Δc, Ωc, cDriveArgs)
+                   include3rdLevel, cDriveType, cDriveDescription, Δc, Ωc, cDriveArgs,
+                   radDecayRateAndStateNorm_LowerTol)
     end
 end
 
@@ -258,6 +262,9 @@ function Base.show(io::IO, SP::SysPar)
     println(io, "Detuning Δc: ", SP.Δc)
     println(io, "Rabi frequency Ωc: ", SP.Ωc)
     println(io, "Further arguments cDriveArgs: ", SP.cDriveArgs)
+    println(io, "")
+    
+    println(io, "radDecayRateAndStateNorm_LowerTol: ", SP.radDecayRateAndStateNorm_LowerTol)
     println(io, "")
     
     println(io, "---  ---")

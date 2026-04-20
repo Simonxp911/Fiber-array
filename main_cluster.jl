@@ -143,18 +143,10 @@ function memoryEfficiency(SP)
     if SP.initialStateDescription ∉ ("Ga", "tr") throw(ArgumentError("memoryEfficiency assumes a Gaussian or triangular initial state")) end
     if SP.ΩDriveOn                               throw(ArgumentError("memoryEfficiency assumes the driving on the g-e transition is off")) end
     
-    # Prepare parameters
     Δ = SP.Δc + eps(Float64)
-    fullCoupling_rm_egSector = calc_fullCoupling_rm_egSector(SP)
-    radDecayRateAndStateNorm_LowerTol = (1e-6, 0.01)
+    ϵ = calc_memoryRetrievalError(SP, Δ)
     
-    # Perform time-evolution and calculate memory retrieval error
-    times, states, radDecayRatesAndStateNorm = calc_timeEvolution_forMemoryRetrievalError(SP, Δ, fullCoupling_rm_egSector, radDecayRateAndStateNorm_LowerTol)
-    radiativeDecayRates = [x[1] for x in radDecayRatesAndStateNorm]
-    ϵ = calc_memoryRetrievalError(times, radiativeDecayRates)
-    
-    
-    postfix = get_postfix_memoryEfficiency(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.noPhonons, SP.incField_wlf, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
+    postfix = get_postfix_memoryEfficiency(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.noPhonons, SP.incField_wlf, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, SP.radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
     filename = "memEff_" * postfix
     folder = "memoryEfficiency/"
     save_as_txt(ϵ, saveDir * folder, filename)
