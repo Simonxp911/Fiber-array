@@ -35,6 +35,8 @@ function main()
         steadyState_vs_Δ(SP)
     elseif task == "memoryEfficiency"
         memoryEfficiency(SP)
+    elseif task == "memoryEfficiencyEigenmodes"
+        memoryEfficiencyEigenmodes(SP)
     end
     return nothing
 end
@@ -149,6 +151,15 @@ function memoryEfficiency(SP)
     filename = "memEff_" * postfix
     folder = "memoryEfficiency/"
     save_as_txt(ϵ, saveDir * folder, filename)
+end
+
+
+function memoryEfficiencyEigenmodes(SP)
+    if !SP.include3rdLevel                       throw(ArgumentError("memoryEfficiencyEigenmodes assumes the third level (s) is included")) end
+    if SP.initialStateDescription ∉ ("Ga", "tr") throw(ArgumentError("memoryEfficiencyEigenmodes assumes a Gaussian or triangular initial state")) end
+    if SP.ΩDriveOn                               throw(ArgumentError("memoryEfficiencyEigenmodes assumes the driving on the g-e transition is off")) end
+    
+    calc_memoryRetrievalErrorMatrixEigenmodes(SP)
 end
 
 

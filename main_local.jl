@@ -169,7 +169,7 @@ function define_SP_BerlinCs()
                   interpolation_Im_Grm_trans,
                   z_range, x_range, y_fix,
                   include3rdLevel, cDriveType, cDriveDescription, Δc, Ωc, cDriveArgs,
-                  radDecayRateAndStateNorm_LowerTol) 
+                  radDecayRateAndStateNorm_LowerTol)
 end
 
 
@@ -334,7 +334,7 @@ function define_SP_BerlinSr()
                   interpolation_Im_Grm_trans,
                   z_range, x_range, y_fix,
                   include3rdLevel, cDriveType, cDriveDescription, Δc, Ωc, cDriveArgs,
-                  radDecayRateAndStateNorm_LowerTol)
+                  radDecayRateAndStateNorm_LowerTol) 
 end
 
 
@@ -633,19 +633,6 @@ function main()
     # SP = define_SP_ChangExponential()
     # SP = define_SP_artificial()
     # show(SP)
-    
-    
-    
-    # TEMP
-    rename()
-    # implement plotting contribution to ϵ vs eigenmodes
-    # find optimal initial state from this
-    # commit
-    
-    # fix inconsistency of Bα (for both e and s states) between EoM and _eigenmodes time evol...
-    # check if calc_steadyState works, fix if it doesn't
-    
-    # TEMP
     
     
     
@@ -1702,8 +1689,8 @@ function plot_memoryEfficiency(SP)
     # fig_memoryRetrievalError(N_sites_list, ϵs, titl)
     
     
-    ϵ = calc_memoryRetrievalError(SP)
-    println(ϵ)
+    # ϵ = calc_memoryRetrievalError(SP)
+    # println(ϵ)
     ϵ = calc_memoryRetrievalError_eigenmodes(SP)
     println(ϵ)
     

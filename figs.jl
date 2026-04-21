@@ -833,24 +833,33 @@ end
 """
 Plot any complex function (for example for testing or checking)
 """
-function fig_complexFunction(x, ys...; titl="", labels=[])
+function fig_complexFunction(x, ys...; titl="", labels=[], format="realimag")
     colors = distinguishable_colors(length(ys), [RGB(1,1,1), RGB(0,0,0)], dropseed=true)
     if length(labels) == 0 labels = fill("", length(ys)) end
+    
+    if format == "realimag"
+        panel_titles = (L"Real part$$", L"Imaginary part$$")
+        data = [(real.(y), imag.(y)) for y in ys]
+    elseif format == "magphase"
+        panel_titles = (L"Magnitude$$", L"Phase$$")
+        # data = [(abs.(y), angle.(y)) for y in ys]
+        data = [(abs.(y), unwrapPhase(angle.(y))) for y in ys]
+    end
     
     # Start figure 
     fig = Figure(size=(1000, 400))
     
     # Make titles and axes
     Label(fig[1, 1:2], titl, tellwidth=false)
-    Label(fig[2, 1], L"Real part$$", tellwidth=false)
-    Label(fig[2, 2], L"Imaginary part$$", tellwidth=false)
+    Label(fig[2, 1], panel_titles[1], tellwidth=false)
+    Label(fig[2, 2], panel_titles[2], tellwidth=false)
     ax1 = Axis(fig[3, 1])
     ax2 = Axis(fig[3, 2])
     
     # Plot the real and imaginary part separately
-    for (y, color, label) in zip(ys, colors, labels)
-        lines!(ax1, x, real.(y), color=color)
-        lines!(ax2, x, imag.(y), color=color, label=label)
+    for (datum, color, label) in zip(data, colors, labels)
+        lines!(ax1, x, datum[1], color=color)
+        lines!(ax2, x, datum[2], color=color, label=label)
     end
     
     # Finish figure

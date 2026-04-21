@@ -1256,6 +1256,33 @@ function calc_memoryRetrievalError_eigenmodes(SP)
 end
 
 
+"""
+Calculate the radiative decay rate, using the eigenmodes approach
+"""
+function calc_memoryRetrievalErrorMatrixEigenmodes(SP)
+    postfix = get_postfix_memoryEfficiency(SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.noPhonons, SP.incField_wlf, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, SP.radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
+    filename_eigvals = "memEff_eigvals_" * postfix
+    filename_eigmods = "memEff_eigmods_" * postfix
+    folder = "memoryEfficiency/"
+    
+    if isfile(saveDir * folder * filename_eigvals * ".txt")
+        ϵ_eigvals = vec(load_as_txt(saveDir * folder, filename_eigvals, ComplexF64))
+        ϵ_eigmods = eachrow(load_as_txt(saveDir * folder, filename_eigmods, ComplexF64))
+    else
+        # Find the eigenmodes
+        fullΓrm = get_fullΓrm(SP)
+        _, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = prepare_eigenmodesCalculation(SP)
+        ϵMat = memoryRetrievalErrorMatrix(eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, fullΓrm)
+        ϵ_eigvals, ϵ_eigmods = spectrum(ϵMat)
+        
+        # Save the results
+        save_as_txt(ϵ_eigvals, saveDir * folder, filename_eigvals)
+        save_as_txt(ϵ_eigmods, saveDir * folder, filename_eigmods)
+    end
+    return ϵ_eigvals, ϵ_eigmods
+end
+
+
 # ================================================
 #   Miscellaneous
 # ================================================

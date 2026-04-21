@@ -1469,11 +1469,20 @@ Calculate the memory retrieval error from the time-dependent (radiative) decay r
 function memoryRetrievalError_eigenmodes(eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, initialState, fullΓrm, noPhonons, include3rdLevel)
     Vec0 = pack_σvarIntoσvarVec(initialState, noPhonons, include3rdLevel)
     tildeVec0  = eigenModesMatrix_inv*Vec0
-    
     tildeΓrm = eigenModesMatrix'*fullΓrm*eigenModesMatrix
-    
-    n_eig = length(eigenEnergies)
-    return real(sum([1im/(eigenEnergies[j] - conj(eigenEnergies[i]))*conj(tildeVec0[i])*tildeΓrm[i, j]*tildeVec0[j] for j in 1:n_eig, i in 1:n_eig]))
+    eigenEnDiff = transpose(eigenEnergies .- eigenEnergies')
+    return real(tildeVec0' * (1im * tildeΓrm ./ eigenEnDiff) * tildeVec0)
+end
+
+
+"""
+Calculate the memory retrieval error matrix 
+"""
+function memoryRetrievalErrorMatrix(eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, fullΓrm)
+    tildeΓrm = eigenModesMatrix'*fullΓrm*eigenModesMatrix
+    eigenEnDiff = transpose(eigenEnergies .- eigenEnergies')
+    kernel = 1im * tildeΓrm ./ eigenEnDiff
+    return Hermitian(eigenModesMatrix_inv' * kernel * eigenModesMatrix_inv)
 end
 
 

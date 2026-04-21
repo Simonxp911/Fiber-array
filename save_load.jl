@@ -195,8 +195,8 @@ function rename()
     replacementPairs = ["D_2.22e-16_" => "", ]
     
     for oldFilename in readdir(dataFolder)
-        newFilename = replace(oldFilename, replacementPairs...)
-        if newFilename != oldFilename mv(dataFolder * oldFilename, dataFolder * newFilename) end
+        # newFilename = replace(oldFilename, replacementPairs...)
+        # if newFilename != oldFilename mv(dataFolder * oldFilename, dataFolder * newFilename) end
         
         # if occursin("_LD_0.0_", oldFilename)
         #     indices = findfirst.(["tFr_", "_LD_0.0_"], oldFilename)
