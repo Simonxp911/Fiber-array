@@ -143,10 +143,9 @@ function memoryEfficiency(SP)
     if SP.initialStateDescription ∉ ("Ga", "tr") throw(ArgumentError("memoryEfficiency assumes a Gaussian or triangular initial state")) end
     if SP.ΩDriveOn                               throw(ArgumentError("memoryEfficiency assumes the driving on the g-e transition is off")) end
     
-    Δ = SP.Δc + eps(Float64)
-    ϵ = calc_memoryRetrievalError(SP, Δ)
+    ϵ = calc_memoryRetrievalError(SP)
     
-    postfix = get_postfix_memoryEfficiency(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.noPhonons, SP.incField_wlf, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, SP.radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
+    postfix = get_postfix_memoryEfficiency(SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.noPhonons, SP.incField_wlf, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, SP.radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
     filename = "memEff_" * postfix
     folder = "memoryEfficiency/"
     save_as_txt(ϵ, saveDir * folder, filename)

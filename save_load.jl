@@ -113,9 +113,8 @@ end
 """
 For memory efficiency 
 """
-function get_postfix_memoryEfficiency(Δ, ΔvariDescription, dDescription, να, ηα, noPhonons, incField_wlf, tildeG_flags, arrayDescription, fiberPostfix, initialStateDescription, tspan, dtmax, radDecayRateAndStateNorm_LowerTol, cDriveDescription, Δc, Ωc, cDriveArgs)
+function get_postfix_memoryEfficiency(ΔvariDescription, dDescription, να, ηα, noPhonons, incField_wlf, tildeG_flags, arrayDescription, fiberPostfix, initialStateDescription, tspan, dtmax, radDecayRateAndStateNorm_LowerTol, cDriveDescription, Δc, Ωc, cDriveArgs)
     postfix_components = [
-        "D_$(ro(Δ, Int(4 + ceil(log10(ceil(abs(Δ + eps(Δ))))))))",
         ΔvariDescription,
         dDescription
     ]
@@ -192,12 +191,12 @@ end
 Function to rename existing data files
 """
 function rename()
-    dataFolder = saveDir * "Im_Grm_trans/"
-    replacementPairs = ["omega_6.283.txt" => "o_2pi.txt", ]
+    dataFolder = saveDir * "memoryEfficiency/"
+    replacementPairs = ["D_2.22e-16_" => "", ]
     
     for oldFilename in readdir(dataFolder)
-        # newFilename = replace(oldFilename, replacementPairs...)
-        # if newFilename != oldFilename mv(dataFolder * oldFilename, dataFolder * newFilename) end
+        newFilename = replace(oldFilename, replacementPairs...)
+        if newFilename != oldFilename mv(dataFolder * oldFilename, dataFolder * newFilename) end
         
         # if occursin("_LD_0.0_", oldFilename)
         #     indices = findfirst.(["tFr_", "_LD_0.0_"], oldFilename)

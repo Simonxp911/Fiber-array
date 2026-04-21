@@ -308,7 +308,7 @@ end
 """
 Prepare title for memory retrieval error plot
 """
-function prep_memoryRetrievalError_title(SP, Δ)
+function prep_memoryRetrievalError_title(SP)
     title_components = [
         "Δvari: " * SP.ΔvariDescription,
         "Array: " * SP.arrayDescription,
@@ -316,7 +316,6 @@ function prep_memoryRetrievalError_title(SP, Δ)
         "να = $(ro.(SP.να)), ηα = $(ro.(SP.ηα)),",
         "Dipole moments: " * SP.dDescription,
         "No phonons: " * string(SP.noPhonons),
-        "Δ = $(ro(Δ))",
         "Control drive, detuning, Rabi freq.: $(SP.cDriveDescription), $(SP.Δc), $(SP.Ωc)"
     ]
     if SP.cDriveDescription == "plW"

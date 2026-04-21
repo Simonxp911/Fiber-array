@@ -229,7 +229,7 @@ function define_SP_BerlinSr()
     arrayType = "1Dchain"
     
     # Set number of atomic sites 
-    N_sites = 13
+    N_sites = 7
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
@@ -306,7 +306,7 @@ function define_SP_BerlinSr()
     cDriveDescription = "cst" # "cst", "plW", "hyp"
     
     # Detuning of the control drive with respect to the e-s transition
-    Δc = 0
+    Δc = 0.4
     
     # Rabi frequency of the control drive with respect to the e-s transition
     Ωc = 0.1
@@ -637,10 +637,7 @@ function main()
     
     
     # TEMP
-        
-    # implement calculation of ϵ via _eigenmodes
-    # commit
-    
+    rename()
     # implement plotting contribution to ϵ vs eigenmodes
     # find optimal initial state from this
     # commit
@@ -671,7 +668,7 @@ function main()
     # plot_GnmFourierTransformed(SP)
     # plot_compareGnmEigenEnergies(SP)
     # plot_lossWithGnmEigenEnergies(SP)
-    plot_memoryEfficiency(SP)
+    # plot_memoryEfficiency(SP)
     # plot_compareMemoryEfficiency(SP)
     
     return nothing
@@ -1685,32 +1682,30 @@ function plot_memoryEfficiency(SP)
     if SP.ΩDriveOn                               throw(ArgumentError("plot_memoryEfficiency assumes the driving on the g-e transition is off")) end
     
     
-    Δ = SP.Δc + eps(Float64)
-    radDecayRateAndStateNorm_LowerTol = (1e-6, 0.01)
-    N_sites_list = 10:10:200
-    ϵs = []
-    for N_sites in N_sites_list
-        arrayDescription = arrayDescript(SP.arrayType, N_sites, SP.ρa, SP.a, SP.ff, SP.pos_unc)
+    # N_sites_list = 10:10:200
+    # ϵs = []
+    # for N_sites in N_sites_list
+    #     arrayDescription = arrayDescript(SP.arrayType, N_sites, SP.ρa, SP.a, SP.ff, SP.pos_unc)
         
-        postfix = get_postfix_memoryEfficiency(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.noPhonons, SP.incField_wlf, SP.tildeG_flags, arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
-        filename = "memEff_" * postfix
-        folder = "memoryEfficiency/"
+    #     postfix = get_postfix_memoryEfficiency(SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.noPhonons, SP.incField_wlf, SP.tildeG_flags, arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, SP.radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
+    #     filename = "memEff_" * postfix
+    #     folder = "memoryEfficiency/"
 
-        if isfile(saveDir * folder * filename * ".txt")
-            push!(ϵs, load_as_txt(saveDir * folder, filename)[1])
-        else
-            throw(ArgumentError("The following file can not be found: " * filename))
-        end
-    end
+    #     if isfile(saveDir * folder * filename * ".txt")
+    #         push!(ϵs, load_as_txt(saveDir * folder, filename)[1])
+    #     else
+    #         throw(ArgumentError("The following file can not be found: " * filename))
+    #     end
+    # end
     
-    titl = prep_memoryRetrievalError_title(SP, Δ)
-    fig_memoryRetrievalError(N_sites_list, ϵs, titl)
+    # titl = prep_memoryRetrievalError_title(SP)
+    # fig_memoryRetrievalError(N_sites_list, ϵs, titl)
     
     
-    # Δ = SP.Δc + eps(Float64)
-    # # ϵ = calc_memoryRetrievalError(SP, Δ)
-    # ϵ = calc_memoryRetrievalError_eigenmodes(SP, Δ)
-    # println(ϵ)
+    ϵ = calc_memoryRetrievalError(SP)
+    println(ϵ)
+    ϵ = calc_memoryRetrievalError_eigenmodes(SP)
+    println(ϵ)
     
 end
 
@@ -1721,8 +1716,6 @@ function plot_compareMemoryEfficiency(SP)
     if SP.ΩDriveOn                               throw(ArgumentError("plot_compareMemoryEfficiency assumes the driving on the g-e transition is off")) end
     
     # Set parameters
-    Δ = SP.Δc + eps(Float64)
-    radDecayRateAndStateNorm_LowerTol = (1e-6, 0.01)
     ηα_list = [zeros(3), SP.ηα]
     labels = [L"fixed$$", L"moving$$"]
     # ηα_list = reverse([0.5, 0.75, 1.0, 1.25, 1.5].*Ref(SP.ηα))
@@ -1736,7 +1729,7 @@ function plot_compareMemoryEfficiency(SP)
         for (j, N_sites) in enumerate(N_sites_list)
             arrayDescription = arrayDescript(SP.arrayType, N_sites, SP.ρa, SP.a, SP.ff, SP.pos_unc)
             
-            postfix = get_postfix_memoryEfficiency(Δ, SP.ΔvariDescription, SP.dDescription, SP.να, ηα, SP.noPhonons, SP.incField_wlf, SP.tildeG_flags, arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
+            postfix = get_postfix_memoryEfficiency(SP.ΔvariDescription, SP.dDescription, SP.να, ηα, SP.noPhonons, SP.incField_wlf, SP.tildeG_flags, arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, SP.radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
             filename = "memEff_" * postfix
             folder = "memoryEfficiency/"
 
@@ -1798,7 +1791,7 @@ function plot_compareMemoryEfficiency(SP)
     
     
     # Plot
-    titl = prep_memoryRetrievalError_title(SP, Δ)
+    titl = prep_memoryRetrievalError_title(SP)
     # fig_compareMemoryRetrievalError(N_sites_list, ϵs, ϵ_fits, titl, labels)
     fig_presentation_compareMemoryRetrievalError(N_sites_list, ϵs, ϵ_fits, labels, SP)
     

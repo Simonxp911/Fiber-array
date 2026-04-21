@@ -1437,6 +1437,25 @@ end
 #   Functions pertaining to using the atomic array as an EIT quantum memory
 # ================================================
 """
+Calculate the instantaneous radiative decay rate
+"""
+function calc_radiativeDecayRate(SP, state, fullΓrm_egSector)
+    σvar = unpack_σvarFromx(state, SP.N, SP.noPhonons, SP.include3rdLevel)
+    if !SP.include3rdLevel 
+        σvar_egSector = σvar
+    else
+        if SP.noPhonons
+            σvar_egSector = σvar[1:1]
+        else
+            σvar_egSector = σvar[1:2]
+        end
+    end
+    σvarVec_egSector = pack_σvarIntoσvarVec(σvar_egSector, SP.noPhonons, false)
+    return real(σvarVec_egSector'*fullΓrm_egSector*σvarVec_egSector)
+end
+
+
+"""
 Calculate the memory retrieval error from the time-dependent (radiative) decay rate
 """
 function memoryRetrievalError(times, radiativeDecayRates)
@@ -1447,7 +1466,7 @@ end
 """
 Calculate the memory retrieval error from the time-dependent (radiative) decay rate, using the eigenmodes approach
 """
-function memoryRetrievalError_eigenmodes(Δ, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, initialState, fullΓrm, noPhonons, include3rdLevel)
+function memoryRetrievalError_eigenmodes(eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, initialState, fullΓrm, noPhonons, include3rdLevel)
     Vec0 = pack_σvarIntoσvarVec(initialState, noPhonons, include3rdLevel)
     tildeVec0  = eigenModesMatrix_inv*Vec0
     

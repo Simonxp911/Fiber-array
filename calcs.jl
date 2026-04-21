@@ -819,10 +819,18 @@ function get_fullCouplingMatrix(noPhonons, ΔvariDependence, Δvari_args, fiber,
 end
 
 
-function get_fullCoupling_rm_egSector(SP)
+function get_fullΓrm(SP)
+    tildeG_flags = (false, true, SP.tildeG_flags[3])
+    fullCoupling_rm = get_fullCouplingMatrix(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.ΩDriveOn, tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
+    return 2*imag(fullCoupling_rm)
+end
+
+
+function get_fullΓrm_egSector(SP)
     tildeG_flags = (false, true, SP.tildeG_flags[3])
     include3rdLevel = false
-    return get_fullCouplingMatrix(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.ΩDriveOn, tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
+    fullCoupling_rm_egSector = get_fullCouplingMatrix(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.ΩDriveOn, tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
+    return 2*imag(fullCoupling_rm_egSector)
 end
 
 
@@ -1205,55 +1213,35 @@ end
 """
 Perform time-evolution specifically for the calculation of the memory retrieval error
 """
-function calc_timeEvolution_forMemoryRetrievalError(SP, Δ, fullCoupling_rm_egSector)
-    if !SP.include3rdLevel throw(ArgumentError("calc_timeEvolution_forMemoryRetrievalError assumes the third level (s) is included")) end
-    
+function calc_timeEvolution_forMemoryRetrievalError(SP, fullΓrm_egSector)
     # Prepare time evolution
+    initialState_x = pack_σvarIntox(SP.initialState, SP.N, SP.noPhonons, SP.include3rdLevel)
+    Δ = 0 # when the g-e drive is off, the dynamics is independent of the detuning 
     params = get_parameterMatrices(SP)
+    args = empty_σvar(SP.N, SP.noPhonons, SP.include3rdLevel), empty_σvar(SP.N, SP.noPhonons, SP.include3rdLevel), Δ, params, SP.N, SP.noPhonons, SP.include3rdLevel
     timeEvol_args = (tspan=SP.tspan,
                      dtmax=SP.dtmax, 
                      stepFuncValLowerTol=SP.radDecayRateAndStateNorm_LowerTol)
-    stepFunc(t, xt, ΔxΔt, timeEvol_args) = (calc_radiativeDecayRate(SP, xt, fullCoupling_rm_egSector), norm(xt)^2)
-    initialState_x = pack_σvarIntox(SP.initialState, SP.N, SP.noPhonons, SP.include3rdLevel)
-    args = empty_σvar(SP.N, SP.noPhonons, SP.include3rdLevel), empty_σvar(SP.N, SP.noPhonons, SP.include3rdLevel), Δ, params, SP.N, SP.noPhonons, SP.include3rdLevel
+    
+    # During time evolution we will evaluate the instantaneous decay rate as well as the state norm (time evolution will end when both are small)
+    stepFunc(t, xt, ΔxΔt, timeEvol_args) = (calc_radiativeDecayRate(SP, xt, fullΓrm_egSector), norm(xt)^2)
     
     # Perform time evolution
     sol = timeEvol(EoMs_wrap, initialState_x, args, timeEvol_args, stepCondition_stepFuncVal_isSmall, stepFunc, "timeAndStepFuncVal")
     
-    # Transform data in to σvar
-    σvar_t = unpack_σvarFromx.(sol.u, SP.N, SP.noPhonons, SP.include3rdLevel)
-        
-    return sol.t, σvar_t, sol.stepFuncVal
-end
-
-
-"""
-Calculate the radiative decay rate
-"""
-function calc_radiativeDecayRate(SP, state, fullCoupling_rm_egSector)
-    σvar = unpack_σvarFromx(state, SP.N, SP.noPhonons, SP.include3rdLevel)
-    if !SP.include3rdLevel 
-        σvar_egSector = σvar
-    else
-        if SP.noPhonons
-            σvar_egSector = σvar[1:1]
-        else
-            σvar_egSector = σvar[1:2]
-        end
-    end
-    σvarVec_egSector = pack_σvarIntoσvarVec(σvar_egSector, SP.noPhonons, false)
-    return real(2*σvarVec_egSector'*imag(fullCoupling_rm_egSector)*σvarVec_egSector)
+    # Extract the instantaneous decay rates
+    radiativeDecayRates = [x[1] for x in sol.stepFuncVal]
+    
+    return sol.t, radiativeDecayRates
 end
 
 
 """
 Calculate memory retrieval error
 """
-function calc_memoryRetrievalError(SP, Δ)
-    fullCoupling_rm_egSector = get_fullCoupling_rm_egSector(SP)
-    times, states, radDecayRatesAndStateNorm = calc_timeEvolution_forMemoryRetrievalError(SP, Δ, fullCoupling_rm_egSector)
-    radiativeDecayRates = [x[1] for x in radDecayRatesAndStateNorm]
-    # stateNorm = [x[2] for x in radDecayRatesAndStateNorm]
+function calc_memoryRetrievalError(SP)
+    fullΓrm_egSector = get_fullΓrm_egSector(SP) 
+    times, radiativeDecayRates = calc_timeEvolution_forMemoryRetrievalError(SP, fullΓrm_egSector)
     return memoryRetrievalError(times, radiativeDecayRates)
 end
 
@@ -1261,14 +1249,10 @@ end
 """
 Calculate the radiative decay rate, using the eigenmodes approach
 """
-function calc_memoryRetrievalError_eigenmodes(SP, Δ)
+function calc_memoryRetrievalError_eigenmodes(SP)
+    fullΓrm = get_fullΓrm(SP)
     fullDrive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = prepare_eigenmodesCalculation(SP)
-    
-    tildeG_flags = (false, true, SP.tildeG_flags[3])
-    fullCoupling_rm = get_fullCouplingMatrix(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.ΩDriveOn, tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
-    fullΓrm  = 2*imag(fullCoupling_rm)
-    
-    return memoryRetrievalError_eigenmodes(Δ, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, SP.initialState, fullΓrm, SP.noPhonons, SP.include3rdLevel)
+    return memoryRetrievalError_eigenmodes(eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, SP.initialState, fullΓrm, SP.noPhonons, SP.include3rdLevel)
 end
 
 
