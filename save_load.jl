@@ -120,7 +120,6 @@ function get_postfix_memoryEfficiency(ΔvariDescription, dDescription, να, η�
     ]
     if noPhonons push!(postfix_components, "noPh") else push!(postfix_components, "tFr_$(join(ro.(να), ","))") end
     if all(ηα .== 0) push!(postfix_components, "LD_0.0") else push!(postfix_components, "LD_$(join(ro.(ηα), ","))") end
-    push!(postfix_components, "wlf_$("[" * join(["(" * join([format_Complex_to_String(wlf[1]), wlf[2], wlf[3]], ",") * ")" for wlf in incField_wlf], ",") * "]")")
     if any(tildeG_flags .!= 1) push!(postfix_components, "tGfl_$(join(Int.(tildeG_flags), ","))") end
     append!(postfix_components, [
         arrayDescription,
@@ -128,6 +127,29 @@ function get_postfix_memoryEfficiency(ΔvariDescription, dDescription, να, η�
         initialStateDescription,
         "t_$(join(ro.(tspan), ",")),$(ro(dtmax))",
         "lTol_$(join(ro.(radDecayRateAndStateNorm_LowerTol), ","))",
+        "cDr_$cDriveDescription", 
+        "cDe_$Δc", 
+        "cOm_$Ωc"
+    ])
+    if cDriveDescription == "plW" push!(postfix_components, "kc_$(join(ro.(cDriveArgs.kc), ","))") end
+    return join(postfix_components, "_")
+end
+
+
+"""
+For memory efficiency 
+"""
+function get_postfix_memoryEfficiencyEigenmodes(ΔvariDescription, dDescription, να, ηα, noPhonons, incField_wlf, tildeG_flags, arrayDescription, fiberPostfix, initialStateDescription, tspan, dtmax, radDecayRateAndStateNorm_LowerTol, cDriveDescription, Δc, Ωc, cDriveArgs)
+    postfix_components = [
+        ΔvariDescription,
+        dDescription
+    ]
+    if noPhonons push!(postfix_components, "noPh") else push!(postfix_components, "tFr_$(join(ro.(να), ","))") end
+    if all(ηα .== 0) push!(postfix_components, "LD_0.0") else push!(postfix_components, "LD_$(join(ro.(ηα), ","))") end
+    if any(tildeG_flags .!= 1) push!(postfix_components, "tGfl_$(join(Int.(tildeG_flags), ","))") end
+    append!(postfix_components, [
+        arrayDescription,
+        fiberPostfix,
         "cDr_$cDriveDescription", 
         "cDe_$Δc", 
         "cOm_$Ωc"
@@ -192,11 +214,11 @@ Function to rename existing data files
 """
 function rename()
     dataFolder = saveDir * "memoryEfficiency/"
-    replacementPairs = ["D_2.22e-16_" => "", ]
+    replacementPairs = ["wlf_[(1.000,1,1),(1.000,-1,1)]_" => "", ]
     
     for oldFilename in readdir(dataFolder)
-        # newFilename = replace(oldFilename, replacementPairs...)
-        # if newFilename != oldFilename mv(dataFolder * oldFilename, dataFolder * newFilename) end
+        newFilename = replace(oldFilename, replacementPairs...)
+        if newFilename != oldFilename mv(dataFolder * oldFilename, dataFolder * newFilename) end
         
         # if occursin("_LD_0.0_", oldFilename)
         #     indices = findfirst.(["tFr_", "_LD_0.0_"], oldFilename)
