@@ -229,7 +229,7 @@ function define_SP_BerlinSr()
     arrayType = "1Dchain"
     
     # Set number of atomic sites 
-    N_sites = 7
+    N_sites = 200
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
@@ -250,13 +250,12 @@ function define_SP_BerlinSr()
     # Prepare initial state for time evolution, as well as description for postfix
     # initialState = groundstate(N, noPhonons, include3rdLevel)
     # initialStateDescription = "gs"
-    # GaussWidth = sqrt(N)*a0_ul
-    # initialState = Gaussian_sState(N, array, fiber, GaussWidth, noPhonons, include3rdLevel)
-    # # initialState = GaussianState(N, array, 0, N/2*a0_ul, GaussWidth, "e", noPhonons, include3rdLevel)
-    # initialStateDescription = "Ga"
-    initialState = triangle_sState(N, array, fiber, noPhonons, include3rdLevel)
-    # initialState = triangleState(N, array, fiber.propagation_constant, "e", noPhonons, include3rdLevel)
-    initialStateDescription = "tr"
+    initialState = Gaussian_sState(N, array, fiber, sqrt(N)*a0_ul, noPhonons, include3rdLevel)
+    # initialState = GaussianState(N, array, 0, N/2*a0_ul, GaussWidth, "e", noPhonons, include3rdLevel)
+    initialStateDescription = "Ga"
+    # initialState = triangle_sState(N, array, fiber, noPhonons, include3rdLevel)
+    # # initialState = triangleState(N, array, fiber.propagation_constant, "e", noPhonons, include3rdLevel)
+    # initialStateDescription = "tr"
     
     # Whether to have driving on the g-e transition or not
     ΩDriveOn = false
@@ -302,14 +301,14 @@ function define_SP_BerlinSr()
     if interpolate_Im_Grm_trans interpolation_Im_Grm_trans = interpolation1D_Im_Grm_trans(fiber, Int(ceil(arrayL/0.1)) + 1, ρa0_ul, 0.1, ηα) else interpolation_Im_Grm_trans = nothing end
     
     # Type of control drive the third level transition
-    cDriveType = "constant" # "constant", "planeWave", "hyperbolic"
-    cDriveDescription = "cst" # "cst", "plW", "hyp"
+    cDriveType = "hyperbolic" # "constant", "planeWave", "hyperbolic"
+    cDriveDescription = "hyp" # "cst", "plW", "hyp"
     
     # Detuning of the control drive with respect to the e-s transition
-    Δc = 0.4
+    Δc = 0
     
     # Rabi frequency of the control drive with respect to the e-s transition
-    Ωc = 0.1
+    Ωc = 0.005
     
     # Additional arguments for the control drive ("planeWave" requires a momentum vector)
     cDriveArgs = (kc = ωa*[-1, 0, 0], N_sites=N_sites, a=a0_ul)
@@ -656,7 +655,8 @@ function main()
     # plot_compareGnmEigenEnergies(SP)
     # plot_lossWithGnmEigenEnergies(SP)
     # plot_memoryEfficiency(SP)
-    # plot_compareMemoryEfficiency(SP)
+    plot_compareMemoryEfficiency(SP)
+    plot_memoryRetrievalErrorMatrixEigenmodes(SP)
     
     return nothing
 end
@@ -1703,27 +1703,39 @@ function plot_compareMemoryEfficiency(SP)
     if SP.ΩDriveOn                               throw(ArgumentError("plot_compareMemoryEfficiency assumes the driving on the g-e transition is off")) end
     
     # Set parameters
-    ηα_list = [zeros(3), SP.ηα]
-    labels = [L"fixed$$", L"moving$$"]
+    params_list = [("timeEvol", zeros(3)), ("timeEvol", SP.ηα), ("eigbasis", zeros(3)), ("eigbasis", SP.ηα)]
+    labels = [L"time evol., fixed$$", L"time evol., moving$$", L"eigbasis, fixed$$", L"eigbasis, moving$$"]
     # ηα_list = reverse([0.5, 0.75, 1.0, 1.25, 1.5].*Ref(SP.ηα))
     # labels = reverse([L"50\% $ η_{α} $", L"75\% $ η_{α} $", L"100\% $ η_{α} $", L"125\% $ η_{α} $", L"150\% $ η_{α} $"])
-    N_sites_list = 10:10:200
+    N_sites_list = 10:10:150
     # N_sites_list = vcat(10:10:200, 220:20:300, 340:40:420)
-    ϵs = zeros(length(ηα_list), length(N_sites_list))
+    ϵs = zeros(length(params_list), length(N_sites_list))
     
     # Load data
-    for (i, ηα) in enumerate(ηα_list)
+    for (i, params) in enumerate(params_list)
+        timeEvol_or_eigbasis, ηα = params
         for (j, N_sites) in enumerate(N_sites_list)
             arrayDescription = arrayDescript(SP.arrayType, N_sites, SP.ρa, SP.a, SP.ff, SP.pos_unc)
             
-            postfix = get_postfix_memoryEfficiency(SP.ΔvariDescription, SP.dDescription, SP.να, ηα, SP.noPhonons, SP.incField_wlf, SP.tildeG_flags, arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, SP.radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
-            filename = "memEff_" * postfix
             folder = "memoryEfficiency/"
+            if timeEvol_or_eigbasis == "timeEvol"
+                postfix = get_postfix_memoryEfficiency(SP.ΔvariDescription, SP.dDescription, SP.να, ηα, SP.noPhonons, SP.tildeG_flags, arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, SP.radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
+                filename = "memEff_" * postfix
 
-            if isfile(saveDir * folder * filename * ".txt")
-                ϵs[i, j] = load_as_txt(saveDir * folder, filename)[1]
-            else
-                throw(ArgumentError("The following file can not be found: " * filename))
+                if isfile(saveDir * folder * filename * ".txt")
+                    ϵs[i, j] = load_as_txt(saveDir * folder, filename)[1]
+                else
+                    throw(ArgumentError("The following file can not be found: " * filename))
+                end
+            elseif timeEvol_or_eigbasis == "eigbasis"
+                postfix = memoryRetrievalErrorMatrixEigenmodes(SP.ΔvariDescription, SP.dDescription, SP.να, ηα, SP.noPhonons, SP.tildeG_flags, arrayDescription, SP.fiber.postfix, SP.radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
+                filename_eigvals = "memEff_eigvals_" * postfix
+            
+                if isfile(saveDir * folder * filename_eigvals * ".txt")
+                    ϵs[i, j] = minimum(load_as_txt(saveDir * folder, filename_eigvals))
+                else
+                    throw(ArgumentError("The following file can not be found: " * filename))
+                end
             end
         end
     end
@@ -1762,13 +1774,12 @@ function plot_compareMemoryEfficiency(SP)
     setup_exp        = [model_exp       , p0_exp       , label_exp]
     setup_exp_asymp  = [model_exp_asymp , p0_exp_asymp , label_exp_asymp]
     
-    fitting_interval = 5:20
+    fitting_interval = 5:15
     # fitting_interval = 5:28
-    setups = [setup_pol, setup_pol]
-    # setups = [setup_exp_asymp, setup_exp_asymp, setup_exp_asymp, setup_exp_asymp, setup_exp_asymp]
+    setups = [setup_pol, setup_pol, setup_pol, setup_pol]
     
-    ϵ_fits = fill(NaN, length(ηα_list), length(N_sites_list))
-    for i in eachindex(ηα_list)
+    ϵ_fits = fill(NaN, size(ϵs))
+    for i in eachindex(params_list)
         model, p0, label = setups[i]
         pmin = fitComplexData(N_sites_list[fitting_interval], ϵs[i, fitting_interval], model, p0)
         ϵ_fits[i, :] = model.(N_sites_list, Ref(pmin))
@@ -1779,10 +1790,32 @@ function plot_compareMemoryEfficiency(SP)
     
     # Plot
     titl = prep_memoryRetrievalError_title(SP)
-    # fig_compareMemoryRetrievalError(N_sites_list, ϵs, ϵ_fits, titl, labels)
-    fig_presentation_compareMemoryRetrievalError(N_sites_list, ϵs, ϵ_fits, labels, SP)
+    fig_compareMemoryRetrievalError(N_sites_list, ϵs, ϵ_fits, titl, labels)
+    # fig_presentation_compareMemoryRetrievalError(N_sites_list, ϵs, ϵ_fits, labels, SP)
     
 end
+
+
+function plot_memoryRetrievalErrorMatrixEigenmodes(SP)
+    zs = [site[3] for site in SP.array]
+    ϵ_eigvals, ϵ_eigmods = calc_memoryRetrievalErrorMatrixEigenmodes(SP)
+    
+    mode_i = 1
+    ϵ_eigval = ϵ_eigvals[mode_i]
+    ϵ_eigmod = ϵ_eigmods[mode_i]
+    # for (ϵ_eigval, ϵ_eigmod) in zip(ϵ_eigvals[1:10], ϵ_eigmods[1:10])
+        σvar_ϵ_eigmod = unpack_σvarFromσvarVec(ϵ_eigmod, SP.N, SP.noPhonons, SP.include3rdLevel)
+        σge_ϵ_eigmod = σvar_ϵ_eigmod[1]
+        σgs_ϵ_eigmod = σvar_ϵ_eigmod[2]
+        
+        fig_complexFunction(zs, σge_ϵ_eigmod, σgs_ϵ_eigmod, 
+            titl=L"$ ϵ = %$(ro(ϵ_eigval)) $", 
+            labels=[L"$ σ_{ge} $", L"$ σ_{gs} $"], 
+            format = "magphase")
+    # end
+end
+
+
 
 
 

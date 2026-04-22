@@ -842,8 +842,8 @@ function fig_complexFunction(x, ys...; titl="", labels=[], format="realimag")
         data = [(real.(y), imag.(y)) for y in ys]
     elseif format == "magphase"
         panel_titles = (L"Magnitude$$", L"Phase$$")
-        # data = [(abs.(y), angle.(y)) for y in ys]
-        data = [(abs.(y), unwrapPhase(angle.(y))) for y in ys]
+        data = [(abs.(y), angle.(y)) for y in ys]
+        # data = [(abs.(y), unwrapPhase(angle.(y))) for y in ys]
     end
     
     # Start figure 

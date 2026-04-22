@@ -1260,13 +1260,13 @@ end
 Calculate the radiative decay rate, using the eigenmodes approach
 """
 function calc_memoryRetrievalErrorMatrixEigenmodes(SP)
-    postfix = get_postfix_memoryEfficiency(SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.noPhonons, SP.incField_wlf, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, SP.radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
+    postfix = memoryRetrievalErrorMatrixEigenmodes(SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.noPhonons, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix, SP.radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
     filename_eigvals = "memEff_eigvals_" * postfix
     filename_eigmods = "memEff_eigmods_" * postfix
     folder = "memoryEfficiency/"
     
     if isfile(saveDir * folder * filename_eigvals * ".txt")
-        ϵ_eigvals = vec(load_as_txt(saveDir * folder, filename_eigvals, ComplexF64))
+        ϵ_eigvals = vec(load_as_txt(saveDir * folder, filename_eigvals))
         ϵ_eigmods = eachrow(load_as_txt(saveDir * folder, filename_eigmods, ComplexF64))
     else
         # Find the eigenmodes

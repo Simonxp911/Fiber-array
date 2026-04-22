@@ -327,6 +327,30 @@ function prep_memoryRetrievalError_title(SP)
 end
 
 
+"""
+Prepare title for memory retrieval error plot
+"""
+function prep_memoryRetrievalErrorMatrixEigenmodes_title(SP)
+    title_components = [
+        "Δvari: " * SP.ΔvariDescription,
+        "Array: " * SP.arrayDescription,
+        "tildeG flags: $(join(SP.tildeG_flags, ", "))",
+        "να = $(ro.(SP.να)), ηα = $(ro.(SP.ηα)),",
+        "Dipole moments: " * SP.dDescription,
+        "No phonons: " * string(SP.noPhonons),
+        "Control drive, detuning, Rabi freq.: $(SP.cDriveDescription), $(SP.Δc), $(SP.Ωc)"
+    ]
+    if SP.cDriveDescription == "plW"
+        append!(title_components, [
+            "Control drive wavenumber: $(join(ro.(SP.cDriveArgs.kc), ","))"
+            ])
+    end
+    return join(title_components, "\n")
+end
+
+
+
+
 
 
 

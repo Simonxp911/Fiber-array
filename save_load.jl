@@ -113,7 +113,7 @@ end
 """
 For memory efficiency 
 """
-function get_postfix_memoryEfficiency(ΔvariDescription, dDescription, να, ηα, noPhonons, incField_wlf, tildeG_flags, arrayDescription, fiberPostfix, initialStateDescription, tspan, dtmax, radDecayRateAndStateNorm_LowerTol, cDriveDescription, Δc, Ωc, cDriveArgs)
+function get_postfix_memoryEfficiency(ΔvariDescription, dDescription, να, ηα, noPhonons, tildeG_flags, arrayDescription, fiberPostfix, initialStateDescription, tspan, dtmax, radDecayRateAndStateNorm_LowerTol, cDriveDescription, Δc, Ωc, cDriveArgs)
     postfix_components = [
         ΔvariDescription,
         dDescription
@@ -137,9 +137,9 @@ end
 
 
 """
-For memory efficiency 
+For memory retrieval error matrix  
 """
-function get_postfix_memoryEfficiencyEigenmodes(ΔvariDescription, dDescription, να, ηα, noPhonons, incField_wlf, tildeG_flags, arrayDescription, fiberPostfix, initialStateDescription, tspan, dtmax, radDecayRateAndStateNorm_LowerTol, cDriveDescription, Δc, Ωc, cDriveArgs)
+function memoryRetrievalErrorMatrixEigenmodes(ΔvariDescription, dDescription, να, ηα, noPhonons, tildeG_flags, arrayDescription, fiberPostfix, radDecayRateAndStateNorm_LowerTol, cDriveDescription, Δc, Ωc, cDriveArgs)
     postfix_components = [
         ΔvariDescription,
         dDescription
@@ -150,6 +150,7 @@ function get_postfix_memoryEfficiencyEigenmodes(ΔvariDescription, dDescription,
     append!(postfix_components, [
         arrayDescription,
         fiberPostfix,
+        "lTol_$(join(ro.(radDecayRateAndStateNorm_LowerTol), ","))",
         "cDr_$cDriveDescription", 
         "cDe_$Δc", 
         "cOm_$Ωc"
@@ -214,11 +215,11 @@ Function to rename existing data files
 """
 function rename()
     dataFolder = saveDir * "memoryEfficiency/"
-    replacementPairs = ["wlf_[(1.000,1,1),(1.000,-1,1)]_" => "", ]
+    replacementPairs = ["Ga_t_0.0,100.0,0.01_" => "", ]
     
     for oldFilename in readdir(dataFolder)
-        newFilename = replace(oldFilename, replacementPairs...)
-        if newFilename != oldFilename mv(dataFolder * oldFilename, dataFolder * newFilename) end
+        # newFilename = replace(oldFilename, replacementPairs...)
+        # if newFilename != oldFilename mv(dataFolder * oldFilename, dataFolder * newFilename) end
         
         # if occursin("_LD_0.0_", oldFilename)
         #     indices = findfirst.(["tFr_", "_LD_0.0_"], oldFilename)
