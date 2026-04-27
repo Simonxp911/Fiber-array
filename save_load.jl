@@ -221,7 +221,14 @@ function rename()
         # newFilename = replace(oldFilename, replacementPairs...)
         # if newFilename != oldFilename mv(dataFolder * oldFilename, dataFolder * newFilename) end
         
-        # if occursin("_LD_0.0_", oldFilename)
+        # if occursin("memEff_flat", oldFilename) && !occursin("_tr_t_", oldFilename)
+        #     indices = findfirst("2pi_lTol", oldFilename)
+        #     index = indices[5]
+        #     newFilename = oldFilename[1:index-1] * "Ga_t_0.0,100.0,0.01_" * oldFilename[index:end]
+        #     mv(dataFolder * oldFilename, dataFolder * newFilename)
+        # end
+        
+        # if occursin("memEff_flat", oldFilename)
         #     indices = findfirst.(["tFr_", "_LD_0.0_"], oldFilename)
         #     startIndex = indices[1][1]
         #     endIndex   = indices[2][1] - 1

@@ -616,11 +616,6 @@ function Im_Grm_trans_FT(fiber, a, ω, ρ_field, ρ_source, kz, derivOrder=(0, 0
         # if save_Im_Grm_trans save_as_txt(Im_Grm_trans_FT, saveDir * folder, filename) end
         return Im_Grm_trans_FT
     end
-    
-    
-    # Im_Grm_FT = Im_Grm_trans_FT.(Ref(SP.fiber), SP.a, ωa, Ref(ρ_field), Ref(ρ_source), kz_range)
-    # Γkz = 2*real.(3*π/ωa*(Ref(d').*Im_Grm_FT.*Ref(d)))
-    # display(GLMakie.Screen(), plot(kz_range, Γkz))
 end
 
 
@@ -1439,18 +1434,18 @@ end
 """
 Calculate the instantaneous radiative decay rate
 """
-function calc_radiativeDecayRate(SP, state, fullΓrm_egSector)
-    σvar = unpack_σvarFromx(state, SP.N, SP.noPhonons, SP.include3rdLevel)
-    if !SP.include3rdLevel 
+function calc_radiativeDecayRate(state, fullΓrm_egSector, N, noPhonons, include3rdLevel)
+    σvar = unpack_σvarFromx(state, N, noPhonons, include3rdLevel)
+    if !include3rdLevel 
         σvar_egSector = σvar
     else
-        if SP.noPhonons
+        if noPhonons
             σvar_egSector = σvar[1:1]
         else
             σvar_egSector = σvar[1:2]
         end
     end
-    σvarVec_egSector = pack_σvarIntoσvarVec(σvar_egSector, SP.noPhonons, false)
+    σvarVec_egSector = pack_σvarIntoσvarVec(σvar_egSector, noPhonons, false)
     return real(σvarVec_egSector'*fullΓrm_egSector*σvarVec_egSector)
 end
 
@@ -1483,6 +1478,33 @@ function memoryRetrievalErrorMatrix(eigenEnergies, eigenModesMatrix, eigenModesM
     eigenEnDiff = transpose(eigenEnergies .- eigenEnergies')
     kernel = 1im * tildeΓrm ./ eigenEnDiff
     return Hermitian(eigenModesMatrix_inv' * kernel * eigenModesMatrix_inv)
+end
+
+
+"""
+Rotate pairs of eigenmodes sharing an eigenvalue to get eigenmodes 
+which have only non-zero values for either the ge coherences or the gs coherences.
+
+This function assumes the eigenmodes are ordered consecutively according to the eigenvalues, 
+such that every consecutive pair of modes has the same eigenvalue.
+"""
+function rotateMemoryRetrievalErrorMatrixEigenmodes(ϵ_eigmods, N, noPhonons, include3rdLevel)
+    if !noPhonons throw(ArgumentError("rotateMemoryRetrievalErrorMatrixEigenmodes has not been implementated for the case of including phonons!")) end
+        
+    for i in 1:N
+        v1 = deepcopy(ϵ_eigmods[2*i - 1])
+        v2 = deepcopy(ϵ_eigmods[2*i])
+        
+        σge1 = unpack_σvarFromσvarVec(v1, N, noPhonons, include3rdLevel)[1]
+        σge2 = unpack_σvarFromσvarVec(v2, N, noPhonons, include3rdLevel)[1]
+        
+        ind = argmax(abs.(σge1))
+        ratio = σge1[ind]/σge2[ind]
+        
+        ϵ_eigmods[2*i - 1] = (            v1 - ratio*v2)/sqrt(1 + abs2(ratio))
+        ϵ_eigmods[2*i]     = (conj(ratio)*v1 +       v2)/sqrt(1 + abs2(ratio))
+    end
+    return ϵ_eigmods
 end
 
 

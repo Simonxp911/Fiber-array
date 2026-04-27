@@ -1224,7 +1224,7 @@ function calc_timeEvolution_forMemoryRetrievalError(SP, fullΓrm_egSector)
                      stepFuncValLowerTol=SP.radDecayRateAndStateNorm_LowerTol)
     
     # During time evolution we will evaluate the instantaneous decay rate as well as the state norm (time evolution will end when both are small)
-    stepFunc(t, xt, ΔxΔt, timeEvol_args) = (calc_radiativeDecayRate(SP, xt, fullΓrm_egSector), norm(xt)^2)
+    stepFunc(t, xt, ΔxΔt, timeEvol_args) = (calc_radiativeDecayRate(xt, fullΓrm_egSector, SP.N, SP.noPhonons, SP.include3rdLevel), norm(xt)^2)
     
     # Perform time evolution
     sol = timeEvol(EoMs_wrap, initialState_x, args, timeEvol_args, stepCondition_stepFuncVal_isSmall, stepFunc, "timeAndStepFuncVal")
@@ -1274,6 +1274,8 @@ function calc_memoryRetrievalErrorMatrixEigenmodes(SP)
         _, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = prepare_eigenmodesCalculation(SP)
         ϵMat = memoryRetrievalErrorMatrix(eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, fullΓrm)
         ϵ_eigvals, ϵ_eigmods = spectrum(ϵMat)
+        
+        if SP.cDriveType == "constant" ϵ_eigmods = rotateMemoryRetrievalErrorMatrixEigenmodes(ϵ_eigmods, SP.N, SP.noPhonons, SP.include3rdLevel) end
         
         # Save the results
         save_as_txt(ϵ_eigvals, saveDir * folder, filename_eigvals)
