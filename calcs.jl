@@ -1285,6 +1285,16 @@ function calc_memoryRetrievalErrorMatrixEigenmodes(SP)
 end
 
 
+"""
+Calculate the radiative decay rate, using the eigenmodes approach
+"""
+function calc_memoryRetrievalError_matrix(SP)
+    ϵ_eigvals, ϵ_eigmods = calc_memoryRetrievalErrorMatrixEigenmodes(SP)
+    ϵMat = memoryRetrievalErrorMatrix(ϵ_eigvals, ϵ_eigmods)
+    return memoryRetrievalError_matrix(SP.initialState, ϵMat, SP.noPhonons, SP.include3rdLevel)
+end
+
+
 # ================================================
 #   Miscellaneous
 # ================================================

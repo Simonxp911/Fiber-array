@@ -1476,8 +1476,26 @@ Calculate the memory retrieval error matrix
 function memoryRetrievalErrorMatrix(eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, fullΓrm)
     tildeΓrm = eigenModesMatrix'*fullΓrm*eigenModesMatrix
     eigenEnDiff = transpose(eigenEnergies .- eigenEnergies')
-    kernel = 1im * tildeΓrm ./ eigenEnDiff
-    return Hermitian(eigenModesMatrix_inv' * kernel * eigenModesMatrix_inv)
+    tildeϵMat = 1im * tildeΓrm ./ eigenEnDiff
+    return Hermitian(eigenModesMatrix_inv' * tildeϵMat * eigenModesMatrix_inv)
+end
+
+
+"""
+Put together the memory retrieval error matrix from its eigenbasis
+"""
+function memoryRetrievalErrorMatrix(ϵ_eigvals, ϵ_eigmods)
+    Q = vectorOfCols2Matrix(ϵ_eigmods)
+    return Hermitian(Q * Di(ϵ_eigvals) * inv(Q))
+end
+
+
+"""
+Calculate the memory retrieval error from the time-dependent (radiative) decay rate, using the eigenmodes approach
+"""
+function memoryRetrievalError_matrix(initialState, ϵMat, noPhonons, include3rdLevel)
+    Vec0 = pack_σvarIntoσvarVec(initialState, noPhonons, include3rdLevel)
+    return real(Vec0' * ϵMat * Vec0)
 end
 
 

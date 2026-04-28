@@ -215,8 +215,8 @@ function define_SP_BerlinSr()
     ΔvariDescription = ΔvariDescript(ΔvariDependence, Δvari_args)
     
     # Lamb-Dicke parameters
-    ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
-    # ηα = [0, 0, 0]
+    # ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
+    ηα = [0, 0, 0]
     
     # Whether phonons are excluded or not from the calculations (a finite ηα but noPhonons = true will result in including ground state motion into tildeG)
     # noPhonons = all(ηα .== 0)
@@ -250,12 +250,12 @@ function define_SP_BerlinSr()
     # Prepare initial state for time evolution, as well as description for postfix
     # initialState = groundstate(N, noPhonons, include3rdLevel)
     # initialStateDescription = "gs"
-    # initialState = Gaussian_sState(N, array, fiber, sqrt(N)*a0_ul, noPhonons, include3rdLevel)
-    # # initialState = GaussianState(N, array, 0, N/2*a0_ul, GaussWidth, "e", noPhonons, include3rdLevel)
-    # initialStateDescription = "Ga"
-    initialState = triangle_sState(N, array, fiber, noPhonons, include3rdLevel)
-    # initialState = triangleState(N, array, fiber.propagation_constant, "e", noPhonons, include3rdLevel)
-    initialStateDescription = "tr"
+    initialState = Gaussian_sState(N, array, fiber, sqrt(N)*a0_ul, noPhonons, include3rdLevel)
+    # initialState = GaussianState(N, array, 0, N/2*a0_ul, GaussWidth, "e", noPhonons, include3rdLevel)
+    initialStateDescription = "Ga"
+    # initialState = triangle_sState(N, array, fiber, noPhonons, include3rdLevel)
+    # # initialState = triangleState(N, array, fiber.propagation_constant, "e", noPhonons, include3rdLevel)
+    # initialStateDescription = "tr"
     
     # Whether to have driving on the g-e transition or not
     ΩDriveOn = false
@@ -301,14 +301,14 @@ function define_SP_BerlinSr()
     if interpolate_Im_Grm_trans interpolation_Im_Grm_trans = interpolation1D_Im_Grm_trans(fiber, Int(ceil(arrayL/0.1)) + 1, ρa0_ul, 0.1, ηα) else interpolation_Im_Grm_trans = nothing end
     
     # Type of control drive the third level transition
-    cDriveType = "constant" # "constant", "planeWave", "hyperbolic"
-    cDriveDescription = "cst" # "cst", "plW", "hyp"
+    cDriveType = "hyperbolic" # "constant", "planeWave", "hyperbolic"
+    cDriveDescription = "hyp" # "cst", "plW", "hyp"
     
     # Detuning of the control drive with respect to the e-s transition
     Δc = 0
     
     # Rabi frequency of the control drive with respect to the e-s transition
-    Ωc = 0.1
+    Ωc = 0.005
     
     # Additional arguments for the control drive ("planeWave" requires a momentum vector)
     cDriveArgs = (kc = ωa*[-1, 0, 0], N_sites=N_sites, a=a0_ul)
@@ -633,45 +633,6 @@ function main()
     # SP = define_SP_artificial()
     # show(SP)
     
-    
-    
-    # TEMP
-    
-    # find optimal initial state error matrix eigenmodes
-        # optimal initial state is the eigenstate with lowest eigenvalue
-        # however that state consists of both eg and sg coherences, 
-            # so if we want a purely s-state (to facilitate storage when the control drive is off)
-            # we must use the eigenbasis to find states which are purely e or s (through optimization for example)?
-        # We just set the e-part to zero, as it seems to go to zero anyways
-            # only for hyperbolic drive..?
-            # no, also for constant drive, but because of rotation symmetry between e and s, algorithm has randomly found basis where both parts are non-zero
-    # and N scaling
-        # plot minimal eigenvalue as a function of N
-        # for large N we find negative eigenvalues (for hyperbolic control drive)
-            # this implies the positive-semidefinite character of the memory matrix/decay rate matrix is lost
-            # this matches the loss of the exponential scaling seen before
-        # it seems for constant control drive that the triangular state is close to optimal 
-            # for large N it catches up to the optimal state, both with and without motion
-        # for hyperbolic drive, the Gaussian state shows exponential scaling (no motion) or exponential with a plateau (with motion)
-            # for no motion the optimal state scales polynomially (~1/N^4), which is worse than exponential,
-                # but it's initial value and initial decay is much better than the exponential 
-                # presumably, the exponential would eventually level out and follow the polynomial
-                # (we already see a leveling out, though we have so far expected this to be due to the imperfect fiber GF calculation)
-            # with motion the optimal state also scales polynomially (~1/N), which is better than exponential with a plateau
-                # its initial value and initial decay are also better than the exponential with plateau
-                # but it does show that we can never have exponential scaling when including motion (with this control drive at least)
-        # explore scaling as a function of control drive shape?
-            # potentially a certain control drive would yield exponential scaling...
-            # but how to systematically scan control drive shapes?
-            # maybe site-by-site optimization, but it's a fairly extensive study...
-    
-    # write notes
-    # talk to Thomas
-    
-    # fix inconsistency of Bα (for both e and s states) between EoM and _eigenmodes time evol...
-    # check if calc_steadyState works, fix if it doesn't
-    
-    # TEMP
     
     
     # plot_propConst_vs_fiber(SP)
@@ -1745,8 +1706,10 @@ function plot_compareMemoryEfficiency(SP)
     # Set parameters
     # params_list = [("timeEvol", zeros(3)), ("timeEvol", SP.ηα)]
     # labels = [L"time evol., fixed$$", L"time evol., moving$$"]
-    params_list = [("timeEvol", zeros(3)), ("timeEvol", SP.ηα), ("eigbasis", zeros(3)), ("eigbasis", SP.ηα)]
-    labels = [L"time evol., fixed$$", L"time evol., moving$$", L"eigbasis, fixed$$", L"eigbasis, moving$$"]
+    params_list = [("timeEvol", zeros(3), "Ga"), ("timeEvol", SP.ηα, "Ga"), ("timeEvol", zeros(3), "tr"), ("timeEvol", SP.ηα, "tr"), ("eigbasis", zeros(3), ""), ("eigbasis", SP.ηα, "")]
+    labels = [L"Gauss., fixed$$", L"Gauss., moving$$", L"tri., fixed$$", L"tri., moving$$", L"opt., fixed$$", L"opt., moving$$"]
+    # params_list = [("timeEvol", SP.ηα, "Ga"), ("timeEvol", SP.ηα, "tr"), ("eigbasis", SP.ηα, "")]
+    # labels = [L"Gauss., moving$$", L"tri., moving$$", L"opt., moving$$"]
     # ηα_list = reverse([0.5, 0.75, 1.0, 1.25, 1.5].*Ref(SP.ηα))
     # labels = reverse([L"50\% $ η_{α} $", L"75\% $ η_{α} $", L"100\% $ η_{α} $", L"125\% $ η_{α} $", L"150\% $ η_{α} $"])
     N_sites_list = 10:10:200
@@ -1755,13 +1718,13 @@ function plot_compareMemoryEfficiency(SP)
     
     # Load data
     for (i, params) in enumerate(params_list)
-        timeEvol_or_eigbasis, ηα = params
+        timeEvol_or_eigbasis, ηα, initialStateDescription = params
         for (j, N_sites) in enumerate(N_sites_list)
             arrayDescription = arrayDescript(SP.arrayType, N_sites, SP.ρa, SP.a, SP.ff, SP.pos_unc)
             
             folder = "memoryEfficiency/"
             if timeEvol_or_eigbasis == "timeEvol"
-                postfix = get_postfix_memoryEfficiency(SP.ΔvariDescription, SP.dDescription, SP.να, ηα, SP.noPhonons, SP.tildeG_flags, arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, SP.radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
+                postfix = get_postfix_memoryEfficiency(SP.ΔvariDescription, SP.dDescription, SP.να, ηα, SP.noPhonons, SP.tildeG_flags, arrayDescription, SP.fiber.postfix, initialStateDescription, SP.tspan, SP.dtmax, SP.radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
                 filename = "memEff_" * postfix
 
                 if isfile(saveDir * folder * filename * ".txt")
@@ -1792,7 +1755,7 @@ function plot_compareMemoryEfficiency(SP)
     model_pol2_asymp(N, (a, c))   = a/N^2 + c
     model_exp(N, (a, α))          = a*exp(-α*N)
     model_exp_asymp(N, (a, α, c)) = a*exp(-α*N) + c
-    p0_pol        = [10.0, -2.0]
+    p0_pol        = [1000.0, -4.0]
     p0_pol_asymp  = [2.0, -1.0, 1e-2]
     p0_pol1       = [10.0]
     p0_pol1_asymp = [10.0, 1e-1]
@@ -1817,15 +1780,15 @@ function plot_compareMemoryEfficiency(SP)
     setup_exp        = [model_exp       , p0_exp       , label_exp]
     setup_exp_asymp  = [model_exp_asymp , p0_exp_asymp , label_exp_asymp]
     
-    fitting_interval = 7:20
-    # fitting_interval = 5:28
-    # setups = [setup_exp, setup_exp_asymp]
-    setups = [setup_exp, setup_exp_asymp, setup_pol, setup_pol]
+    fitting_intervals = [9:20, 1:20, 5:20, 5:20, 5:14, 4:17]
+    # setups = [setup_pol, setup_pol_asymp, setup_pol, setup_pol, setup_pol, setup_pol]
+    setups = [setup_exp, setup_exp_asymp, setup_pol, setup_pol, setup_pol, setup_pol]
+    # setups = [setup_pol, setup_pol, setup_pol]
     
     ϵ_fits = fill(NaN, size(ϵs))
     for i in eachindex(params_list)
         model, p0, label = setups[i]
-        pmin = fitComplexData(N_sites_list[fitting_interval], ϵs[i, fitting_interval], model, p0)
+        pmin = fitComplexData(N_sites_list[fitting_intervals[i]], ϵs[i, fitting_intervals[i]], model, p0)
         ϵ_fits[i, :] = model.(N_sites_list, Ref(pmin))
         labels[i] *= label(pmin)
     end
@@ -1847,16 +1810,21 @@ function plot_memoryRetrievalErrorMatrixEigenmodes(SP)
     mode_i = 1
     ϵ_eigval = ϵ_eigvals[mode_i]
     ϵ_eigmod = ϵ_eigmods[mode_i]
-    for (ϵ_eigval, ϵ_eigmod) in zip(ϵ_eigvals[1:6], ϵ_eigmods[1:6])
+    # for (ϵ_eigval, ϵ_eigmod) in zip(ϵ_eigvals[1:6], ϵ_eigmods[1:6])
         σvar_ϵ_eigmod = unpack_σvarFromσvarVec(ϵ_eigmod, SP.N, SP.noPhonons, SP.include3rdLevel)
         σge_ϵ_eigmod = σvar_ϵ_eigmod[1]
         σgs_ϵ_eigmod = σvar_ϵ_eigmod[2]
         
-        fig_complexFunction(zs, σge_ϵ_eigmod, σgs_ϵ_eigmod, 
-            titl=L"$ ϵ = %$(ro(ϵ_eigval)) $", 
-            labels=[L"$ σ_{ge} $", L"$ σ_{gs} $"], 
-            format = "magphase")
-    end
+        # fig_complexFunction(zs, σge_ϵ_eigmod, σgs_ϵ_eigmod, 
+        #     titl=L"$ ϵ = %$(ro(ϵ_eigval)) $", 
+        #     labels=[L"$ σ_{ge} $", L"$ σ_{gs} $"], 
+        #     format = "magphase")
+        
+        titl = L"$ ϵ = %$(ro(ϵ_eigval)) $"
+        labels = [L"$ σ_{ge} $", L"$ σ_{gs} $"]
+        # fig_state(zs, σvar_ϵ_eigmod, titl, labels)
+        fig_presentation_state(σvar_ϵ_eigmod, labels, SP)
+    # end
 end
 
 
@@ -1911,30 +1879,31 @@ end
 # Understand group velocity around the EIT window
     # The group velocity may simply not be well-defined in this case? (it's very erratic and has both negative and huge values)
     # How does the group velocity behave right on resonance?
+    # The following article partially concerns negative group velocity (Aephraim Steinberg knows more, something about changing the sign of the phase (rather than negative time...))
+        # https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.48.738
 # Compare the classical calculation motional effects with the quantum study
     # Is there a difference? Are bad effects perhaps less when doing the quantum calculations?
     # Compare Strontium and Caesium
 # Look at effect on quantum memory quality metrics
-    # Understand and use "Universal Approach to Optimal Photon Storage in Atomic Media"
-        # Consider finding the optimal shape for the stored excitation given the hyperbolic cDrive to see if we can recover exponential scaling without plateauing
     # Figure out why the plots of the excitation distribution don't match at all with Chang's article (also giving different values for ϵ?)
     	# Real part of GF is exact in their calculations?
         # Finish implementation of Chang's exact GF to see if it has an effect
             # Presently, the imaginary part of the new implementation does not match the old calculation of the imaginary part (which is supposed to be exact)
-    # Consider finding eigenvectors of fullCoupling when including third level
-        # That is, set up a vector of all expectation values, including those pertaining to the third level,
-        # set up the corresponding interaction matrix, including the control drive which is an interaction between the e and s states,
-        # and then find eigenvectors of this (large) matrix,
-        # such that we can say how much each is populated from some initial state,
-        # and then we can see how the population of different decay rates changes when changing the fiber parameters or control drive
-        # to see if this reveals the transition between different scalings or between having/not having a plateau
-        # Calculate decay rates using the fullCoupling_rm, just as we do when calculating ϵ
-            # Calculate contribution from each eigenmode to ϵ?
-            # Then we can directly get ϵ from an initial state and directly see how parameters affect ϵ?
-            # One might find that a certain eigenmode persists as N is increased (causing the plateau) and one could then look at the structure of this eigenmode to determine the physical origin of this constant contribution to ϵ
-        # Knowing the eigenmodes, and how their contribution to ϵ scales with N, we can find the optimal initial state(s)?
+        # Does this improve strange behavior of ϵ at high N?
     # Consider how the parameters of the N-scalings (i.e. front factors and exponents) change with LD-parameters
         # That is, how do the constants of the scalings themselves scale with LD?
+    # Explore scaling as a function of control drive shape?
+        # potentially a certain control drive would yield exponential scaling...
+        # but how to systematically scan control drive shapes?
+        # maybe site-by-site optimization, but it's a fairly extensive study...
+    # Explore or explain 1/N scaling when including motion
+        # Is this the best possible scaling independent of control drive shape?
+        # Is there an intuitive reason for specifically having 1/N?
+        # The bulk results in a plateau but the optimal state avoids this or?
+
+# Fix the calculation of the phonon expectation values
+    # Presently, the calculations using either time-evolution of coupling matrix eigenmodes do not agree
+    # The steady calculation therefore also does not agree (with the eigenmode calculations specifically)
 
 
 ### Minor things TODO:

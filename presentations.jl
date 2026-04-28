@@ -518,6 +518,8 @@ for different values of the Lamb-Dicke parameters
 """
 function fig_presentation_compareMemoryRetrievalError(Ns, ϵs, ϵ_fits, labels, SP)
     colors = distinguishable_colors(size(ϵs)[1], [RGB(1, 1, 1), RGB(0, 0, 0)], dropseed=true)
+    markers = fill(:circle, size(ϵs)[1])
+    # markers = [:circle, :xcross, :circle, :xcross, :circle, :xcross]
     
     if SP.cDriveDescription == "cst"
         titl = "Uniform control drive, " 
@@ -531,10 +533,10 @@ function fig_presentation_compareMemoryRetrievalError(Ns, ϵs, ϵ_fits, labels, 
         titl *= "triangle initial state"
     end
     
-    # titl = "Uniform control drive, motion included" 
+    # titl = "Hyperbolic control drive, different initial states" 
     
     # Start figure 
-    fig = Figure(size=(400, 300), fontsize=16)
+    fig = Figure(size=(700, 300), fontsize=16)
     
     # Make titles and axes
     Label(fig[1, 1], latexstring(titl * "\$\$"), tellwidth=false)
@@ -543,19 +545,15 @@ function fig_presentation_compareMemoryRetrievalError(Ns, ϵs, ϵ_fits, labels, 
     
     # Plot 
     for i in 1:size(ϵs)[1]
-        scatter!(ax1, Ns, ϵs[i, :], color=colors[i], label=labels[i])
+        scatter!(ax1, Ns, ϵs[i, :], color=colors[i], marker=markers[i], label=labels[i])
         if !isnothing(ϵ_fits) lines!(ax1, Ns, ϵ_fits[i, :], color=colors[i]) end
     end
     
     # Finish figure
-    axislegend()
-    # Legend(fig[2, 2], ax1)
+    # axislegend()
+    Legend(fig[2, 2], ax1)
     display(GLMakie.Screen(), fig)
-    # save("C:\\Users\\Simon\\Downloads\\compMem_$(SP.cDriveDescription)_rhof$(ro(SP.ρf)).png", fig, px_per_unit=4)
-    # save("C:\\Users\\Simon\\Downloads\\compMem_compIndep_$(SP.cDriveDescription)_rhof$(ro(SP.ρf)).png", fig, px_per_unit=4)
-    # save("C:\\Users\\Simon\\Downloads\\compMem_compTrGa_$(SP.cDriveDescription)_rhof$(ro(SP.ρf)).png", fig, px_per_unit=4)
-    # save("C:\\Users\\Simon\\Downloads\\compMem_varyLD_$(SP.cDriveDescription)_$(SP.initialStateDescription)_rhof$(ro(SP.ρf)).png", fig, px_per_unit=4)
-    # save("C:\\Users\\Simon\\Downloads\\compMem_$(SP.cDriveDescription)_$(SP.initialStateDescription)_rhof$(ro(SP.ρf)).png", fig, px_per_unit=4)
+    # save("C:\\Users\\Simon\\Downloads\\compMem_$(SP.cDriveDescription)_rhof$(ro(SP.ρf))_diffInitStates.png", fig, px_per_unit=4)
 end
 
 
@@ -629,4 +627,49 @@ function fig_presentation_collDecayRates_vs_k(dominant_ks, collΓ_gm, collΓ_rm,
     axislegend(ax1, position=:rt)
     display(GLMakie.Screen(), fig)
     # save("C:\\Users\\Simon\\Downloads\\collDecayRates_$(filename)_rhof$(ro(SP.ρf)).png", fig, px_per_unit=4)
+end
+
+
+"""
+Presentation version of fig_state, 
+showing the magnitude and phase of the coherences of a state as a function of 
+the z-coordinate (assuming atoms on a 1D chain)
+"""
+function fig_presentation_state(states, labels, SP)
+    colors = distinguishable_colors(length(states), [RGB(1,1,1), RGB(0,0,0)], dropseed=true)
+    
+    if SP.cDriveDescription == "cst"
+        titl = L"Uniform control drive, $$" 
+    elseif SP.cDriveDescription == "hyp"
+        titl = L"Hyperbolic control drive, $$" 
+    end
+    
+    if any(SP.ηα .!= 0)
+        titl *= L"incl. motion$$"
+    else
+        titl *= L"fixed atoms$$"
+    end
+    
+    titl = latexstring(titl)
+    
+    # Start figure 
+    fig = Figure(size=(700, 300), fontsize=16)
+    
+    # Make titles and axes
+    Label(fig[1, 1:2], titl, tellwidth=false)
+    Label(fig[2, 1], L"Magnitude$$", tellwidth=false)
+    Label(fig[2, 2], L"Phase$$", tellwidth=false)
+    ax1 = Axis(fig[3, 1], xlabel=L"Site $$")
+    ax2 = Axis(fig[3, 2], xlabel=L"Site $$")
+    
+    # Plot the real and imaginary part separately
+    for (state, color, label) in zip(states, colors, labels)
+        lines!(ax1, abs.(state), color=color)
+        lines!(ax2, angle.(state), color=color, label=label)
+    end
+    
+    # Finish figure
+    axislegend(ax2)
+    display(GLMakie.Screen(), fig)
+    # save("C:\\Users\\Simon\\Downloads\\state_$(SP.cDriveDescription)_motion$(any(SP.ηα .!= 0))_rhof$(ro(SP.ρf)).png", fig, px_per_unit=4)
 end

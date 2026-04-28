@@ -1220,6 +1220,35 @@ end
 
 
 """
+Plot the magnitude and phase of the coherences of a state as a function of 
+the z-coordinate (assuming atoms on a 1D chain)
+"""
+function fig_state(zs, states, titl, labels)
+    colors = distinguishable_colors(length(states), [RGB(1,1,1), RGB(0,0,0)], dropseed=true)
+    
+    # Start figure 
+    fig = Figure(size=(1000, 400))
+    
+    # Make titles and axes
+    Label(fig[1, 1:2], titl, tellwidth=false)
+    Label(fig[2, 1], L"Magnitude$$", tellwidth=false)
+    Label(fig[2, 2], L"Phase$$", tellwidth=false)
+    ax1 = Axis(fig[3, 1], xlabel=L"$ z $")
+    ax2 = Axis(fig[3, 2], xlabel=L"$ z $")
+    
+    # Plot the real and imaginary part separately
+    for (state, color, label) in zip(states, colors, labels)
+        lines!(ax1, zs, abs.(state), color=color)
+        lines!(ax2, zs, angle.(state), color=color, label=label)
+    end
+    
+    # Finish figure
+    axislegend(ax2)
+    display(GLMakie.Screen(), fig)
+end
+
+
+"""
 Plot the memory retrieval error vs. number of atoms
 """
 function fig_memoryRetrievalError(N_sites, ϵs, titl)
