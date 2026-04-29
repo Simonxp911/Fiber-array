@@ -686,7 +686,7 @@ function get_fullDriveVector(noPhonons, fiber, d, ηα, incField_wlf, array, ΩD
     # Construct the phononic drive
     if !noPhonons
         O2 = zeros(ComplexF64, N^2)
-        D = [O2 for α in 1:3]
+        D = [deepcopy(O2) for α in 1:3]
         for α in 1:3
             for i in 1:N
                 D[α][i + (i - 1)*N] = tildeΩα[α][i]
