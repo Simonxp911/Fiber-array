@@ -215,12 +215,12 @@ function define_SP_BerlinSr()
     ΔvariDescription = ΔvariDescript(ΔvariDependence, Δvari_args)
     
     # Lamb-Dicke parameters
-    # ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
-    ηα = [0, 0, 0]
+    ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
+    # ηα = [0, 0, 0]
     
     # Whether phonons are excluded or not from the calculations (a finite ηα but noPhonons = true will result in including ground state motion into tildeG)
-    # noPhonons = all(ηα .== 0)
-    noPhonons = true
+    noPhonons = all(ηα .== 0)
+    # noPhonons = true
     
     # Whether to include a third (metastable) level to facilitate EIT
     include3rdLevel = true
@@ -248,17 +248,17 @@ function define_SP_BerlinSr()
     dtmax = 0.01
     
     # Prepare initial state for time evolution, as well as description for postfix
-    # initialState = groundstate(N, noPhonons, include3rdLevel)
-    # initialStateDescription = "gs"
-    initialState = Gaussian_sState(N, array, fiber, sqrt(N)*a0_ul, noPhonons, include3rdLevel)
-    # initialState = GaussianState(N, array, 0, N/2*a0_ul, GaussWidth, "e", noPhonons, include3rdLevel)
-    initialStateDescription = "Ga"
+    initialState = groundstate(N, noPhonons, include3rdLevel)
+    initialStateDescription = "gs"
+    # initialState = Gaussian_sState(N, array, fiber, sqrt(N)*a0_ul, noPhonons, include3rdLevel)
+    # # initialState = GaussianState(N, array, 0, N/2*a0_ul, GaussWidth, "e", noPhonons, include3rdLevel)
+    # initialStateDescription = "Ga"
     # initialState = triangle_sState(N, array, fiber, noPhonons, include3rdLevel)
     # # initialState = triangleState(N, array, fiber.propagation_constant, "e", noPhonons, include3rdLevel)
     # initialStateDescription = "tr"
     
     # Whether to have driving on the g-e transition or not
-    ΩDriveOn = false
+    ΩDriveOn = true
     
     # Atomic dipole moment
     # d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul, array)
@@ -301,14 +301,14 @@ function define_SP_BerlinSr()
     if interpolate_Im_Grm_trans interpolation_Im_Grm_trans = interpolation1D_Im_Grm_trans(fiber, Int(ceil(arrayL/0.1)) + 1, ρa0_ul, 0.1, ηα) else interpolation_Im_Grm_trans = nothing end
     
     # Type of control drive the third level transition
-    cDriveType = "hyperbolic" # "constant", "planeWave", "hyperbolic"
-    cDriveDescription = "hyp" # "cst", "plW", "hyp"
+    cDriveType = "constant" # "constant", "planeWave", "hyperbolic"
+    cDriveDescription = "cst" # "cst", "plW", "hyp"
     
     # Detuning of the control drive with respect to the e-s transition
     Δc = 0
     
     # Rabi frequency of the control drive with respect to the e-s transition
-    Ωc = 0.005
+    Ωc = 0.1
     
     # Additional arguments for the control drive ("planeWave" requires a momentum vector)
     cDriveArgs = (kc = ωa*[-1, 0, 0], N_sites=N_sites, a=a0_ul)
@@ -363,8 +363,8 @@ function define_SP_ChangExponential()
     
     # Lamb-Dicke parameters
     # ηα = [0.1377, 0.1826, 0.1219] #Cs
-    ηα = [0.2093, 0.2775, 0.1853] #Sr
-    # ηα = [0.0, 0.0, 0.0]
+    # ηα = [0.2093, 0.2775, 0.1853] #Sr
+    ηα = [0.0, 0.0, 0.0]
     
     # Whether phonons are excluded or not from the calculations (a finite ηα but noPhonons = true will result in including ground state motion into tildeG)
     # noPhonons = all(ηα .== 0)
@@ -449,14 +449,14 @@ function define_SP_ChangExponential()
     if interpolate_Im_Grm_trans interpolation_Im_Grm_trans = interpolation1D_Im_Grm_trans(fiber, Int(ceil(arrayL/0.1)) + 1, ρa, 0.1, ηα) else interpolation_Im_Grm_trans = nothing end
     
     # Type of control drive the third level transition
-    cDriveType = "constant" # "constant", "planeWave", "hyperbolic"
-    cDriveDescription = "cst" # "cst", "plW", "hyp"
+    cDriveType = "hyperbolic" # "constant", "planeWave", "hyperbolic"
+    cDriveDescription = "hyp" # "cst", "plW", "hyp"
     
     # Detuning of the control drive with respect to the e-s transition
     Δc = 0
     
     # Rabi frequency of the control drive with respect to the e-s transition
-    Ωc = 0.1
+    Ωc = 0.005
     
     # Additional arguments for the control drive ("planeWave" requires a momentum vector)
     cDriveArgs = (kc = ωa*[-1, 0, 0], N_sites=N_sites, a=a)
@@ -628,11 +628,16 @@ end
 function main()
     # Define system parameters
     # SP = define_SP_BerlinCs()
-    SP = define_SP_BerlinSr()
+    # SP = define_SP_BerlinSr()
     # SP = define_SP_ChangExponential()
     # SP = define_SP_artificial()
     # show(SP)
     
+    
+    # implement derivatives of Chang's Grm 
+    # make it possible to get Chang's Grm
+        # should require xPol
+    # remove the possibility for a dipole moment which is a string
     
     
     # plot_propConst_vs_fiber(SP)
@@ -656,7 +661,7 @@ function main()
     # plot_lossWithGnmEigenEnergies(SP)
     # plot_memoryEfficiency(SP)
     # plot_compareMemoryEfficiency(SP)
-    plot_memoryRetrievalErrorMatrixEigenmodes(SP)
+    # plot_memoryRetrievalErrorMatrixEigenmodes(SP)
     # plot_initialState_overlapWith_memoryRetrievalErrorMatrixEigenmodes(SP)
     
     return nothing
@@ -1670,30 +1675,30 @@ function plot_memoryEfficiency(SP)
     if SP.ΩDriveOn                               throw(ArgumentError("plot_memoryEfficiency assumes the driving on the g-e transition is off")) end
     
     
-    # N_sites_list = 10:10:200
-    # ϵs = []
-    # for N_sites in N_sites_list
-    #     arrayDescription = arrayDescript(SP.arrayType, N_sites, SP.ρa, SP.a, SP.ff, SP.pos_unc)
+    N_sites_list = 10:10:200
+    ϵs = []
+    for N_sites in N_sites_list
+        arrayDescription = arrayDescript(SP.arrayType, N_sites, SP.ρa, SP.a, SP.ff, SP.pos_unc)
         
-    #     postfix = get_postfix_memoryEfficiency(SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.noPhonons, SP.incField_wlf, SP.tildeG_flags, arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, SP.radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
-    #     filename = "memEff_" * postfix
-    #     folder = "memoryEfficiency/"
+        postfix = get_postfix_memoryEfficiency(SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.noPhonons, SP.tildeG_flags, arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, SP.radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
+        filename = "memEff_" * postfix
+        folder = "memoryEfficiency/"
 
-    #     if isfile(saveDir * folder * filename * ".txt")
-    #         push!(ϵs, load_as_txt(saveDir * folder, filename)[1])
-    #     else
-    #         throw(ArgumentError("The following file can not be found: " * filename))
-    #     end
-    # end
+        if isfile(saveDir * folder * filename * ".txt")
+            push!(ϵs, load_as_txt(saveDir * folder, filename)[1])
+        else
+            throw(ArgumentError("The following file can not be found: " * filename))
+        end
+    end
     
-    # titl = prep_memoryRetrievalError_title(SP)
-    # fig_memoryRetrievalError(N_sites_list, ϵs, titl)
+    titl = prep_memoryRetrievalError_title(SP)
+    fig_memoryRetrievalError(N_sites_list, ϵs, titl)
     
     
     # ϵ = calc_memoryRetrievalError(SP)
     # println(ϵ)
-    ϵ = calc_memoryRetrievalError_eigenmodes(SP)
-    println(ϵ)
+    # ϵ = calc_memoryRetrievalError_eigenmodes(SP)
+    # println(ϵ)
     
 end
 
@@ -1704,8 +1709,6 @@ function plot_compareMemoryEfficiency(SP)
     if SP.ΩDriveOn                               throw(ArgumentError("plot_compareMemoryEfficiency assumes the driving on the g-e transition is off")) end
     
     # Set parameters
-    # params_list = [("timeEvol", zeros(3)), ("timeEvol", SP.ηα)]
-    # labels = [L"time evol., fixed$$", L"time evol., moving$$"]
     params_list = [("timeEvol", zeros(3), "Ga"), ("timeEvol", SP.ηα, "Ga"), ("timeEvol", zeros(3), "tr"), ("timeEvol", SP.ηα, "tr"), ("eigbasis", zeros(3), ""), ("eigbasis", SP.ηα, "")]
     labels = [L"Gauss., fixed$$", L"Gauss., moving$$", L"tri., fixed$$", L"tri., moving$$", L"opt., fixed$$", L"opt., moving$$"]
     # params_list = [("timeEvol", SP.ηα, "Ga"), ("timeEvol", SP.ηα, "tr"), ("eigbasis", SP.ηα, "")]
@@ -1780,9 +1783,9 @@ function plot_compareMemoryEfficiency(SP)
     setup_exp        = [model_exp       , p0_exp       , label_exp]
     setup_exp_asymp  = [model_exp_asymp , p0_exp_asymp , label_exp_asymp]
     
-    fitting_intervals = [9:20, 1:20, 5:20, 5:20, 5:14, 4:17]
-    # setups = [setup_pol, setup_pol_asymp, setup_pol, setup_pol, setup_pol, setup_pol]
-    setups = [setup_exp, setup_exp_asymp, setup_pol, setup_pol, setup_pol, setup_pol]
+    # fitting_intervals = [9:20, 1:20, 5:20, 5:20, 5:14, 4:17]
+    setups = [setup_pol, setup_pol_asymp, setup_pol, setup_pol, setup_pol, setup_pol]
+    # setups = [setup_exp, setup_exp_asymp, setup_pol, setup_pol, setup_pol, setup_pol]
     # setups = [setup_pol, setup_pol, setup_pol]
     
     ϵ_fits = fill(NaN, size(ϵs))
@@ -1886,10 +1889,9 @@ end
     # Compare Strontium and Caesium
 # Look at effect on quantum memory quality metrics
     # Figure out why the plots of the excitation distribution don't match at all with Chang's article (also giving different values for ϵ?)
-    	# Real part of GF is exact in their calculations?
-        # Finish implementation of Chang's exact GF to see if it has an effect
-            # Presently, the imaginary part of the new implementation does not match the old calculation of the imaginary part (which is supposed to be exact)
+        # We have implemented the full fiber GF as they use (which is only the ρρ-component)
         # Does this improve strange behavior of ϵ at high N?
+        # Can we get exactly the same transmission curves as they do?
     # Consider how the parameters of the N-scalings (i.e. front factors and exponents) change with LD-parameters
         # That is, how do the constants of the scalings themselves scale with LD?
     # Explore scaling as a function of control drive shape?
@@ -1900,10 +1902,9 @@ end
         # Is this the best possible scaling independent of control drive shape?
         # Is there an intuitive reason for specifically having 1/N?
         # The bulk results in a plateau but the optimal state avoids this or?
-
-# Fix the calculation of the phonon expectation values
-    # Presently, the calculations using either time-evolution of coupling matrix eigenmodes do not agree
-    # The steady calculation therefore also does not agree (with the eigenmode calculations specifically)
+        # If the control drive shape doesn't matter that is both good and bad
+            # You don't need something complicated to get optimal, but you also can't optimize...
+            # Is it because the motion comes from anywhere/everywhere so drive shape doesn't matter?
 
 
 ### Minor things TODO:

@@ -650,6 +650,39 @@ end
 #   Functions pertaining to Chang's expression for ρρ-component of the radiative Green's function
 # ================================================
 """
+Calculate the ρρ-component of the guided Green's function using Chang's expression
+
+It appears this calculation is bugged, as it does not match with Ggm()...
+"""
+function Ggm_ρρ_Chang(fiber, r_field, r_source)
+    if r_field[1] != r_source[1] || r_field[2] != r_source[2] || r_source[2] != 0
+        throw(ArgumentError("Grm_ρρ_Ggm_ρρ_ChangChang_ expects atoms in 1D chain along the fiber with y = 0"))
+    end
+    
+    # Set up coordinates and parameters
+    ρa = r_field[1]
+    Δz = r_field[3] - r_source[3]
+    ωf = fiber.frequency
+    κ  = fiber.propagation_constant
+    
+    # The contour integration is performed along circle with infinitesimal radius
+    # We replace infinitesimal by a small r
+    r = 0.0001*ωf
+    
+    # Set up the integrands and the integral domains
+    integrand(x, args) = Gtilde_Chang(fiber, ωf, ρa, κ + r*exp(1im*x), 1)*r*1im*exp(1im*x)
+    domain = (0, 2π)
+    
+    # Set up the integral
+    prob = IntegralProblem(integrand, domain)
+    integral = Integrals.solve(prob, HCubatureJL())
+    
+    # Put together and return the Green's function
+    return exp(1im*κ*Δz)*integral.u/(2π*ωf^2)
+end
+
+
+"""
 Small wrapper that exploits the Onsager reciprocity to simplify calculations
 of the ρρ-component of the radiative Green's function using Chang's expression
 """
@@ -676,7 +709,7 @@ function Grm_ρρ_Chang_(fiber, ω, r_field, r_source, save_Grm_ρρ_Chang=true,
     
     # So we save the calculation according to that value, rather than the individual z-coordinates
     postfix = get_postfix_Grm_ρρ_Chang(ω, Δz, abstol, fiber.postfix)
-    filename = "GrmCh_" * postfix
+    filename = "GrmrrCh_" * postfix
     folder = "Grm_Chang/"
     if isfile(saveDir * folder * filename * ".txt") return load_as_txt(saveDir * folder, filename, ComplexF64)[1] end
     
@@ -687,7 +720,7 @@ function Grm_ρρ_Chang_(fiber, ω, r_field, r_source, save_Grm_ρρ_Chang=true,
     # Set up the integrands and the integral domains
     integrand_r(x, args) = Gtilde_Chang(fiber, ω, ρa, x, args...)*exp(1im*x*Δz)
     integrand_p(x, args) = imag(integrand_r(-ω + 1im*x, args))
-    # integrand_c(x, args) = integrand_r(-ω + R*exp(1im*x), args)
+    # integrand_c(x, args) = integrand_r(-ω + R*exp(1im*x), args)*R
     domain_r = (-ω + eps(1.0), ω - eps(1.0))
     domain_p = (0 + eps(1.0), R)
     # domain_c = (π/2, π)
@@ -709,7 +742,7 @@ function Grm_ρρ_Chang_(fiber, ω, r_field, r_source, save_Grm_ρρ_Chang=true,
             prob_p = IntegralProblem(integrand_p, domain_p, args)
             integral_r = Integrals.solve(prob_r, HCubatureJL())
             integral_p = Integrals.solve(prob_p, HCubatureJL())
-            # integral_c is non-zero only for Δz = 0a
+            # integral_c is non-zero only for Δz = 0
             return integral_r.u + 2*integral_p.u
         end
     end
@@ -719,10 +752,15 @@ function Grm_ρρ_Chang_(fiber, ω, r_field, r_source, save_Grm_ρρ_Chang=true,
     Grm_ρρ_Chang = ρhat'*G0(ω, r_field, r_source)*ρhat
     
     # Perform the combined sum and integrations
-    summand_m = 2im*abstol
-    m = 2 #m = 0 corresponds to the vacuum contribution (added below), m = ±1 corresponds to the guided contribution (not part of the radiation GF)
+    summand_m = 10*abstol + 10im
+    m = 0
     while abs(summand_m) > abstol
-        summand_m = summand(m) + summand(-m)
+        if m == 0
+            summand_m = summand(m)
+        else
+            summand_m = summand(m) + summand(-m)
+        end    
+        
         Grm_ρρ_Chang += summand_m/(4π*ω^2)
         m += 1
     end
@@ -742,7 +780,7 @@ function Gtilde_Chang(fiber, ω, ρa, kz, m)
     
     kp_1 = sqrt(Complex(n^2*ω^2 - kz^2)) #k_perp_in , called \nu_1 in the article
     kp_2 = sqrt(Complex(    ω^2 - kz^2)) #k_perp_out, called \nu_2 in the article
-    
+        
     z1  = kp_1*ρf
     z2  = kp_2*ρf
     z2a = kp_2*ρa
@@ -761,16 +799,16 @@ function Gtilde_Chang(fiber, ω, ρa, kz, m)
     Bϕ = 1im*kz*ω/2*(m^2/(kp_2^2*ρa*ρf)*J_2*H_2a + Jp_2*Hp_2a)
     Bz = -1im*ω*m/(2*ρa)*J_2*H_2a
     
-    A = m*kz*ω^2*(n^2 - 1)
-    B = 1im*ρf*ω*kp_1*kp_2*(kp_1*J_1*Hp_2 -     kp_2*Jp_1*H_2)
-    C = 1im*ρf*ω*kp_1*kp_2*(kp_1*J_1*Hp_2 - n^2*kp_2*Jp_1*H_2)
-    S =  ρf*kp_1^2*kp_2^2*J_1*Eϕ + m*kz*kp_2^2*J_1*Ez +     1im*ρf*ω*kp_1*kp_2^2*Jp_1*Bz
-    T = -ρf*kp_1^2*kp_2^2*J_1*Bϕ - m*kz*kp_2^2*J_1*Bz + n^2*1im*ρf*ω*kp_1*kp_2^2*Jp_1*Ez
+    A = m*kz/ρf*ω^2*(n^2 - 1)/(kp_1^2*kp_2^2)*H_2
+    B = (Hp_2/kp_2 -     Jp_1*H_2/(kp_1*J_1))*1im*ω
+    C = (Hp_2/kp_2 - n^2*Jp_1*H_2/(kp_1*J_1))*1im*ω
+    S = Eϕ + m*kz/(kp_1^2*ρf)*Ez + 1im*ω/kp_1*Jp_1*Bz/J_1
+    T = -Bϕ + 1im*ω*n^2/kp_1*Jp_1*Ez/J_1 - m*kz/(kp_1^2*ρf)*Bz
     
-    am = (A*S - B*T)/(A^2 - B*C)
-    bm = (C*S - A*T)/(A^2 - B*C)
+    am = (A*S + B*T)/(A^2 + B*C)
+    bm = (C*S - A*T)/(A^2 + B*C)
     
-    return (1im*kz*kp_2*Hp_2*am - ω*m/ρa*H_2*bm)/kp_2^2
+    return (1im*kz*kp_2*Hp_2a*am - ω*m/ρa*H_2a*bm)/kp_2^2
 end
 
 
