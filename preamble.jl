@@ -117,7 +117,7 @@ struct SysPar
     ηα::Vector{<:Real}                              # Lamb-Dicke parameters
     noPhonons::Bool                                 # Whether phonons are excluded or not from the calculations
     
-    d::Union{Vector, String}                        # Dipole moment of atoms (one for each atom)
+    d::Vector                                       # Dipole moment of atoms (one for each atom)
     dDescription::String                            # Description of the dipole moment for postfix
     incField_wlf::Vector{Tuple{<:Number, Int, Int}} # Vector of (weight, l, f) tuples for defining the incoming driving field
     tildeG_flags::Tuple{Bool, Bool, Bool}           # Whether to include the guided contribution, the radiated contribution, and the radiated interactions when calculating tildeG
@@ -161,7 +161,7 @@ struct SysPar
                     ΩDriveOn::Bool,
                     arrayType::String, N_sites::Int, ρa::Real, a::Real, ff::Real, pos_unc::Union{Real, Vector}, n_inst::Int, array::Vector, arrayDescription::String, N::Int,
                     να::Vector, ηα::Vector, noPhonons::Bool,
-                    d::Union{Vector, String}, dDescription::String, incField_wlf::Vector, tildeG_flags::Tuple,
+                    d::Vector, dDescription::String, incField_wlf::Vector, tildeG_flags::Tuple,
                     interpolate_Im_Grm_trans::Bool, save_Im_Grm_trans::Bool, abstol_Im_Grm_trans::Real, approx_Grm_trans::Tuple,
                     save_steadyState::Bool, save_timeEvol::Bool, 
                     interpolation_Im_Grm_trans::Union{Dict, Nothing},

@@ -37,7 +37,7 @@ function get_postfix_steadyState(Δ, ΔvariDescription, dDescription, να, ηα
     ]
     if noPhonons push!(postfix_components, "noPh") else push!(postfix_components, "tFr_$(join(ro.(να), ","))") end
     if all(ηα .== 0) push!(postfix_components, "LD_0.0") else push!(postfix_components, "LD_$(join(ro.(ηα), ","))") end
-    push!(postfix_components, "wlf_$("[" * join(["(" * join([format_Complex_to_String(wlf[1]), wlf[2], wlf[3]], ",") * ")" for wlf in incField_wlf], ",") * "]")")
+    if incField_wlf !== [(1, 1, 1), (1, -1, 1)] push!(postfix_components, "wlf_$("[" * join(["(" * join([format_Complex_to_String(wlf[1]), wlf[2], wlf[3]], ",") * ")" for wlf in incField_wlf], ",") * "]")") end
     if any(tildeG_flags .!= 1) push!(postfix_components, "tGfl_$(join(Int.(tildeG_flags), ","))") end
     append!(postfix_components, [
             arrayDescription,
@@ -66,10 +66,8 @@ function get_postfix_imperfectArray_transmission(Δ_specs, ΔvariDescription, dD
     ]
     if noPhonons push!(postfix_components, "noPh") else push!(postfix_components, "tFr_$(join(ro.(να), ","))") end
     if all(ηα .== 0) push!(postfix_components, "LD_0.0") else push!(postfix_components, "LD_$(join(ro.(ηα), ","))") end
-    append!(postfix_components, [
-        "wlf_$("[" * join(["(" * join([format_Complex_to_String(wlf[1]), wlf[2], wlf[3]], ",") * ")" for wlf in incField_wlf], ",") * "]")",
-        "nInst_$(n_inst)"
-    ])
+    if incField_wlf !== [(1, 1, 1), (1, -1, 1)] push!(postfix_components, "wlf_$("[" * join(["(" * join([format_Complex_to_String(wlf[1]), wlf[2], wlf[3]], ",") * ")" for wlf in incField_wlf], ",") * "]")") end
+    push!(postfix_components, "nInst_$(n_inst)")
     if any(tildeG_flags .!= 1) push!(postfix_components, "tGfl_$(join(Int.(tildeG_flags), ","))") end
     append!(postfix_components, [
             arrayDescription,
@@ -90,7 +88,7 @@ function get_postfix_timeEvolution(Δ, ΔvariDescription, dDescription, να, η
     ]
     if noPhonons push!(postfix_components, "noPh") else push!(postfix_components, "tFr_$(join(ro.(να), ","))") end
     if all(ηα .== 0) push!(postfix_components, "LD_0.0") else push!(postfix_components, "LD_$(join(ro.(ηα), ","))") end
-    push!(postfix_components, "wlf_$("[" * join(["(" * join([format_Complex_to_String(wlf[1]), wlf[2], wlf[3]], ",") * ")" for wlf in incField_wlf], ",") * "]")")
+    if incField_wlf !== [(1, 1, 1), (1, -1, 1)] push!(postfix_components, "wlf_$("[" * join(["(" * join([format_Complex_to_String(wlf[1]), wlf[2], wlf[3]], ",") * ")" for wlf in incField_wlf], ",") * "]")") end
     if any(tildeG_flags .!= 1) push!(postfix_components, "tGfl_$(join(Int.(tildeG_flags), ","))") end
     append!(postfix_components, [
             arrayDescription,
@@ -214,12 +212,13 @@ end
 Function to rename existing data files
 """
 function rename()
-    dataFolder = saveDir * "memoryEfficiency/"
-    replacementPairs = ["Ga_t_0.0,100.0,0.01_" => "", ]
+    dataFolder = saveDir * "imperfectArray_T_phase/"
+    replacementPairs = ["wlf_[(1.000,1,1),(1.000,-1,1)]" => "", 
+                        "wlf_[]" => ""]
     
     for oldFilename in readdir(dataFolder)
-        # newFilename = replace(oldFilename, replacementPairs...)
-        # if newFilename != oldFilename mv(dataFolder * oldFilename, dataFolder * newFilename) end
+        newFilename = replace(oldFilename, replacementPairs...)
+        if newFilename != oldFilename mv(dataFolder * oldFilename, dataFolder * newFilename) end
         
         # if occursin("memEff_flat", oldFilename) && !occursin("_tr_t_", oldFilename)
         #     indices = findfirst("2pi_lTol", oldFilename)

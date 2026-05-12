@@ -98,8 +98,7 @@ function define_SP_BerlinCs()
     ΩDriveOn = true
     
     # Atomic dipole moment
-    # d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul, array)
-    d = "chiral"
+    d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul, array)
     dDescription = "chiral"
     # d = rightCircularDipoleMoment(array)
     # dDescription = "rgtCrc"
@@ -108,7 +107,6 @@ function define_SP_BerlinCs()
     
     # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
     incField_wlf = [(1, 1, 1), (1, -1, 1)]
-    if typeof(d) == String incField_wlf = [] end
     
     # Whether to include the guided contribution, the radiated contribution, and the radiated interactions when calculating tildeG
     tildeG_flags = (true, true, true)
@@ -262,7 +260,6 @@ function define_SP_BerlinSr()
     
     # Atomic dipole moment
     # d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul, array)
-    # d = "chiral"
     # dDescription = "chiral"
     d = rightCircularDipoleMoment(array)
     dDescription = "rgtCrc"
@@ -270,8 +267,8 @@ function define_SP_BerlinSr()
     # dDescription = "xPol"
     
     # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
+    # While the relevant part of the drive naively is given simply by the dipole moment's orientation, the actual polarization/composition of the drive becomes relevant when you include motion
     incField_wlf = [(1, 1, 1), (1, -1, 1)]
-    if typeof(d) == String incField_wlf = [] end
     
     # Whether to include the guided contribution, the radiated contribution, and the radiated interactions when calculating tildeG
     tildeG_flags = (true, true, true)
@@ -410,7 +407,6 @@ function define_SP_ChangExponential()
     
     # Atomic dipole moment
     # d = chiralDipoleMoment(Fiber(ρf, n, ωa), ρa, array)
-    # d = "chiral"
     # dDescription = "chiral"
     # d = rightCircularDipoleMoment(array)
     # dDescription = "rgtCrc"
@@ -419,7 +415,6 @@ function define_SP_ChangExponential()
     
     # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
     incField_wlf = [(1, 1, 1), (1, -1, 1)]
-    if typeof(d) == String incField_wlf = [] end
     
     # Whether to include the guided contribution, the radiated contribution, and the radiated interactions when calculating tildeG
     tildeG_flags = (true, true, true)
@@ -551,7 +546,6 @@ function define_SP_artificial()
     
     # Atomic dipole moment
     # d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul, array)
-    # d = "chiral"
     # dDescription = "chiral"
     # d = rightCircularDipoleMoment(array)
     # dDescription = "rgtCrc"
@@ -560,7 +554,6 @@ function define_SP_artificial()
     
     # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
     incField_wlf = [(1, 1, 1), (1, -1, 1)]
-    if typeof(d) == String incField_wlf = [] end
     
     # Whether to include the guided contribution, the radiated contribution, and the radiated interactions when calculating tildeG
     tildeG_flags = (true, true, true)
@@ -634,10 +627,15 @@ function main()
     # show(SP)
     
     
-    # implement derivatives of Chang's Grm 
+    # remove the possibility for a dipole moment which is a string
     # make it possible to get Chang's Grm
         # should require xPol
-    # remove the possibility for a dipole moment which is a string
+    # test if using Chang's Grm gives the same
+        # transmissions
+        # scalings, tails of scalings
+        # makes a difference for eigenmode scalings
+    # implement full tensor calculation of exact Grm
+        # this is necessary to implement derivatives and other dipole moments than ρ-direction
     
     
     # plot_propConst_vs_fiber(SP)
@@ -912,16 +910,9 @@ function plot_imperfectArray_transmission_vs_Δ(SP)
         t_real_means, t_real_stds, t_imag_means, t_imag_stds = eachrow(load_as_txt(saveDir * folder, filename))
     else
         ts = []
-        if typeof(SP.d) == String
-            for array in SP.array
-                σvar_SS_scan = scan_steadyState(SP, SP.d, array)
-                push!(ts, calc_transmission.(Ref(SP), σvar_SS_scan, Ref(SP.d), Ref(array)))
-            end
-        else
-            for (d, array) in zip(SP.d, SP.array)
-                σvar_SS_scan = scan_steadyState(SP, d, array)
-                push!(ts, calc_transmission.(Ref(SP), σvar_SS_scan, Ref(d), Ref(array)))
-            end
+        for (d, array) in zip(SP.d, SP.array)
+            σvar_SS_scan = scan_steadyState(SP, d, array)
+            push!(ts, calc_transmission.(Ref(SP), σvar_SS_scan, Ref(d), Ref(array)))
         end
         
         # Prepare means and standard deviations of (squared) magnitudes and phases
@@ -1562,16 +1553,7 @@ function plot_GnmFourierTransformed(SP)
     zs = -N*SP.a:SP.a:N*SP.a
     r_source = [ρ_source..., 0]
     r_fields = [[ρ_field..., zn] for zn in zs]
-    
-    if typeof(SP.d) == String
-        if SP.d == "chiral"
-            d = chiralDipoleMoment(SP.fiber, SP.ρa)
-        else
-            throw(ArgumentError("plot_GnmFourierTransformed is not implemented for any String dipole moments other than 'chiral'"))
-        end
-    else
-        d = SP.d[1]
-    end
+    d = SP.d[1]
         
     # Guided part
     Ggm_ = Ggm.(Ref(SP.fiber), r_fields, Ref(r_source))
@@ -2009,12 +1991,6 @@ end
     # real part vs imag part?
     # separate into dominated by σ or Bα? 
     # 2D momentum?
-
-# Implement non-lazy version of get_tildeGs(fiber, d::String... for the case of including phonons? 
-    # Presumably significantly faster when exploiting knowledge of which components etc. are actually needed, but also very messy...
-    # Not needed for classical disorder calculations, so the need is not so great, since the calculations without classical disorder can exploit the z-translational invariance to reduce number of calculations
-    # Possibly only implement optimized calculation of integral
-        # Less work, and this is obviously the slow part of the overall calculation
 
 # Implement saving and loading of the parameter matrices?
 

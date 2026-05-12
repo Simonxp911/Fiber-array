@@ -95,13 +95,8 @@ function imperfectArray_transmission_vs_Δ(SP)
     ts = []
     for index in myStartIndex:myEndIndex
         println("My rank is $myRank, I am working on index = $index")
-        if typeof(SP.d) == String
-            σBα_scan = scan_steadyState(SP, SP.d, SP.array[index])
-            push!(ts, calc_transmission.(Ref(SP), σBα_scan, Ref(SP.d), Ref(SP.array[index])))
-        else
-            σBα_scan = scan_steadyState(SP, SP.d[index], SP.array[index])
-            push!(ts, calc_transmission.(Ref(SP), σBα_scan, Ref(SP.d[index]), Ref(SP.array[index])))
-        end
+        σBα_scan = scan_steadyState(SP, SP.d[index], SP.array[index])
+        push!(ts, calc_transmission.(Ref(SP), σBα_scan, Ref(SP.d[index]), Ref(SP.array[index])))
     end
     
     ts = MPI.gather(ts, comm, root=root)
