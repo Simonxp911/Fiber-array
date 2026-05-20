@@ -136,9 +136,9 @@ end
 
 
 function memoryEfficiency(SP)
-    if !SP.include3rdLevel                       throw(ArgumentError("memoryEfficiency assumes the third level (s) is included")) end
-    if SP.initialStateDescription ∉ ("Ga", "tr") throw(ArgumentError("memoryEfficiency assumes a Gaussian or triangular initial state")) end
-    if SP.ΩDriveOn                               throw(ArgumentError("memoryEfficiency assumes the driving on the g-e transition is off")) end
+    if !SP.include3rdLevel                             throw(ArgumentError("memoryEfficiency assumes the third level (s) is included")) end
+    if SP.initialStateDescription ∉ ("Ga", "tr", "op") throw(ArgumentError("memoryEfficiency assumes a Gaussian or triangular initial state")) end
+    if SP.ΩDriveOn                                     throw(ArgumentError("memoryEfficiency assumes the driving on the g-e transition is off")) end
     
     ϵ = calc_memoryRetrievalError(SP)
     
@@ -150,9 +150,9 @@ end
 
 
 function memoryEfficiencyEigenmodes(SP)
-    if !SP.include3rdLevel                       throw(ArgumentError("memoryEfficiencyEigenmodes assumes the third level (s) is included")) end
-    if SP.initialStateDescription ∉ ("Ga", "tr") throw(ArgumentError("memoryEfficiencyEigenmodes assumes a Gaussian or triangular initial state")) end
-    if SP.ΩDriveOn                               throw(ArgumentError("memoryEfficiencyEigenmodes assumes the driving on the g-e transition is off")) end
+    if !SP.include3rdLevel                             throw(ArgumentError("memoryEfficiencyEigenmodes assumes the third level (s) is included")) end
+    if SP.initialStateDescription ∉ ("Ga", "tr", "op") throw(ArgumentError("memoryEfficiencyEigenmodes assumes a Gaussian or triangular initial state")) end
+    if SP.ΩDriveOn                                     throw(ArgumentError("memoryEfficiencyEigenmodes assumes the driving on the g-e transition is off")) end
     
     calc_memoryRetrievalErrorMatrixEigenmodes(SP)
 end
