@@ -549,12 +549,12 @@ function Im_Grm_trans_(fiber, ω, r_field, r_source, derivOrder=(0, 0), α=1, sa
             for l in (-1, 1)
                 args = (m, l)
                 prob = IntegralProblem(integrand, domain, args)
-                integral = Integrals.solve(prob, HCubatureJL())
+                integral = Integrals.solve(prob, HCubatureJL(), reltol=abstol, abstol=abstol)
                 summand_m += integral.u/(4*ω)
                 if m != 0
                     args = (-m, l)
                     prob = IntegralProblem(integrand, domain, args)
-                    integral = Integrals.solve(prob, HCubatureJL())
+                    integral = Integrals.solve(prob, HCubatureJL(), reltol=abstol, abstol=abstol)
                     summand_m += integral.u/(4*ω)
                 end
             end
@@ -715,7 +715,9 @@ function Grm_ρρ_Chang_(fiber, ω, r_field, r_source, save_Grm_ρρ_Chang=true,
     
     # The +/- and c/cc contour integrations are performed along a semi-infinite line and a quarter circle with infinite radius
     # We replace infinity by a large R 
-    R = 10*ω
+    # Integrals.jl also accepts Inf as a domain boundary, but it seems that just setting a large value for R works better in this case
+    R = 100*ω
+    # R = Inf
     
     # Set up the integrands and the integral domains
     integrand_r(x, args) = Gtilde_Chang(fiber, ω, ρa, x, args...)*exp(1im*x*Δz)
@@ -733,15 +735,15 @@ function Grm_ρρ_Chang_(fiber, ω, r_field, r_source, save_Grm_ρρ_Chang=true,
             prob_r = IntegralProblem((x, args) -> 1im*imag(integrand_r(x, args)), domain_r, args)
             # prob_p = IntegralProblem(integrand_p, domain_p, args) 
             # prob_c = IntegralProblem(integrand_c, domain_c, args)
-            integral_r = Integrals.solve(prob_r, HCubatureJL())
-            # integral_p = Integrals.solve(prob_p, HCubatureJL()) # integral_p contributes only to the real part
-            # integral_c = Integrals.solve(prob_c, HCubatureJL()) # integral_c contributes only to the real part
+            integral_r = Integrals.solve(prob_r, HCubatureJL(), reltol=abstol, abstol=abstol)
+            # integral_p = Integrals.solve(prob_p, HCubatureJL(), reltol=abstol, abstol=abstol) # integral_p contributes only to the real part
+            # integral_c = Integrals.solve(prob_c, HCubatureJL(), reltol=abstol, abstol=abstol) # integral_c contributes only to the real part
             return integral_r.u # + 2*integral_p.u - 2*real(integral_c.u)
         else
             prob_r = IntegralProblem(integrand_r, domain_r, args)
             prob_p = IntegralProblem(integrand_p, domain_p, args)
-            integral_r = Integrals.solve(prob_r, HCubatureJL())
-            integral_p = Integrals.solve(prob_p, HCubatureJL())
+            integral_r = Integrals.solve(prob_r, HCubatureJL(), reltol=abstol, abstol=abstol)
+            integral_p = Integrals.solve(prob_p, HCubatureJL(), reltol=abstol, abstol=abstol)
             # integral_c is non-zero only for Δz = 0
             return integral_r.u + 2*integral_p.u
         end
@@ -1230,7 +1232,7 @@ function GaussianState(N, array, kz, zc, w, whichState, noPhonons, include3rdLev
         σge = σGauss
         if include3rdLevel σgs = empty_σVector(N) end
     elseif whichState == "s"
-        if include3rdLevel == false throw(ArgumentError("GaussianState with whichState = 's' prepares an excitation in the s-state and must have include3rdLevel=true")) end
+        if !include3rdLevel throw(ArgumentError("GaussianState with whichState = 's' prepares an excitation in the s-state and must have include3rdLevel=true")) end
         σge = empty_σVector(N)
         σgs = σGauss
     end
@@ -1254,7 +1256,7 @@ The Gaussian is centered in the middle of the array (with respect to the z-axis)
 and has a momentum (i.e. phase) given by the fiber propagation constant.
 """
 function Gaussian_sState(N, array, fiber, w, noPhonons, include3rdLevel)
-    if include3rdLevel == false throw(ArgumentError("Gaussian_sState prepares an excitation in the s-state and must have include3rdLevel=true")) end
+    if !include3rdLevel throw(ArgumentError("Gaussian_sState prepares an excitation in the s-state and must have include3rdLevel=true")) end
     
     zs = [site[3] for site in array]
     zc = (maximum(zs) - minimum(zs))/2
@@ -1279,7 +1281,7 @@ function triangleState(N, array, kz, whichState, noPhonons, include3rdLevel)
         σge = σTriangle
         if include3rdLevel σgs = empty_σVector(N) end
     elseif whichState == "s"
-        if include3rdLevel == false throw(ArgumentError("triangleState with whichState = 's' prepares an excitation in the s-state and must have include3rdLevel=true")) end
+        if !include3rdLevel throw(ArgumentError("triangleState with whichState = 's' prepares an excitation in the s-state and must have include3rdLevel=true")) end
         σge = empty_σVector(N)
         σgs = σTriangle
     end
@@ -1300,8 +1302,39 @@ Prepare a (spatially) 'triangular' distribution (i.e. amplitudes increase linear
 along z of a single excitation in the s-state in terms of the x-vector for time-evolution.
 """
 function triangle_sState(N, array, fiber, noPhonons, include3rdLevel)
-    if include3rdLevel == false throw(ArgumentError("triangle_sState prepares an excitation in the s-state and must have include3rdLevel=true")) end
+    if !include3rdLevel throw(ArgumentError("triangle_sState prepares an excitation in the s-state and must have include3rdLevel=true")) end
     return triangleState(N, array, fiber.propagation_constant, "s", noPhonons, include3rdLevel)
+end
+
+
+"""
+Prepare the state which gives the lowest possible memory infidelity by extrapolating it from the case of N = 100
+"""
+function optimalMemoryEigenstate(ΔvariDescription, dDescription, arrayType, N_sites, ρa, a, να, ηα, noPhonons, include3rdLevel, tildeG_flags, fiber, cDriveDescription, Δc, Ωc, cDriveArgs)
+    if !include3rdLevel throw(ArgumentError("optimalMemoryEigenstate prepares an excitation in the s-state and must have include3rdLevel=true")) end
+    if !noPhonons throw(ArgumentError("optimalMemoryEigenstate has only been implemented for case of not including phonon")) end
+    if arrayType !== "1Dchain" throw(ArgumentError("optimalMemoryEigenstate assumes the atoms are arranged in an arrayType = '1Dchain'")) end
+    
+    arrayDescription_N100 = arrayDescript(arrayType, 100, ρa, a, 1.0, 0.0)
+    postfix = get_postfix_memoryRetrievalErrorMatrixEigenmodes(ΔvariDescription, dDescription, να, ηα, noPhonons, tildeG_flags, arrayDescription_N100, fiber.postfix, cDriveDescription, Δc, Ωc, cDriveArgs)
+    filename_eigmods = "memEff_eigmods_" * postfix
+    folder = "memoryEfficiency/"
+    
+    if isfile(saveDir * folder * filename_eigmods * ".txt")
+        # Load the eigenmodes from N = 100 template
+        ϵ_eigmods = eachrow(load_as_txt(saveDir * folder, filename_eigmods, ComplexF64))
+        optimalState_N100 = unpack_σvarFromσvarVec(ϵ_eigmods[1], 100, noPhonons, include3rdLevel)
+        
+        # Interpolate the optimal state to the present array
+        zs_N100 = collect((0:99) * a)
+        zs_target = collect((0:N_sites-1) * a)
+        zs_known = zs_N100/zs_N100[end]*zs_target[end]
+        optimalState_shape = interpolation1D_atTargetValues(zs_known, abs.(optimalState_N100[2]), zs_target)
+        
+        return zeros(ComplexF64, N_sites), optimalState_shape.*exp.(1im*fiber.propagation_constant*zs_target)/norm(optimalState_shape)
+    else
+        throw(ArgumentError("optimalMemoryEigenstate could not find the N = 100 template"))
+    end
 end
 
 

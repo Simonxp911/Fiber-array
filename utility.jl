@@ -822,7 +822,7 @@ that are contained within the interval covered by zs_known
 """
 function interpolation1D_atTargetValues(zs_known, Fs_known, zs_target)
     if !all(diff(zs_known) .≈ zs_known[2] - zs_known[1]) throw(ArgumentError("interpolateCubic_1D assumes the known points of the function to be on a regular 1D grid")) end
-    if !all(minimum(zs_known) .< zs_target .< maximum(zs_known)) throw(ArgumentError("interpolateCubic_1D assumes the zs_target to be within the interval covered by zs_known")) end
+    if !all(minimum(zs_known) .<= zs_target .<= maximum(zs_known)) throw(ArgumentError("interpolateCubic_1D assumes the zs_target to be within the interval covered by zs_known")) end
     
     itp = interpolation1D_asFunction(zs_known, Fs_known)
     return evalNestedFunc.(itp, zs_target)

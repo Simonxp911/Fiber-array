@@ -158,6 +158,8 @@ function memoryEfficiencyEigenmodes(SP)
 end
 
 
+
+
 function myStartIndex_and_myEndIndex(totalNumberOfJobs)
     # First divide the totalNumberOfJobs evenly among the processes, rounded down
     # Then divide the remainingJobs among the lowest-rank processes 

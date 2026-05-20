@@ -137,7 +137,7 @@ end
 """
 For memory retrieval error matrix  
 """
-function memoryRetrievalErrorMatrixEigenmodes(ΔvariDescription, dDescription, να, ηα, noPhonons, tildeG_flags, arrayDescription, fiberPostfix, radDecayRateAndStateNorm_LowerTol, cDriveDescription, Δc, Ωc, cDriveArgs)
+function get_postfix_memoryRetrievalErrorMatrixEigenmodes(ΔvariDescription, dDescription, να, ηα, noPhonons, tildeG_flags, arrayDescription, fiberPostfix, cDriveDescription, Δc, Ωc, cDriveArgs)
     postfix_components = [
         ΔvariDescription,
         dDescription
@@ -148,7 +148,6 @@ function memoryRetrievalErrorMatrixEigenmodes(ΔvariDescription, dDescription, �
     append!(postfix_components, [
         arrayDescription,
         fiberPostfix,
-        "lTol_$(join(ro.(radDecayRateAndStateNorm_LowerTol), ","))",
         "cDr_$cDriveDescription", 
         "cDe_$Δc", 
         "cOm_$Ωc"
@@ -213,12 +212,11 @@ Function to rename existing data files
 """
 function rename()
     dataFolder = saveDir * "imperfectArray_T_phase/"
-    replacementPairs = ["wlf_[(1.000,1,1),(1.000,-1,1)]" => "", 
-                        "wlf_[]" => ""]
+    replacementPairs = ["__" => "_", ]
     
     for oldFilename in readdir(dataFolder)
-        newFilename = replace(oldFilename, replacementPairs...)
-        if newFilename != oldFilename mv(dataFolder * oldFilename, dataFolder * newFilename) end
+        # newFilename = replace(oldFilename, replacementPairs...)
+        # if newFilename != oldFilename mv(dataFolder * oldFilename, dataFolder * newFilename) end
         
         # if occursin("memEff_flat", oldFilename) && !occursin("_tr_t_", oldFilename)
         #     indices = findfirst("2pi_lTol", oldFilename)
