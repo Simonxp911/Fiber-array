@@ -1875,9 +1875,9 @@ end
 
 
 function plot_memoryEfficiency(SP)
-    if !SP.include3rdLevel                       throw(ArgumentError("plot_memoryEfficiency assumes the third level (s) is included")) end
-    if SP.initialStateDescription ∉ ("Ga", "tr") throw(ArgumentError("plot_memoryEfficiency assumes a Gaussian or triangular initial state")) end
-    if SP.ΩDriveOn                               throw(ArgumentError("plot_memoryEfficiency assumes the driving on the g-e transition is off")) end
+    if !SP.include3rdLevel                             throw(ArgumentError("plot_memoryEfficiency assumes the third level (s) is included")) end
+    if SP.initialStateDescription ∉ ("Ga", "tr", "op") throw(ArgumentError("plot_memoryEfficiency assumes a Gaussian or triangular initial state")) end
+    if SP.ΩDriveOn                                     throw(ArgumentError("plot_memoryEfficiency assumes the driving on the g-e transition is off")) end
     
     
     N_sites_list = 10:10:200
@@ -1909,9 +1909,9 @@ end
 
 
 function plot_compareMemoryEfficiency(SP)
-    if !SP.include3rdLevel                       throw(ArgumentError("plot_compareMemoryEfficiency assumes the third level (s) is included")) end
-    if SP.initialStateDescription ∉ ("Ga", "tr") throw(ArgumentError("plot_compareMemoryEfficiency assumes a Gaussian or triangular initial state")) end
-    if SP.ΩDriveOn                               throw(ArgumentError("plot_compareMemoryEfficiency assumes the driving on the g-e transition is off")) end
+    if !SP.include3rdLevel                             throw(ArgumentError("plot_compareMemoryEfficiency assumes the third level (s) is included")) end
+    if SP.initialStateDescription ∉ ("Ga", "tr", "op") throw(ArgumentError("plot_compareMemoryEfficiency assumes a Gaussian or triangular initial state")) end
+    if SP.ΩDriveOn                                     throw(ArgumentError("plot_compareMemoryEfficiency assumes the driving on the g-e transition is off")) end
     
     # Set parameters
     # params_list = [("timeEvol", zeros(3), "Ga"), ("timeEvol", SP.ηα, "Ga"), ("timeEvol", zeros(3), "tr"), ("timeEvol", SP.ηα, "tr"), ("eigbasis", zeros(3), ""), ("eigbasis", SP.ηα, "")]
