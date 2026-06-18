@@ -191,6 +191,23 @@ function get_tildeGs(fiber, d, array, tildeG_flags, save_Im_Grm_trans, abstol_Im
     
     # Get the couplings by appropriately multiplying with the dipole moment and some constants
     return 3*π/ωa*(adjoint.(d).*G.*d)
+    
+    
+    # # TEMP
+    
+    # return 3*π/ωa*(adjoint.(d).*G.*d) + 1e-6im*I
+    
+    
+    # Grm_ρρ = zeros(ComplexF64, N, N)
+    # if include_Grm
+    #     for j in 1:N, i in 1:N
+    #         if include_Grm_offdiag || i == j
+    #             Grm_ρρ[i, j] = Grm_ρρ_Chang(fiber, ωa, array[i], array[j], true, abstol_Im_Grm_trans)
+    #         end
+    #     end
+    # end
+    # return 3*π/ωa*(adjoint.(d).*Ggm_.*d + Grm_ρρ)
+    # # TEMP
 end
 
 
@@ -630,10 +647,25 @@ function get_fullCouplingMatrix(noPhonons, ΔvariDependence, Δvari_args, fiber,
 end
 
 
+function get_fullΓgm(SP)
+    tildeG_flags = (true, false, false)
+    fullCoupling_gm = get_fullCouplingMatrix(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.ΩDriveOn, tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
+    return 2*imag(fullCoupling_gm)
+end
+
+
 function get_fullΓrm(SP)
     tildeG_flags = (false, true, SP.tildeG_flags[3])
     fullCoupling_rm = get_fullCouplingMatrix(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.ΩDriveOn, tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
     return 2*imag(fullCoupling_rm)
+end
+
+
+function get_fullΓgm_egSector(SP)
+    tildeG_flags = (true, false, false)
+    include3rdLevel = false
+    fullCoupling_gm_egSector = get_fullCouplingMatrix(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d, SP.να, SP.ηα, SP.incField_wlf, SP.array, SP.ΩDriveOn, tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
+    return 2*imag(fullCoupling_gm_egSector)
 end
 
 
@@ -1073,7 +1105,7 @@ function calc_memoryRetrievalErrorMatrixEigenmodes(SP)
         # Find the eigenmodes
         fullΓrm = get_fullΓrm(SP)
         _, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = prepare_eigenmodesCalculation(SP)
-        ϵMat = memoryRetrievalErrorMatrix(eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, fullΓrm)
+        ϵMat = memoryRetrievalErrorMatrix(fullΓrm, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv)
         ϵ_eigvals, ϵ_eigmods = spectrum(ϵMat)
         
         if SP.cDriveType == "constant" ϵ_eigmods = rotateMemoryRetrievalErrorMatrixEigenmodes(ϵ_eigmods, SP.N, SP.noPhonons, SP.include3rdLevel) end

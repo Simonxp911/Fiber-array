@@ -176,11 +176,11 @@ function define_SP_BerlinSr()
     λ0  = 689       #nm, guided mode wavelength, transition frequency of Sr
     ω0  = 2π/λ0     #nm^-1, guided mode angular frequency
     γ0  = 2π*7.4    #kHz, free decay rate of Sr88
-    ρf0 = 200       #nm, fiber radius, 115, 150, 200
+    ρf0 = 200       #nm, fiber radius, 115, 150, 100, 150, 200, 250, 300, 350, 400
     n0  = 1.45      #unitless, index of refraction
     
     # Atomic array specs
-    ρa0 = 300   #nm, atomic array radial coordinate, 275 (115, 150), 300 (200)
+    ρa0 = ρf0 + 100   #nm, atomic array radial coordinate, 275 (115, 150), ρf0 + 100 (100, 150, 200, 250, 300, 350, 400, 450)
     a0  = 200   #nm, atomic array lattice constant
     
     # Trap specs (might be lower than the Cs experiment)
@@ -213,8 +213,8 @@ function define_SP_BerlinSr()
     ΔvariDescription = ΔvariDescript(ΔvariDependence, Δvari_args)
     
     # Lamb-Dicke parameters
-    # ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
-    ηα = [0, 0, 0]
+    ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
+    # ηα = [0, 0, 0]
     
     # Whether phonons are excluded or not from the calculations (a finite ηα but noPhonons = true will result in including ground state motion into tildeG)
     # noPhonons = all(ηα .== 0)
@@ -227,7 +227,7 @@ function define_SP_BerlinSr()
     arrayType = "1Dchain"
     
     # Set number of atomic sites 
-    N_sites = 10
+    N_sites = 100
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
@@ -257,11 +257,11 @@ function define_SP_BerlinSr()
     # dDescription = "xPol"
     
     # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
-    # While the relevant part of the drive naively is given simply by the dipole moment's orientation, the actual polarization/composition of the drive becomes relevant when you include motion
+    # While the relevant part of the drive naively is given simply its dot product with the dipole moment's orientation, the actual polarization/composition of the drive becomes relevant when you include motion
     incField_wlf = [(1, 1, 1), (1, -1, 1)]
     
     # Whether to include the guided contribution, the radiated contribution, and the radiated interactions when calculating tildeG
-    tildeG_flags = (true, true, true)
+    tildeG_flags = (true, true, false)
     
     # Absolute tolerance in the calculations of Im_Grm_trans
     abstol_Im_Grm_trans = 1e-7
@@ -288,124 +288,20 @@ function define_SP_BerlinSr()
     if interpolate_Im_Grm_trans interpolation_Im_Grm_trans = interpolation1D_Im_Grm_trans(fiber, Int(ceil(arrayL/0.1)) + 1, ρa0_ul, 0.1, ηα) else interpolation_Im_Grm_trans = nothing end
     
     # Type of control drive the third level transition
-    cDriveType = "hyperbolic" # "constant", "planeWave", "hyperbolic"
-    cDriveDescription = "hyp" # "cst", "plW", "hyp"
+    cDriveType = "constant" # "constant", "planeWave", "hyperbolic"
+    cDriveDescription = "cst" # "cst", "plW", "hyp"
     
     # Detuning of the control drive with respect to the e-s transition
     Δc = 0
     
     # Rabi frequency of the control drive with respect to the e-s transition
-    Ωc = 0.005
+    Ωc = 0.1
     
     # Additional arguments for the control drive ("planeWave" requires a momentum vector)
     cDriveArgs = (kc = ωa*[-1, 0, 0], N_sites=N_sites, a=a0_ul)
     
     # Lower tolerances of the radiative decay rate and state norm used to stop time evolution for calculation of memory retrieval error 
-    radDecayRateAndStateNorm_LowerTol = (1e-7, 1e-3)
-    
-    # Prepare initial state for time evolution, as well as description for postfix
-    # initialState = groundstate(N, noPhonons, include3rdLevel)
-    # initialStateDescription = "gs"
-    # initialState = Gaussian_sState(N, array, fiber, sqrt(N)*a0_ul, noPhonons, include3rdLevel)
-    # initialStateDescription = "Ga"
-    # initialState = triangle_sState(N, array, fiber, noPhonons, include3rdLevel)
-    # initialStateDescription = "tr"
-    initialState = optimalMemoryEigenstate(ΔvariDescription, dDescription, arrayType, N_sites, ρa0_ul, a0_ul, να0_ul, ηα, noPhonons, include3rdLevel, tildeG_flags, fiber, cDriveDescription, Δc, Ωc, cDriveArgs)
-    initialStateDescription = "op"
-    
-    
-    return SysPar(ρf0_ul, n0, ωa,
-                  fiber,
-                  Δ_specs,
-                  ΔvariDependence, Δvari_args, ΔvariDescription,
-                  whichTimeEvolver, tspan, dtmax,
-                  initialState, initialStateDescription,
-                  ΩDriveOn,
-                  arrayType, N_sites, ρa0_ul, a0_ul, ff, pos_unc, n_inst, array, arrayDescription, N,
-                  να0_ul, ηα, noPhonons,
-                  d, dDescription, incField_wlf, tildeG_flags, 
-                  interpolate_Im_Grm_trans, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans,
-                  save_steadyState, save_timeEvol,
-                  interpolation_Im_Grm_trans,
-                  z_range, x_range, y_fix,
-                  include3rdLevel, cDriveType, cDriveDescription, Δc, Ωc, cDriveArgs,
-                  radDecayRateAndStateNorm_LowerTol) 
-end
-
-
-function define_SP_BerlinSr_140()
-    # Fiber specs 
-    λ0  = 689       #nm, guided mode wavelength, transition frequency of Sr
-    ω0  = 2π/λ0     #nm^-1, guided mode angular frequency
-    γ0  = 2π*7.4    #kHz, free decay rate of Sr88
-    ρf0 = 200       #nm, fiber radius, 115, 150, 200
-    n0  = 1.45      #unitless, index of refraction
-    
-    # Atomic array specs
-    ρa0 = 300   #nm, atomic array radial coordinate, 275 (115, 150), 300 (200)
-    a0  = 200   #nm, atomic array lattice constant
-    
-    # Trap specs (might be lower than the Cs experiment)
-    ν0_radial    = 2π*109 #kHz, radial atomic trap angular frequency
-    ν0_axial     = 2π*139 #kHz, axial atomic trap angular frequency
-    ν0_azimuthal = 2π*62  #kHz, azimuthal atomic trap angular frequency (estimate from graph: 18 kHz, but usually half of the others)
-    να0 = [ν0_radial, ν0_azimuthal, ν0_axial] #trap frequencies in a Cartesian basis (x, y, z) which matches with (radial, azimuthal, axial) if the position is taken to be on the x-axis
-    
-    # Recoil energy
-    νR0 = 2π*4.775 #kHz, recoil energy of strontium atoms (as an angular frequency)
-    
-    # Lamb-Dicke parameters in a Cartesian basis (x, y, z)
-    ηα0 = @. sqrt(νR0/να0) # [0.2093, 0.2775, 0.1853]
-    
-    # Unitless versions
-    ρf0_ul = ρf0/λ0 #unitless version of ρf0, 0.1669
-    ρa0_ul = ρa0/λ0 #unitless version of ρa0, 0.3991
-    a0_ul  = a0/λ0  #unitless version of a0 , 0.2903
-    να0_ul = να0/γ0 #unitless version of να0, [14.7297, 8.3784, 18.7838]
-    
-    # Define the fiber
-    fiber = Fiber(ρf0_ul, n0, ωa)
-    
-    # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-2, 2, 1000)
-    
-    # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
-    ΔvariDependence = "flat"
-    Δvari_args = -3, 50*a0_ul
-    ΔvariDescription = ΔvariDescript(ΔvariDependence, Δvari_args)
-    
-    # Lamb-Dicke parameters
-    # ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
-    ηα = [0, 0, 0]
-    
-    # Whether phonons are excluded or not from the calculations (a finite ηα but noPhonons = true will result in including ground state motion into tildeG)
-    noPhonons = all(ηα .== 0)
-    # noPhonons = true
-    
-    # Whether to include a third (metastable) level to facilitate EIT
-    include3rdLevel = true
-    
-    # Set which kind of array to use ("1Dchain", "doubleChain", "randomZ")
-    arrayType = "1Dchain"
-    
-    # Set number of atomic sites 
-    N_sites = 140
-    
-    # Set filling fraction, positional uncertainty, and number of instantiations 
-    ff = 1.0
-    pos_unc = 0.0
-    # pos_unc = ηα0/ωa
-    n_inst = 1
-    
-    # Generate the array, its description, and the number of atoms
-    array, arrayDescription, N = get_array(arrayType, N_sites, ρa0_ul, a0_ul, ff, pos_unc, n_inst)
-    
-    # Which time evolver to use ("OrdinaryDiffEq", "simple")
-    whichTimeEvolver = "OrdinaryDiffEq"
-    
-    # Time span and maximum time step allowed in time evolution
-    tspan = (0, 100)
-    dtmax = 0.01
+    radDecayRateAndStateNorm_LowerTol = (1e-6, 1e-2)
     
     # Prepare initial state for time evolution, as well as description for postfix
     # initialState = groundstate(N, noPhonons, include3rdLevel)
@@ -414,65 +310,8 @@ function define_SP_BerlinSr_140()
     initialStateDescription = "Ga"
     # initialState = triangle_sState(N, array, fiber, noPhonons, include3rdLevel)
     # initialStateDescription = "tr"
-    
-    # Whether to have driving on the g-e transition or not
-    ΩDriveOn = true
-    
-    # Atomic dipole moment
-    # d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul, array)
-    # dDescription = "chiral"
-    d = rightCircularDipoleMoment(array)
-    dDescription = "rgtCrc"
-    # d = [[1, 0, 0] for site in array]
-    # dDescription = "xPol"
-    
-    # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
-    # While the relevant part of the drive naively is given simply by the dipole moment's orientation, the actual polarization/composition of the drive becomes relevant when you include motion
-    incField_wlf = [(1, 1, 1), (1, -1, 1)]
-    
-    # Whether to include the guided contribution, the radiated contribution, and the radiated interactions when calculating tildeG
-    tildeG_flags = (true, true, true)
-    
-    # Absolute tolerance in the calculations of Im_Grm_trans
-    abstol_Im_Grm_trans = 1e-7
-    
-    # Whether to approximate transverse part of radiation GF (real part and imaginary part respectively, usually (true, false))
-    approx_Grm_trans = (true, false)
-    
-    # Whether to interpolate Im_Grm_trans
-    interpolate_Im_Grm_trans = arrayType == "randomZ"
-    
-    # Whether to save individual results (Im_Grm_trans, steady states, time evolutions)
-    save_Im_Grm_trans = pos_unc == 0 && arrayType != "randomZ" && !interpolate_Im_Grm_trans
-    save_steadyState  = false # n_inst == 1 && ff == 1 && pos_unc == 0 && arrayType != "randomZ"
-    save_timeEvol     = false # n_inst == 1 && ff == 1 && pos_unc == 0 && arrayType != "randomZ"
-    
-    # Ranges of z and x values to define r_fields for calculating the radiated E-field
-    arrayL = (N_sites - 1)*a0_ul
-    margin = 0.1*arrayL
-    z_range = range(-margin, arrayL + margin, 100)
-    x_range = range(-ρf0_ul - margin, ρf0_ul + ρa0_ul + margin, 100)
-    y_fix   = ρa0_ul
-    
-    # Get the interpolation function for the imaginary, transverse part of the radiation Green's function, if needed
-    if interpolate_Im_Grm_trans interpolation_Im_Grm_trans = interpolation1D_Im_Grm_trans(fiber, Int(ceil(arrayL/0.1)) + 1, ρa0_ul, 0.1, ηα) else interpolation_Im_Grm_trans = nothing end
-    
-    # Type of control drive the third level transition
-    cDriveType = "hyperbolic" # "constant", "planeWave", "hyperbolic"
-    cDriveDescription = "hyp" # "cst", "plW", "hyp"
-    
-    # Detuning of the control drive with respect to the e-s transition
-    Δc = 0
-    
-    # Rabi frequency of the control drive with respect to the e-s transition
-    Ωc = 0.005
-    
-    # Additional arguments for the control drive ("planeWave" requires a momentum vector)
-    cDriveArgs = (kc = ωa*[-1, 0, 0], N_sites=N_sites, a=a0_ul)
-    
-    # Lower tolerances of the radiative decay rate and state norm used to stop time evolution for calculation of memory retrieval error 
-    radDecayRateAndStateNorm_LowerTol = (1e-7, 1e-3)
-    
+    # initialState = interpolatedOptimalMemoryEigenstate(ΔvariDescription, dDescription, arrayType, N_sites, ρa0_ul, a0_ul, να0_ul, ηα, noPhonons, include3rdLevel, tildeG_flags, fiber, cDriveDescription, Δc, Ωc, cDriveArgs)
+    # initialStateDescription = "op"
     
     
     return SysPar(ρf0_ul, n0, ωa,
@@ -786,81 +625,6 @@ function main()
     
     
     
-    # TEMP
-    
-    # SP_140 = define_SP_BerlinSr_140()
-    # ϵ_eigvals, ϵ_eigmods = calc_memoryRetrievalErrorMatrixEigenmodes(SP_140)
-    # optimalState_140 = unpack_σvarFromσvarVec(ϵ_eigmods[1], SP_140.N, SP_140.noPhonons, SP_140.include3rdLevel)
-    
-    
-    # zs_140 = [site[3] for site in SP_140.array]
-    # zs_target = [site[3] for site in SP.array]
-    # zs_known = (zs_140 .- zs_140[1])/(zs_140[end] - zs_140[1])*(zs_target[end] - zs_target[1]) .+ zs_target[1]
-    # optimalState_shape = interpolation1D_atTargetValues(zs_known, abs.(optimalState_140[2]), zs_target)
-    
-    # optimalState_interp = (zeros(ComplexF64, SP.N), optimalState_shape.*exp.(1im*SP.fiber.propagation_constant*zs_target))
-    # optimalState_interp[2] ./= norm(optimalState_interp[2])
-    
-    # ϵ_eigvals, ϵ_eigmods = calc_memoryRetrievalErrorMatrixEigenmodes(SP)
-    # println(ϵ_eigvals[1])
-    # ϵMat = memoryRetrievalErrorMatrix(ϵ_eigvals, ϵ_eigmods)
-    
-    # ϵ = memoryRetrievalError_matrix(optimalState_interp, ϵMat, SP.noPhonons, SP.include3rdLevel)
-    # println(ϵ)
-    
-    
-    # SP.initialState[1] .= optimalState_interp[1]
-    # SP.initialState[2] .= optimalState_interp[2]
-    # ϵ = calc_memoryRetrievalError(SP)
-    # println(ϵ)
-    
-    # zs = [site[3] for site in SP.array]
-    # fig_state(zs, SP.initialState, "", ["", ""])
-    
-    
-    # we were checking if Gershgorin circle theorem gave some useful limits for the eigenvalues
-    # but we only see that a certain part of the bulk gives way too large entries in the error matrix
-    
-    # eigenvalues are very sensitive to precision of Grm calculation
-    # so possibly by increasing precision everywhere (?) we can achieve correct/physical results
-    
-    # check precision of Bessel functions etc.?
-    
-    
-    # check what happens if we take the (seemingly converged) minimum error eigenstate of for example N = 100 
-    # and use it to calculate ϵ for N = 200 or more 
-        # does it yield unphysical ϵ or does it show the correct/expected scaling?
-        # we know the value is wrong in principle as the eigenvalues are unphysical
-    
-    # consider reltol and abstol for integrations when calculating Grm_Chang (and Im_Grm_trans)
-        # implemented, seems to work
-    # we are running memory calculation with the new Grm_Chang
-        # check to see what kind of difference it makes (tail end of exponential scaling)
-        # note that memeory matrix eigenmode calculation is way faster, also locally, so we should just do that, if we trust it
-        # only small change... still get a tail that veers off the exponential scaling
-        # which matches OUR expectations but goes against Chang's paper?
-    
-    
-    
-    # make it possible to get Chang's Grm
-        # should require xPol
-        # We made a TEMP solution just to check whether Grm_Chang makes a difference at all
-        # Using Chang's Grm did not improve things
-            # It revealed that the eigenmodes approach to calculating ϵ is very sensitive to the precision of tildeG
-    # test if using Chang's Grm gives the same
-        # transmissions
-        # scalings, tails of scalings
-        # makes a difference for eigenmode scalings
-    # implement full tensor calculation of exact Grm
-        # this is necessary to implement derivatives and other dipole moments than ρ-direction
-        
-    # at this point it seems like we should just make it possible to extend the 1/N^4 trend for the optimal eigenstate
-    # and accept that we won't be able to recreate the results from Chang's paper...
-    # if we can just show an exponential scaling that veers off into the 1/N^4 scaling, that would be great
-    
-    # TEMP
-    
-    
     # plot_propConst_vs_fiber(SP)
     # plot_coupling_strengths(SP)
     # plot_arrayIn3D(SP)
@@ -881,7 +645,9 @@ function main()
     # plot_compareGnmEigenEnergies(SP)
     # plot_lossWithGnmEigenEnergies(SP)
     # plot_memoryEfficiency(SP)
-    # plot_compareMemoryEfficiency(SP)
+    plot_compareMemoryEfficiency_vs_N(SP)
+    # plot_compareMemoryEfficiency_vs_ηα_factor(SP)
+    # plot_compareMemoryEfficiency_vs_ρf(SP)
     # plot_memoryRetrievalErrorMatrixEigenmodes(SP)
     # plot_initialState_overlapWith_memoryRetrievalErrorMatrixEigenmodes(SP)
     
@@ -894,25 +660,25 @@ end
 # ================================================
 function plot_propConst_vs_fiber(SP)
     ω_range  = [ωa]
-    ρf_range = range(0.5*SP.ρf, 2*SP.ρf, 16)
-    n_range  = range(1.3, 2, 15)
+    ρf_range = range(0.1, 1, 1000)
+    n_range  = range(1.45, 1.45, 1)
     
     κs = scan_propConst(ω_range, ρf_range, n_range)
     
     # Plot propConst
     ω_ind  = 1
     ρf_ind = 6
-    n_ind  = 4
+    n_ind  = 1
     
     κs_plot = κs[ω_ind, :, n_ind]
     titl = L"$ ω = ω_{a} $, $ n = %$(round(n_range[n_ind], sigdigits=3)) $"
     # fig_propConst_vs_x(ρf_range, κs_plot, ρf_range[ρf_ind], titl, L"$ ρ_{f}/λ_{a} $")
     fig_presentation_propConst_vs_x(ρf_range, κs_plot, ρf_range[ρf_ind], L"$ ρ_{f}/λ_{a} $", SP)
     
-    κs_plot = κs[ω_ind, ρf_ind, :]
-    titl = L"$ ω = ω_{a} $, $ ρ_{f}/λ_{a} = %$(round(ρf_range[ρf_ind], sigdigits=3)) $"
-    # fig_propConst_vs_x(n_range , κs_plot, n_range[n_ind], titl, L"$ n $")
-    fig_presentation_propConst_vs_x(n_range , κs_plot, n_range[n_ind], L"$ n $", SP)
+    # κs_plot = κs[ω_ind, ρf_ind, :]
+    # titl = L"$ ω = ω_{a} $, $ ρ_{f}/λ_{a} = %$(round(ρf_range[ρf_ind], sigdigits=3)) $"
+    # # fig_propConst_vs_x(n_range , κs_plot, n_range[n_ind], titl, L"$ n $")
+    # fig_presentation_propConst_vs_x(n_range , κs_plot, n_range[n_ind], L"$ n $", SP)
     
 end
 
@@ -1750,8 +1516,8 @@ function plot_GnmEigenEnergies(SP)
     titl = prep_GnmEigenEnergies_title(SP)
     # fig_eigenEnergies_vs_k(dominant_ks, collΔ, collΓ, weights_abs, SP.fiber.propagation_constant, titl) 
     fig_eigenEnergies_vs_k(dominant_ks, collΔ, abs.(collΓ), weights_abs, SP.fiber.propagation_constant, titl) 
-    # fig_eigenEnergies_vs_k(dominant_ks, collΔ_gm, collΓ_gm, weights_abs, SP.fiber.propagation_constant, titl * "\nGuided contribution") 
-    # fig_eigenEnergies_vs_k(dominant_ks, collΔ_rm, collΓ_rm, weights_abs, SP.fiber.propagation_constant, titl * "\nRadiated contribution") 
+    fig_eigenEnergies_vs_k(dominant_ks, collΔ_gm, collΓ_gm, weights_abs, SP.fiber.propagation_constant, titl * "\nGuided contribution") 
+    fig_eigenEnergies_vs_k(dominant_ks, collΔ_rm, collΓ_rm, weights_abs, SP.fiber.propagation_constant, titl * "\nRadiated contribution") 
     # if SP.ΔvariDependence != "flat"
     #     fig_eigenEnergies_vs_k(dominant_ks, collΔ_Δv, collΓ_Δv, weights_abs, SP.fiber.propagation_constant, titl * "\nΔ-variation contribution") 
     # end
@@ -1809,7 +1575,8 @@ function plot_compareGnmEigenEnergies(SP)
     if any(SP.ηα .!= 0) throw(ArgumentError("plot_compareGnmEigenEnergies is not implemented for the case of including phonons")) end
     
     # Prepare finite array spectra
-    Ns = [1000, 200, 50]
+    # Ns = [1000, 200, 50]
+    Ns = [100]
     collΔs = []
     collΓs = []
     dominant_kss = []
@@ -1908,33 +1675,32 @@ function plot_memoryEfficiency(SP)
 end
 
 
-function plot_compareMemoryEfficiency(SP)
+function plot_compareMemoryEfficiency_vs_N(SP)
     if !SP.include3rdLevel                             throw(ArgumentError("plot_compareMemoryEfficiency assumes the third level (s) is included")) end
     if SP.initialStateDescription ∉ ("Ga", "tr", "op") throw(ArgumentError("plot_compareMemoryEfficiency assumes a Gaussian or triangular initial state")) end
     if SP.ΩDriveOn                                     throw(ArgumentError("plot_compareMemoryEfficiency assumes the driving on the g-e transition is off")) end
     
     # Set parameters
-    # params_list = [("timeEvol", zeros(3), "Ga"), ("timeEvol", SP.ηα, "Ga"), ("timeEvol", zeros(3), "tr"), ("timeEvol", SP.ηα, "tr"), ("eigbasis", zeros(3), ""), ("eigbasis", SP.ηα, "")]
-    # labels = [L"Gauss., fixed$$", L"Gauss., moving$$", L"tri., fixed$$", L"tri., moving$$", L"opt., fixed$$", L"opt., moving$$"]
-    params_list = [("timeEvol", zeros(3), "Ga"), ("eigbasis", zeros(3), "")]
-    labels = [L"Gauss., fixed$$", L"opt., fixed$$"]
-    # params_list = [("timeEvol", SP.ηα, "Ga"), ("timeEvol", SP.ηα, "tr"), ("eigbasis", SP.ηα, "")]
-    # labels = [L"Gauss., moving$$", L"tri., moving$$", L"opt., moving$$"]
-    # ηα_list = reverse([0.5, 0.75, 1.0, 1.25, 1.5].*Ref(SP.ηα))
-    # labels = reverse([L"50\% $ η_{α} $", L"75\% $ η_{α} $", L"100\% $ η_{α} $", L"125\% $ η_{α} $", L"150\% $ η_{α} $"])
+    # params_list = [("timeEvol", SP.να, zeros(3), "Ga"), ("timeEvol", SP.να, SP.ηα, "Ga"), ("timeEvol", SP.να, zeros(3), "tr"), ("timeEvol", SP.να, SP.ηα, "tr"), ("eigbasis", SP.να, zeros(3), ""), ("eigbasis", SP.να, SP.ηα, "")]
+    # labels = [L"Gauss., no m.$$", L"Gauss., mot.$$", L"tri., no m.$$", L"tri., mot.$$", L"opt., no m.$$", L"opt., mot.$$"]
+    # params_list = [("eigbasis", SP.να, zeros(3), ""), ("eigbasis", 100*SP.να, 0.1*SP.ηα, ""), ("eigbasis", 16*SP.να, 0.25*SP.ηα, ""), ("eigbasis", 4*SP.να, 0.5*SP.ηα, ""), ("eigbasis", 1.777*SP.να, 0.75*SP.ηα, ""), ("eigbasis", SP.να, SP.ηα, "")]
+    # labels = [L"no m.$$", L"$ 0.1 η_{α} $", L"$ 0.25 η_{α} $", L"$ 0.5 η_{α} $", L"$ 0.75 η_{α} $", L"$ η_{α} $"]
+    params_list = [("timeEvol", SP.να, zeros(3), "tr"), ("timeEvol", SP.να, SP.ηα, "tr"), ("eigbasis", SP.να, zeros(3), ""), ("eigbasis", SP.να, SP.ηα, "")]
+    labels = [L"tri., no m., indep.$$", L"tri., mot., indep.$$", L"opt., no m., indep.$$", L"opt., mot., indep.$$"]
     N_sites_list = 10:10:200
+    # N_sites_list = vcat(5:5:50, 60:10:200)
     # N_sites_list = vcat(10:10:200, 220:20:300, 340:40:420)
     ϵs = zeros(length(params_list), length(N_sites_list))
     
     # Load data
     for (i, params) in enumerate(params_list)
-        timeEvol_or_eigbasis, ηα, initialStateDescription = params
+        timeEvol_or_eigbasis, να, ηα, initialStateDescription = params
         for (j, N_sites) in enumerate(N_sites_list)
             arrayDescription = arrayDescript(SP.arrayType, N_sites, SP.ρa, SP.a, SP.ff, SP.pos_unc)
             
             folder = "memoryEfficiency/"
             if timeEvol_or_eigbasis == "timeEvol"
-                postfix = get_postfix_memoryEfficiency(SP.ΔvariDescription, SP.dDescription, SP.να, ηα, SP.noPhonons, SP.tildeG_flags, arrayDescription, SP.fiber.postfix, initialStateDescription, SP.tspan, SP.dtmax, SP.radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
+                postfix = get_postfix_memoryEfficiency(SP.ΔvariDescription, SP.dDescription, να, ηα, SP.noPhonons, SP.tildeG_flags, arrayDescription, SP.fiber.postfix, initialStateDescription, SP.tspan, SP.dtmax, SP.radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
                 filename = "memEff_" * postfix
 
                 if isfile(saveDir * folder * filename * ".txt")
@@ -1943,16 +1709,16 @@ function plot_compareMemoryEfficiency(SP)
                     throw(ArgumentError("The following file can not be found: " * filename))
                 end
             elseif timeEvol_or_eigbasis == "eigbasis"
-                postfix = get_postfix_memoryRetrievalErrorMatrixEigenmodes(SP.ΔvariDescription, SP.dDescription, SP.να, ηα, SP.noPhonons, SP.tildeG_flags, arrayDescription, SP.fiber.postfix, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
+                postfix = get_postfix_memoryRetrievalErrorMatrixEigenmodes(SP.ΔvariDescription, SP.dDescription, να, ηα, SP.noPhonons, SP.tildeG_flags, arrayDescription, SP.fiber.postfix, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
                 filename_eigvals = "memEff_eigvals_" * postfix
             
                 if isfile(saveDir * folder * filename_eigvals * ".txt")
                     ϵs[i, j] = minimum(load_as_txt(saveDir * folder, filename_eigvals))
-                    if ϵs[i, j] < 0 ϵs[i, j] = NaN end
                 else
-                    throw(ArgumentError("The following file can not be found: " * filename))
+                    throw(ArgumentError("The following file can not be found: " * filename_eigvals))
                 end
             end
+            if ϵs[i, j] < 0 ϵs[i, j] = NaN end
         end
     end
     
@@ -1967,7 +1733,7 @@ function plot_compareMemoryEfficiency(SP)
     model_exp_asymp(N, (a, α, c)) = a*exp(-α*N) + c
     p0_pol        = [1000.0, -4.0]
     p0_pol_asymp  = [2.0, -1.0, 1e-2]
-    p0_pol1       = [10.0]
+    p0_pol1       = [0.1]
     p0_pol1_asymp = [10.0, 1e-1]
     p0_pol2       = [10.0]
     p0_pol2_asymp = [10.0, 1e-1]
@@ -1990,15 +1756,20 @@ function plot_compareMemoryEfficiency(SP)
     setup_exp        = [model_exp       , p0_exp       , label_exp]
     setup_exp_asymp  = [model_exp_asymp , p0_exp_asymp , label_exp_asymp]
     
-    fitting_intervals = [5:15, 1:15]
-    # setups = [setup_pol, setup_pol_asymp, setup_pol, setup_pol, setup_pol, setup_pol]
-    setups = [setup_exp, setup_pol]
+    # fitting_intervals = [5:15, 5:15, 5:15, 5:15, 5:14, 5:15]
+    # setups = [setup_exp, setup_exp_asymp, setup_pol, setup_pol, setup_pol, setup_pol]
+    # fitting_intervals = [10:19, 20:22, 20:22, 10:22, 10:22, 10:22]
+    # setups = [setup_pol, setup_pol1, setup_pol1, setup_pol1, setup_pol1, setup_pol1]
+    fitting_intervals = [19:20, 19:20, 19:20, 19:20]
+    setups = [setup_pol1, setup_pol1, setup_pol1, setup_pol1]
     
     ϵ_fits = fill(NaN, size(ϵs))
     for i in eachindex(params_list)
         model, p0, label = setups[i]
-        pmin = fitComplexData(N_sites_list[fitting_intervals[i]], ϵs[i, fitting_intervals[i]], model, p0)
-        ϵ_fits[i, :] = model.(N_sites_list, Ref(pmin))
+        # pmin = fitComplexData(N_sites_list[fitting_intervals[i]], ϵs[i, fitting_intervals[i]], model, p0)
+        # ϵ_fits[i, :] = model.(N_sites_list, Ref(pmin))
+        pmin = fitComplexData(N_sites_list[fitting_intervals[i]], log.(ϵs[i, fitting_intervals[i]]), (N, p) -> log(abs(model(N, p))), p0)
+        ϵ_fits[i, :] = abs.(model.(N_sites_list, Ref(pmin)))
         labels[i] *= label(pmin)
     end
     # ϵ_fits = nothing
@@ -2006,8 +1777,109 @@ function plot_compareMemoryEfficiency(SP)
     
     # Plot
     titl = prep_memoryRetrievalError_title(SP)
-    fig_compareMemoryRetrievalError(N_sites_list, ϵs, ϵ_fits, titl, labels)
-    # fig_presentation_compareMemoryRetrievalError(N_sites_list, ϵs, ϵ_fits, labels, SP)
+    fig_compareMemoryRetrievalError_vs_N(N_sites_list, ϵs, ϵ_fits, titl, labels)
+    # fig_presentation_compareMemoryRetrievalError_vs_N(N_sites_list, ϵs, ϵ_fits, labels, SP)
+    
+end
+
+
+function plot_compareMemoryEfficiency_vs_ηα_factor(SP)
+    if !SP.include3rdLevel                             throw(ArgumentError("plot_compareMemoryEfficiency assumes the third level (s) is included")) end
+    if SP.initialStateDescription ∉ ("Ga", "tr", "op") throw(ArgumentError("plot_compareMemoryEfficiency assumes a Gaussian or triangular initial state")) end
+    if SP.ΩDriveOn                                     throw(ArgumentError("plot_compareMemoryEfficiency assumes the driving on the g-e transition is off")) end
+    
+    # Set parameters
+    params_list = [("eigbasis", SP.να, zeros(3), ""), ("eigbasis", 100*SP.να, 0.1*SP.ηα, ""), ("eigbasis", 16*SP.να, 0.25*SP.ηα, ""), ("eigbasis", 4*SP.να, 0.5*SP.ηα, ""), ("eigbasis", 1.777*SP.να, 0.75*SP.ηα, ""), ("eigbasis", SP.να, SP.ηα, "")]
+    labels = [L"no m.$$", L"$ 0.1 η_{α} $", L"$ 0.25 η_{α} $", L"$ 0.5 η_{α} $", L"$ 0.75 η_{α} $", L"$ η_{α} $"]
+    N_sites = 20
+    ηα_factor_list = [0, 0.1, 0.25, 0.5, 0.75, 1.0]
+    ϵs = zeros(length(params_list))
+    
+    # Load data
+    for (i, params) in enumerate(params_list)
+        timeEvol_or_eigbasis, να, ηα, initialStateDescription = params
+        arrayDescription = arrayDescript(SP.arrayType, N_sites, SP.ρa, SP.a, SP.ff, SP.pos_unc)
+        
+        folder = "memoryEfficiency/"
+        if timeEvol_or_eigbasis == "timeEvol"
+            postfix = get_postfix_memoryEfficiency(SP.ΔvariDescription, SP.dDescription, να, ηα, SP.noPhonons, SP.tildeG_flags, arrayDescription, SP.fiber.postfix, initialStateDescription, SP.tspan, SP.dtmax, SP.radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
+            filename = "memEff_" * postfix
+
+            if isfile(saveDir * folder * filename * ".txt")
+                ϵs[i] = load_as_txt(saveDir * folder, filename)[1]
+            else
+                throw(ArgumentError("The following file can not be found: " * filename))
+            end
+        elseif timeEvol_or_eigbasis == "eigbasis"
+            postfix = get_postfix_memoryRetrievalErrorMatrixEigenmodes(SP.ΔvariDescription, SP.dDescription, να, ηα, SP.noPhonons, SP.tildeG_flags, arrayDescription, SP.fiber.postfix, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
+            filename_eigvals = "memEff_eigvals_" * postfix
+        
+            if isfile(saveDir * folder * filename_eigvals * ".txt")
+                ϵs[i] = minimum(load_as_txt(saveDir * folder, filename_eigvals))
+            else
+                throw(ArgumentError("The following file can not be found: " * filename_eigvals))
+            end
+        end
+        if ϵs[i] < 0 ϵs[i] = NaN end
+    end
+    
+    
+    # Plot
+    titl = prep_memoryRetrievalError_title(SP)
+    fig_compareMemoryRetrievalError_vs_ηα_factor(ηα_factor_list, ϵs, titl)
+    
+end
+
+
+function plot_compareMemoryEfficiency_vs_ρf(SP)
+    if !SP.include3rdLevel                             throw(ArgumentError("plot_compareMemoryEfficiency assumes the third level (s) is included")) end
+    if SP.initialStateDescription ∉ ("Ga", "tr", "op") throw(ArgumentError("plot_compareMemoryEfficiency assumes a Gaussian or triangular initial state")) end
+    if SP.ΩDriveOn                                     throw(ArgumentError("plot_compareMemoryEfficiency assumes the driving on the g-e transition is off")) end
+    
+    # Set parameters
+    params_list = [("timeEvol", SP.να, zeros(3), "Ga"), ("timeEvol", SP.να, zeros(3), "tr"), ("eigbasis", SP.να, zeros(3), "")]
+    labels = [L"Gauss., no m.$$", L"tri., no m.$$", L"opt., no m.$$"]
+    N_sites = 140
+    ρf_list = [0.1451, 0.2177, 0.2903, 0.3628, 0.4354, 0.508, 0.5806]
+    ρa_list = [0.2903, 0.3628, 0.4354, 0.508, 0.5806, 0.6531, 0.7257]
+    
+    ϵs = zeros(length(params_list), length(ρf_list))
+    
+    # Load data
+    for (i, params) in enumerate(params_list)
+        timeEvol_or_eigbasis, να, ηα, initialStateDescription = params
+        for (j, (ρf, ρa)) in enumerate(zip(ρf_list, ρa_list))
+            fiber = Fiber(ρf, SP.n, ωa)
+            arrayDescription = arrayDescript(SP.arrayType, N_sites, ρa, SP.a, SP.ff, SP.pos_unc)
+            
+            folder = "memoryEfficiency/"
+            if timeEvol_or_eigbasis == "timeEvol"
+                postfix = get_postfix_memoryEfficiency(SP.ΔvariDescription, SP.dDescription, να, ηα, SP.noPhonons, SP.tildeG_flags, arrayDescription, fiber.postfix, initialStateDescription, SP.tspan, SP.dtmax, SP.radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
+                filename = "memEff_" * postfix
+
+                if isfile(saveDir * folder * filename * ".txt")
+                    ϵs[i, j] = load_as_txt(saveDir * folder, filename)[1]
+                else
+                    throw(ArgumentError("The following file can not be found: " * filename))
+                end
+            elseif timeEvol_or_eigbasis == "eigbasis"
+                postfix = get_postfix_memoryRetrievalErrorMatrixEigenmodes(SP.ΔvariDescription, SP.dDescription, να, ηα, SP.noPhonons, SP.tildeG_flags, arrayDescription, fiber.postfix, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
+                filename_eigvals = "memEff_eigvals_" * postfix
+            
+                if isfile(saveDir * folder * filename_eigvals * ".txt")
+                    ϵs[i, j] = minimum(load_as_txt(saveDir * folder, filename_eigvals))
+                else
+                    throw(ArgumentError("The following file can not be found: " * filename_eigvals))
+                end
+            end
+            if ϵs[i, j] < 0 ϵs[i, j] = NaN end
+        end
+    end
+    
+    
+    # Plot
+    titl = prep_memoryRetrievalError_title(SP)
+    fig_compareMemoryRetrievalError_vs_ρf(ρf_list, ϵs, titl, labels)
     
 end
 
@@ -2097,9 +1969,11 @@ end
     # Compare Strontium and Caesium
 # Look at effect on quantum memory quality metrics
     # Figure out why the plots of the excitation distribution don't match at all with Chang's article (also giving different values for ϵ?)
-        # We have implemented the full fiber GF as they use (which is only the ρρ-component)
-        # Does this improve strange behavior of ϵ at high N?
-        # Can we get exactly the same transmission curves as they do?
+        # We have implemented the full fiber GF as they use (which is only the ρρ-component), but it does not improve the results...
+            # Possibly the accuracy with which the GF is calculated is critical, as it seems the eigenvalues of the memory error matrix are extremely sensitive to these errors
+            # Or at least, they are sensitive to whatever symmetry ensures the matrix only has eigenvalues between 0 and 1 (we find both negative and >1 eigenvalues)
+        # We would need to implement the full tensor Green's function to use it for other dipole moments
+            # and for including motion, since we need its derivatives
     # Consider how the parameters of the N-scalings (i.e. front factors and exponents) change with LD-parameters
         # That is, how do the constants of the scalings themselves scale with LD?
     # Explore scaling as a function of control drive shape?
@@ -2113,6 +1987,9 @@ end
         # If the control drive shape doesn't matter that is both good and bad
             # You don't need something complicated to get optimal, but you also can't optimize...
             # Is it because the motion comes from anywhere/everywhere so drive shape doesn't matter?
+    # Calculating ϵ in different ways (emission into rm or 1 minus emission into guided or time evolution) gives identical results for xPol, but for other dipole moments, the method of using fullΓgm does not work
+        # why is this? why does it sometimes give results outside of [0, 1]
+    
 
 
 ### Minor things TODO:

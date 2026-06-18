@@ -1272,15 +1272,15 @@ end
 Plot the memory retrieval error vs. number of atoms
 for different values of the Lamb-Dicke parameters
 """
-function fig_compareMemoryRetrievalError(N_sites, ϵs, ϵ_fits, titl, labels)
+function fig_compareMemoryRetrievalError_vs_N(N_sites, ϵs, ϵ_fits, titl, labels)
     colors = distinguishable_colors(size(ϵs)[1], [RGB(1, 1, 1), RGB(0, 0, 0)], dropseed=true)
     
     # Start figure 
-    fig = Figure(size=(700, 500))
+    fig = Figure(size=(1000, 700))
     
     # Make titles and axes
     Label(fig[1, 1], titl, tellwidth=false)
-    ax1 = Axis(fig[2, 1], yscale=log10,
+    ax1 = Axis(fig[2, 1], yscale=log10, 
                xlabel=L"$ N_{sites} $", ylabel=L"Infidelity, $ ϵ $")
     
     # Plot 
@@ -1290,6 +1290,56 @@ function fig_compareMemoryRetrievalError(N_sites, ϵs, ϵ_fits, titl, labels)
     end
     
     # Finish figure
+    Legend(fig[2, 2], ax1)
+    # axislegend()
+    display(GLMakie.Screen(), fig)
+end
+
+
+"""
+Plot the memory retrieval error vs. Lamb-Dicke parameter scaling factor (ηα_factor)
+for a fixed value of number of atoms
+"""
+function fig_compareMemoryRetrievalError_vs_ηα_factor(ηα_factor, ϵs, titl)
+    
+    # Start figure 
+    fig = Figure(size=(700, 700))
+    
+    # Make titles and axes
+    Label(fig[1, 1], titl, tellwidth=false)
+    ax1 = Axis(fig[2, 1], yscale=log10, 
+               xlabel=L"$ η_{r} $", ylabel=L"Infidelity, $ ϵ $")
+    
+    # Plot 
+    scatter!(ax1, ηα_factor, ϵs, color=:black)
+    
+    # Finish figure
+    display(GLMakie.Screen(), fig)
+end
+
+
+"""
+Plot the memory retrieval error vs. number of atoms
+for different values of the Lamb-Dicke parameters
+"""
+function fig_compareMemoryRetrievalError_vs_ρf(ρf, ϵs, titl, labels)
+    colors = distinguishable_colors(size(ϵs)[1], [RGB(1, 1, 1), RGB(0, 0, 0)], dropseed=true)
+    
+    # Start figure 
+    fig = Figure(size=(700, 700))
+    
+    # Make titles and axes
+    Label(fig[1, 1], titl, tellwidth=false)
+    ax1 = Axis(fig[2, 1], yscale=log10, 
+               xlabel=L"$ ρ_{f} $", ylabel=L"Infidelity, $ ϵ $")
+    
+    # Plot 
+    for i in 1:size(ϵs)[1]
+        scatter!(ax1, ρf, ϵs[i, :], color=colors[i], label=labels[i])
+    end
+    
+    # Finish figure
+    # Legend(fig[2, 2], ax1)
     axislegend()
     display(GLMakie.Screen(), fig)
 end

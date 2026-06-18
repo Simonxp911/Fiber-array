@@ -516,7 +516,7 @@ Presentation version of fig_compareMemoryRetrievalError,
 showing the memory retrieval error vs. number of atoms
 for different values of the Lamb-Dicke parameters
 """
-function fig_presentation_compareMemoryRetrievalError(Ns, ϵs, ϵ_fits, labels, SP)
+function fig_presentation_compareMemoryRetrievalError_vs_N(Ns, ϵs, ϵ_fits, labels, SP)
     colors = distinguishable_colors(size(ϵs)[1], [RGB(1, 1, 1), RGB(0, 0, 0)], dropseed=true)
     markers = fill(:circle, size(ϵs)[1])
     # markers = [:circle, :xcross, :circle, :xcross, :circle, :xcross]
@@ -533,19 +533,19 @@ function fig_presentation_compareMemoryRetrievalError(Ns, ϵs, ϵ_fits, labels, 
         titl *= "triangle initial state"
     end
     
-    # titl = "Hyperbolic control drive, different initial states" 
+    # titl = "Hyperbolic control drive, optimal state" 
     
     # Start figure 
     fig = Figure(size=(700, 300), fontsize=16)
     
     # Make titles and axes
     Label(fig[1, 1], latexstring(titl * "\$\$"), tellwidth=false)
-    ax1 = Axis(fig[2, 1], yscale=log10, #limits=(nothing, (10^-3.2, 10^)),
+    ax1 = Axis(fig[2, 1], yscale=log10, 
                xlabel=L"$ N $", ylabel=L"Infidelity, $ ϵ $")
     
     # Plot 
     for i in 1:size(ϵs)[1]
-        scatter!(ax1, Ns, ϵs[i, :], color=colors[i], marker=markers[i], label=labels[i])
+        scatter!(ax1, Ns, ϵs[i, :], color=colors[i], marker=markers[i], markersize=10, label=labels[i])
         if !isnothing(ϵ_fits) lines!(ax1, Ns, ϵ_fits[i, :], color=colors[i]) end
     end
     
@@ -553,7 +553,7 @@ function fig_presentation_compareMemoryRetrievalError(Ns, ϵs, ϵ_fits, labels, 
     # axislegend()
     Legend(fig[2, 2], ax1)
     display(GLMakie.Screen(), fig)
-    # save("C:\\Users\\Simon\\Downloads\\compMem_$(SP.cDriveDescription)_rhof$(ro(SP.ρf))_diffInitStates.png", fig, px_per_unit=4)
+    # save("C:\\Users\\Simon\\Downloads\\compMem_$(SP.cDriveDescription)_rhof$(ro(SP.ρf))_minErrorWithDifferentMotion.png", fig, px_per_unit=4)
 end
 
 

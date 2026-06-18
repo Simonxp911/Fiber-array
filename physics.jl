@@ -1308,9 +1308,9 @@ end
 
 
 """
-Prepare the state which gives the lowest possible memory infidelity by extrapolating it from the case of N = 100
+Prepare the state which gives the lowest possible memory infidelity by interpolating it from the case of N = 100
 """
-function optimalMemoryEigenstate(ΔvariDescription, dDescription, arrayType, N_sites, ρa, a, να, ηα, noPhonons, include3rdLevel, tildeG_flags, fiber, cDriveDescription, Δc, Ωc, cDriveArgs)
+function interpolatedOptimalMemoryEigenstate(ΔvariDescription, dDescription, arrayType, N_sites, ρa, a, να, ηα, noPhonons, include3rdLevel, tildeG_flags, fiber, cDriveDescription, Δc, Ωc, cDriveArgs)
     if !include3rdLevel throw(ArgumentError("optimalMemoryEigenstate prepares an excitation in the s-state and must have include3rdLevel=true")) end
     if !noPhonons throw(ArgumentError("optimalMemoryEigenstate has only been implemented for case of not including phonon")) end
     if arrayType !== "1Dchain" throw(ArgumentError("optimalMemoryEigenstate assumes the atoms are arranged in an arrayType = '1Dchain'")) end
@@ -1330,6 +1330,8 @@ function optimalMemoryEigenstate(ΔvariDescription, dDescription, arrayType, N_s
         zs_target = collect((0:N_sites-1) * a)
         zs_known = zs_N100/zs_N100[end]*zs_target[end]
         optimalState_shape = interpolation1D_atTargetValues(zs_known, abs.(optimalState_N100[2]), zs_target)
+        
+        # consider also interpolating the phase (after unfolding it)
         
         return zeros(ComplexF64, N_sites), optimalState_shape.*exp.(1im*fiber.propagation_constant*zs_target)/norm(optimalState_shape)
     else
@@ -1544,7 +1546,7 @@ end
 """
 Calculate the memory retrieval error matrix 
 """
-function memoryRetrievalErrorMatrix(eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, fullΓrm)
+function memoryRetrievalErrorMatrix(fullΓrm, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv)
     tildeΓrm = eigenModesMatrix'*fullΓrm*eigenModesMatrix
     eigenEnDiff = transpose(eigenEnergies .- eigenEnergies')
     tildeϵMat = 1im * tildeΓrm ./ eigenEnDiff

@@ -211,12 +211,17 @@ end
 Function to rename existing data files
 """
 function rename()
-    dataFolder = saveDir * "imperfectArray_T_phase/"
-    replacementPairs = ["__" => "_", ]
+    dataFolder = saveDir * "memoryEfficiency/"
+    replacementPairs = ["_lTol_1.0e-7,0.001" => "", "_lTol_1.0e-6,0.01" => "",]
     
     for oldFilename in readdir(dataFolder)
         # newFilename = replace(oldFilename, replacementPairs...)
         # if newFilename != oldFilename mv(dataFolder * oldFilename, dataFolder * newFilename) end
+        
+        # if occursin("eigmods", oldFilename) || occursin("eigvals", oldFilename)
+        #     newFilename = replace(oldFilename, replacementPairs...)
+        #     if newFilename != oldFilename && newFilename ∉ readdir(dataFolder) mv(dataFolder * oldFilename, dataFolder * newFilename) end
+        # end
         
         # if occursin("memEff_flat", oldFilename) && !occursin("_tr_t_", oldFilename)
         #     indices = findfirst("2pi_lTol", oldFilename)
