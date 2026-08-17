@@ -37,6 +37,8 @@ function main()
         memoryEfficiency(SP)
     elseif task == "memoryEfficiencyEigenmodes"
         memoryEfficiencyEigenmodes(SP)
+    elseif task == "memoryEfficiency_imperfectArray"
+        memoryEfficiency_imperfectArray(SP)
     end
     return nothing
 end
@@ -140,7 +142,9 @@ function memoryEfficiency(SP)
     if SP.initialStateDescription ∉ ("Ga", "tr", "op") throw(ArgumentError("memoryEfficiency assumes a Gaussian or triangular initial state")) end
     if SP.ΩDriveOn                                     throw(ArgumentError("memoryEfficiency assumes the driving on the g-e transition is off")) end
     
-    ϵ = calc_memoryRetrievalError(SP)
+    # ϵ = calc_memoryRetrievalError(SP)
+    # ϵ = calc_memoryRetrievalError_eigenmodes(SP)
+    ϵ = calc_memoryRetrievalError_matrix(SP)
     
     postfix = get_postfix_memoryEfficiency(SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.noPhonons, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, SP.radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
     filename = "memEff_" * postfix
@@ -157,6 +161,63 @@ function memoryEfficiencyEigenmodes(SP)
     calc_memoryRetrievalErrorMatrixEigenmodes(SP)
 end
 
+
+function memoryEfficiency_imperfectArray(SP)
+    if SP.n_inst == 1 throw(ArgumentError("memoryEfficiency_imperfectArray requires n_inst > 1")) end
+    if SP.pos_unc == 0 throw(ArgumentError("memoryEfficiency_imperfectArray requires pos_unc > 0")) end
+    if !noPhonons || include3rdLevel throw(ArgumentError("memoryEfficiency_imperfectArray requires no phonons and the inclusion of the third level")) end
+    
+    totalNumberOfJobs = SP.n_inst
+    myStartIndex, myEndIndex = myStartIndex_and_myEndIndex(totalNumberOfJobs)
+    
+    ϵs = []
+    for index in myStartIndex:myEndIndex
+        println("My rank is $myRank, I am working on index = $index")
+        # tildeG_flags = (false, true, SP.tildeG_flags[3])
+        # fullCoupling_rm = get_fullCouplingMatrix(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d[index], SP.να, SP.ηα, SP.incField_wlf, SP.array[index], SP.ΩDriveOn, tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
+        # fullΓrm = 2*imag(fullCoupling_rm)
+        # fullCoupling = get_fullCouplingMatrix(SP.noPhonons, SP.ΔvariDependence, SP.Δvari_args, SP.fiber, SP.d[index], SP.να, SP.ηα, SP.incField_wlf, SP.array[index], SP.ΩDriveOn, SP.tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans, SP.include3rdLevel, SP.cDriveType, SP.Δc, SP.Ωc, SP.cDriveArgs)
+        
+        # Get parameter matrices individually (so we avoid calculating the radiation GF multiple times)
+        Δvari = get_Δvari(SP.ΔvariDependence, SP.Δvari_args, SP.array[index])
+        tildeΩ = get_tildeΩs(SP.fiber, SP.d[index], SP.incField_wlf, SP.array[index], SP.ΩDriveOn)
+        tildeΩc = get_tildeΩcs(SP.cDriveType, SP.Ωc, SP.array[index], SP.cDriveArgs) 
+        tildeG_flags = (true, false, SP.tildeG_flags[3])
+        tildeG_gm = get_tildeGs(SP.fiber, SP.d[index], SP.array[index], tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+        tildeG_flags = (false, true, SP.tildeG_flags[3])
+        tildeG_rm = get_tildeGs(SP.fiber, SP.d[index], SP.array[index], tildeG_flags, SP.save_Im_Grm_trans, SP.abstol_Im_Grm_trans, SP.approx_Grm_trans, SP.interpolate_Im_Grm_trans, SP.interpolation_Im_Grm_trans)
+        
+        # Get the components of the full coupling matrix
+        G_rm = tildeG_rm + Δvari
+        ΔI = -SP.Δc*I(SP.N)
+        DiΩ = Di(tildeΩc)
+        
+        # Put together the full coupling matrix (without and with guided couplings)
+        fullCoupling_rm = [G_rm  DiΩ
+                           DiΩ'  ΔI ]
+        fullΓrm = 2*imag(fullCoupling_rm)
+        fullCoupling = [tildeG_gm + G_rm  DiΩ
+                        DiΩ'              ΔI ]
+        
+        # Get the coupling matrix eigenbasis and calculate the memory error
+        eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = spectrum_basisMatrices(fullCoupling)
+        push!(ϵs, memoryRetrievalError_eigenmodes(eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, SP.initialState[index], fullΓrm, SP.noPhonons, SP.include3rdLevel))
+    end
+    
+    ϵs = MPI.gather(ϵs, comm, root=root)
+    
+    if myRank == root
+        postfix = get_postfix_memoryEfficiency_imperfectArray(SP.ΔvariDescription, SP.dDescription, SP.να, SP.ηα, SP.noPhonons, SP.n_inst, SP.tildeG_flags, SP.arrayDescription, SP.fiber.postfix, SP.initialStateDescription, SP.tspan, SP.dtmax, SP.radDecayRateAndStateNorm_LowerTol, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
+        filename = "memEff_meanstd_" * postfix
+        folder = "memoryEfficiency/"
+        
+        # Prepare means and standard deviations
+        ϵs = vcat(ϵs...)
+        ϵ_mean = mean(ϵs)
+        ϵ_std  = std(ϵs)
+        save_as_txt([ϵ_mean, ϵ_std], saveDir * folder, filename)
+    end
+end
 
 
 
