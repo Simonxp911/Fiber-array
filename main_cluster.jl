@@ -165,7 +165,7 @@ end
 function memoryEfficiency_imperfectArray(SP)
     if SP.n_inst == 1 throw(ArgumentError("memoryEfficiency_imperfectArray requires n_inst > 1")) end
     if SP.pos_unc == 0 throw(ArgumentError("memoryEfficiency_imperfectArray requires pos_unc > 0")) end
-    if !noPhonons || include3rdLevel throw(ArgumentError("memoryEfficiency_imperfectArray requires no phonons and the inclusion of the third level")) end
+    if !SP.noPhonons || !SP.include3rdLevel throw(ArgumentError("memoryEfficiency_imperfectArray requires no phonons and the inclusion of the third level")) end
     
     totalNumberOfJobs = SP.n_inst
     myStartIndex, myEndIndex = myStartIndex_and_myEndIndex(totalNumberOfJobs)
