@@ -1084,7 +1084,7 @@ Calculate the radiative decay rate, using the eigenmodes approach
 """
 function calc_memoryRetrievalError_eigenmodes(SP)
     fullΓrm = get_fullΓrm(SP)
-    fullDrive, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = prepare_eigenmodesCalculation(SP)
+    _, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv = prepare_eigenmodesCalculation(SP)
     return memoryRetrievalError_eigenmodes(eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv, SP.initialState, fullΓrm, SP.noPhonons, SP.include3rdLevel)
 end
 
@@ -1108,7 +1108,7 @@ function calc_memoryRetrievalErrorMatrixEigenmodes(SP)
         ϵMat = memoryRetrievalErrorMatrix(fullΓrm, eigenEnergies, eigenModesMatrix, eigenModesMatrix_inv)
         ϵ_eigvals, ϵ_eigmods = spectrum(ϵMat)
         
-        if SP.cDriveType == "constant" ϵ_eigmods = rotateMemoryRetrievalErrorMatrixEigenmodes(ϵ_eigmods, SP.N, SP.noPhonons, SP.include3rdLevel) end
+        if SP.cDriveType == "constant" && SP.noPhonons ϵ_eigmods = rotateMemoryRetrievalErrorMatrixEigenmodes(ϵ_eigmods, SP.N, SP.noPhonons, SP.include3rdLevel) end
         
         # Save the results
         save_as_txt(ϵ_eigvals, saveDir * folder, filename_eigvals)

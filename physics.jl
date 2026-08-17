@@ -1223,7 +1223,7 @@ and has a momentum (i.e. phase) given by kz.
 Whether the excitation is in the e- or the s-state can be determined
 by setting whichState = 'e' or whichState = 's'.
 """
-function GaussianState(N, array, kz, zc, w, whichState, noPhonons, include3rdLevel)
+function GaussianState(N, array::Vector{<:Vector}, kz, zc, w, whichState, noPhonons, include3rdLevel)
     zs = [site[3] for site in array]
     σGauss = exp.(1im*kz*zs).*exp.(-(zs .- zc).^2/(2*w^2))
     σGauss /= norm(σGauss)
@@ -1248,6 +1248,11 @@ function GaussianState(N, array, kz, zc, w, whichState, noPhonons, include3rdLev
 end
 
 
+function GaussianState(N, array::Vector{<:Vector{<:Vector}}, kz, zc, w, whichState, noPhonons, include3rdLevel)
+    return GaussianState.(N, array, kz, zc, w, whichState, noPhonons, include3rdLevel)
+end
+
+
 """
 Prepare a (spatially) Gaussian distribution along z of a single excitation in the s-state
 in terms of the x-vector for time-evolution.
@@ -1255,12 +1260,17 @@ in terms of the x-vector for time-evolution.
 The Gaussian is centered in the middle of the array (with respect to the z-axis), with a width given by w
 and has a momentum (i.e. phase) given by the fiber propagation constant.
 """
-function Gaussian_sState(N, array, fiber, w, noPhonons, include3rdLevel)
+function Gaussian_sState(N, array::Vector{<:Vector}, fiber, w, noPhonons, include3rdLevel)
     if !include3rdLevel throw(ArgumentError("Gaussian_sState prepares an excitation in the s-state and must have include3rdLevel=true")) end
     
     zs = [site[3] for site in array]
     zc = (maximum(zs) - minimum(zs))/2
     return GaussianState(N, array, fiber.propagation_constant, zc, w, "s", noPhonons, include3rdLevel)
+end
+
+
+function Gaussian_sState(N, array::Vector{<:Vector{<:Vector}}, fiber, w, noPhonons, include3rdLevel)
+    return Gaussian_sState.(N, array, Ref(fiber), w, noPhonons, include3rdLevel)
 end
 
 
@@ -1271,7 +1281,7 @@ along z of a single excitation in terms of the x-vector for time-evolution.
 Whether the excitation is in the e- or the s-state can be determined
 by setting whichState = 'e' or whichState = 's'.
 """
-function triangleState(N, array, kz, whichState, noPhonons, include3rdLevel)
+function triangleState(N, array::Vector{<:Vector}, kz, whichState, noPhonons, include3rdLevel)
     zs = [site[3] for site in array]
     if zs[1] == 0 amplShift = zs[2] else amplShift = 0 end #add a shift to avoid that the first site's amplitude is zero (essentially assuming a 1D chain...)
     σTriangle = exp.(1im*kz*zs) .* (zs .+ amplShift)
@@ -1297,13 +1307,23 @@ function triangleState(N, array, kz, whichState, noPhonons, include3rdLevel)
 end
 
 
+function triangleState(N, array::Vector{<:Vector{<:Vector}}, kz, whichState, noPhonons, include3rdLevel)
+    return triangleState.(N, array, kz, whichState, noPhonons, include3rdLevel)
+end
+
+
 """
 Prepare a (spatially) 'triangular' distribution (i.e. amplitudes increase linearly along the array)
 along z of a single excitation in the s-state in terms of the x-vector for time-evolution.
 """
-function triangle_sState(N, array, fiber, noPhonons, include3rdLevel)
+function triangle_sState(N, array::Vector{<:Vector}, fiber, noPhonons, include3rdLevel)
     if !include3rdLevel throw(ArgumentError("triangle_sState prepares an excitation in the s-state and must have include3rdLevel=true")) end
     return triangleState(N, array, fiber.propagation_constant, "s", noPhonons, include3rdLevel)
+end
+
+
+function triangle_sState(N, array::Vector{<:Vector{<:Vector}}, fiber, noPhonons, include3rdLevel)
+    return triangle_sState.(N, array, Ref(fiber), noPhonons, include3rdLevel)
 end
 
 
@@ -1576,12 +1596,13 @@ end
 Rotate pairs of eigenmodes sharing an eigenvalue to get eigenmodes 
 which have only non-zero values for either the ge coherences or the gs coherences.
 
-This function assumes the eigenmodes are ordered consecutively according to the eigenvalues, 
-such that every consecutive pair of modes has the same eigenvalue.
+This assumes the eigenmodes indeed pairwise have the same eigenvalue and that the 
+ge coherences or the gs coherences for these pairs of modes are identical up to a global factor.
+
+This function assumes the eigenmodes are ordered consecutively 
+according to the eigenvalues, such that every consecutive pair of modes has the same eigenvalue.
 """
 function rotateMemoryRetrievalErrorMatrixEigenmodes(ϵ_eigmods, N, noPhonons, include3rdLevel)
-    if !noPhonons throw(ArgumentError("rotateMemoryRetrievalErrorMatrixEigenmodes has not been implementated for the case of including phonons!")) end
-        
     for i in 1:N
         v1 = deepcopy(ϵ_eigmods[2*i - 1])
         v2 = deepcopy(ϵ_eigmods[2*i])

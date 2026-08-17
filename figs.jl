@@ -1276,7 +1276,7 @@ function fig_compareMemoryRetrievalError_vs_N(N_sites, ϵs, ϵ_fits, titl, label
     colors = distinguishable_colors(size(ϵs)[1], [RGB(1, 1, 1), RGB(0, 0, 0)], dropseed=true)
     
     # Start figure 
-    fig = Figure(size=(1000, 700))
+    fig = Figure(size=(500, 500))
     
     # Make titles and axes
     Label(fig[1, 1], titl, tellwidth=false)
@@ -1285,14 +1285,16 @@ function fig_compareMemoryRetrievalError_vs_N(N_sites, ϵs, ϵ_fits, titl, label
     
     # Plot 
     for i in 1:size(ϵs)[1]
+        lines!(ax1, N_sites, ϵs[i, :], color=colors[i])
         scatter!(ax1, N_sites, ϵs[i, :], color=colors[i], label=labels[i])
         if !isnothing(ϵ_fits) lines!(ax1, N_sites, ϵ_fits[i, :], color=colors[i]) end
     end
     
     # Finish figure
-    Legend(fig[2, 2], ax1)
-    # axislegend()
+    # Legend(fig[2, 2], ax1)
+    axislegend(position=:rc)
     display(GLMakie.Screen(), fig)
+    save("C:\\Users\\Simon\\Downloads\\compMem_cst_Csparams.png", fig)
 end
 
 
@@ -1335,6 +1337,7 @@ function fig_compareMemoryRetrievalError_vs_ρf(ρf, ϵs, titl, labels)
     
     # Plot 
     for i in 1:size(ϵs)[1]
+        lines!(ax1, ρf, ϵs[i, :], color=colors[i])
         scatter!(ax1, ρf, ϵs[i, :], color=colors[i], label=labels[i])
     end
     

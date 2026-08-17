@@ -72,7 +72,7 @@ function define_SP_BerlinCs()
     # arrayType = "randomZ"
     
     # Set number of atomic sites 
-    N_sites = 5
+    N_sites = 30
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
@@ -91,17 +91,19 @@ function define_SP_BerlinCs()
     dtmax = 0.01
     
     # Prepare initial state for time evolution, as well as description for postfix
-    initialState = groundstate(N, noPhonons, include3rdLevel)
-    initialStateDescription = "gs"
+    # initialState = groundstate(N, noPhonons, include3rdLevel)
+    # initialStateDescription = "gs"
+    initialState = Gaussian_sState(N, array, fiber, sqrt(N)*a0_ul, noPhonons, include3rdLevel)
+    initialStateDescription = "Ga"
     
     # Whether to have driving on the g-e transition or not
-    ΩDriveOn = true
+    ΩDriveOn = false
     
     # Atomic dipole moment
-    d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul, array)
-    dDescription = "chiral"
-    # d = rightCircularDipoleMoment(array)
-    # dDescription = "rgtCrc"
+    # d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul, array)
+    # dDescription = "chiral"
+    d = rightCircularDipoleMoment(array)
+    dDescription = "rgtCrc"
     # d = [[1, 0, 0] for site in array]
     # dDescription = "xPol"
     
@@ -136,14 +138,14 @@ function define_SP_BerlinCs()
     if interpolate_Im_Grm_trans interpolation_Im_Grm_trans = interpolation1D_Im_Grm_trans(fiber, Int(ceil(arrayL/0.1)) + 1, ρa0_ul, 0.1, ηα) else interpolation_Im_Grm_trans = nothing end
     
     # Type of control drive the third level transition
-    cDriveType = "planeWave" # "constant", "planeWave"
-    cDriveDescription = "plW" # "cst", "plW"
+    cDriveType = "constant" # "constant", "planeWave"
+    cDriveDescription = "cst" # "cst", "plW"
     
     # Detuning of the control drive with respect to the e-s transition
     Δc = 0.0
     
     # Rabi frequency of the control drive with respect to the e-s transition
-    Ωc = 0.5
+    Ωc = 0.1
     
     # Additional arguments for the control drive ("planeWave" requires a momentum vector)
     cDriveArgs = (kc = ωa*[-0.9, 0, 0], )
@@ -195,6 +197,13 @@ function define_SP_BerlinSr()
     # Lamb-Dicke parameters in a Cartesian basis (x, y, z)
     ηα0 = @. sqrt(νR0/να0) # [0.2093, 0.2775, 0.1853]
     
+    
+    # # Change trap/phonon frequencies to those of Caesium
+    # γ0_Cs  = 2π*5.22e3
+    # νR0_Cs = 2π*2.0663
+    # να0 *= νR0_Cs/νR0 * γ0/γ0_Cs
+    
+    
     # Unitless versions
     ρf0_ul = ρf0/λ0 #unitless version of ρf0, 0.1669
     ρa0_ul = ρa0/λ0 #unitless version of ρa0, 0.3991
@@ -213,8 +222,8 @@ function define_SP_BerlinSr()
     ΔvariDescription = ΔvariDescript(ΔvariDependence, Δvari_args)
     
     # Lamb-Dicke parameters
-    ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
-    # ηα = [0, 0, 0]
+    # ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
+    ηα = [0, 0, 0]
     
     # Whether phonons are excluded or not from the calculations (a finite ηα but noPhonons = true will result in including ground state motion into tildeG)
     # noPhonons = all(ηα .== 0)
@@ -227,12 +236,12 @@ function define_SP_BerlinSr()
     arrayType = "1Dchain"
     
     # Set number of atomic sites 
-    N_sites = 100
+    N_sites = 20
     
     # Set filling fraction, positional uncertainty, and number of instantiations 
     ff = 1.0
-    pos_unc = 0.0
-    # pos_unc = ηα0/ωa
+    # pos_unc = 0.0
+    pos_unc = ηα0/ωa
     n_inst = 1
     
     # Generate the array, its description, and the number of atoms
@@ -261,7 +270,7 @@ function define_SP_BerlinSr()
     incField_wlf = [(1, 1, 1), (1, -1, 1)]
     
     # Whether to include the guided contribution, the radiated contribution, and the radiated interactions when calculating tildeG
-    tildeG_flags = (true, true, false)
+    tildeG_flags = (true, true, true)
     
     # Absolute tolerance in the calculations of Im_Grm_trans
     abstol_Im_Grm_trans = 1e-7
@@ -288,14 +297,14 @@ function define_SP_BerlinSr()
     if interpolate_Im_Grm_trans interpolation_Im_Grm_trans = interpolation1D_Im_Grm_trans(fiber, Int(ceil(arrayL/0.1)) + 1, ρa0_ul, 0.1, ηα) else interpolation_Im_Grm_trans = nothing end
     
     # Type of control drive the third level transition
-    cDriveType = "constant" # "constant", "planeWave", "hyperbolic"
-    cDriveDescription = "cst" # "cst", "plW", "hyp"
+    cDriveType = "hyperbolic" # "constant", "planeWave", "hyperbolic"
+    cDriveDescription = "hyp" # "cst", "plW", "hyp"
     
     # Detuning of the control drive with respect to the e-s transition
     Δc = 0
     
     # Rabi frequency of the control drive with respect to the e-s transition
-    Ωc = 0.1
+    Ωc = 0.005
     
     # Additional arguments for the control drive ("planeWave" requires a momentum vector)
     cDriveArgs = (kc = ωa*[-1, 0, 0], N_sites=N_sites, a=a0_ul)
@@ -624,6 +633,10 @@ function main()
     # show(SP)
     
     
+    # make runs of memory error calculations with pos_unc
+    # make a function for plotting memory error with bands or errorbars (standard deviation uncertainty)
+    # remember to synchronize Git before running
+    
     
     # plot_propConst_vs_fiber(SP)
     # plot_coupling_strengths(SP)
@@ -645,7 +658,7 @@ function main()
     # plot_compareGnmEigenEnergies(SP)
     # plot_lossWithGnmEigenEnergies(SP)
     # plot_memoryEfficiency(SP)
-    plot_compareMemoryEfficiency_vs_N(SP)
+    # plot_compareMemoryEfficiency_vs_N(SP)
     # plot_compareMemoryEfficiency_vs_ηα_factor(SP)
     # plot_compareMemoryEfficiency_vs_ρf(SP)
     # plot_memoryRetrievalErrorMatrixEigenmodes(SP)
@@ -660,7 +673,7 @@ end
 # ================================================
 function plot_propConst_vs_fiber(SP)
     ω_range  = [ωa]
-    ρf_range = range(0.1, 1, 1000)
+    ρf_range = range(0.5, 0.9, 1000)
     n_range  = range(1.45, 1.45, 1)
     
     κs = scan_propConst(ω_range, ρf_range, n_range)
@@ -679,6 +692,23 @@ function plot_propConst_vs_fiber(SP)
     # titl = L"$ ω = ω_{a} $, $ ρ_{f}/λ_{a} = %$(round(ρf_range[ρf_ind], sigdigits=3)) $"
     # # fig_propConst_vs_x(n_range , κs_plot, n_range[n_ind], titl, L"$ n $")
     # fig_presentation_propConst_vs_x(n_range , κs_plot, n_range[n_ind], L"$ n $", SP)
+    
+    
+    
+    # PLot the fiber equation's value as a heatmap to identify branches of solutions (small values)
+    # ρf_range = range(0.1, 1.0, 100)
+    # κ_range  = range(ωa + eps(ωa), SP.n*ωa - eps(SP.n*ωa), 100)
+    # fiberEquationValue = zeros(length(ρf_range), length(κ_range))
+    # for (i, ρf) in enumerate(ρf_range)
+    #     for (j, κ) in enumerate(κ_range)
+    #         fiberEquationValue[i, j] = fiber_equation(κ, (ωa, ρf, SP.n))
+    #     end
+    # end
+    
+    # fig = Figure()
+    # Axis(fig[1, 1])
+    # heatmap!(ρf_range, κ_range, log10.(abs.(fiberEquationValue)), colormap =:viridis)
+    # display(GLMakie.Screen(), fig)
     
 end
 
@@ -1515,7 +1545,7 @@ function plot_GnmEigenEnergies(SP)
     
     titl = prep_GnmEigenEnergies_title(SP)
     # fig_eigenEnergies_vs_k(dominant_ks, collΔ, collΓ, weights_abs, SP.fiber.propagation_constant, titl) 
-    fig_eigenEnergies_vs_k(dominant_ks, collΔ, abs.(collΓ), weights_abs, SP.fiber.propagation_constant, titl) 
+    # fig_eigenEnergies_vs_k(dominant_ks, collΔ, abs.(collΓ), weights_abs, SP.fiber.propagation_constant, titl) 
     fig_eigenEnergies_vs_k(dominant_ks, collΔ_gm, collΓ_gm, weights_abs, SP.fiber.propagation_constant, titl * "\nGuided contribution") 
     fig_eigenEnergies_vs_k(dominant_ks, collΔ_rm, collΓ_rm, weights_abs, SP.fiber.propagation_constant, titl * "\nRadiated contribution") 
     # if SP.ΔvariDependence != "flat"
@@ -1667,9 +1697,11 @@ function plot_memoryEfficiency(SP)
     fig_memoryRetrievalError(N_sites_list, ϵs, titl)
     
     
-    # ϵ = calc_memoryRetrievalError(SP)
+    # @time ϵ = calc_memoryRetrievalError(SP)
     # println(ϵ)
-    # ϵ = calc_memoryRetrievalError_eigenmodes(SP)
+    # @time ϵ = calc_memoryRetrievalError_eigenmodes(SP)
+    # println(ϵ)
+    # @time ϵ = calc_memoryRetrievalError_matrix(SP)
     # println(ϵ)
     
 end
@@ -1685,11 +1717,14 @@ function plot_compareMemoryEfficiency_vs_N(SP)
     # labels = [L"Gauss., no m.$$", L"Gauss., mot.$$", L"tri., no m.$$", L"tri., mot.$$", L"opt., no m.$$", L"opt., mot.$$"]
     # params_list = [("eigbasis", SP.να, zeros(3), ""), ("eigbasis", 100*SP.να, 0.1*SP.ηα, ""), ("eigbasis", 16*SP.να, 0.25*SP.ηα, ""), ("eigbasis", 4*SP.να, 0.5*SP.ηα, ""), ("eigbasis", 1.777*SP.να, 0.75*SP.ηα, ""), ("eigbasis", SP.να, SP.ηα, "")]
     # labels = [L"no m.$$", L"$ 0.1 η_{α} $", L"$ 0.25 η_{α} $", L"$ 0.5 η_{α} $", L"$ 0.75 η_{α} $", L"$ η_{α} $"]
-    params_list = [("timeEvol", SP.να, zeros(3), "tr"), ("timeEvol", SP.να, SP.ηα, "tr"), ("eigbasis", SP.να, zeros(3), ""), ("eigbasis", SP.να, SP.ηα, "")]
-    labels = [L"tri., no m., indep.$$", L"tri., mot., indep.$$", L"opt., no m., indep.$$", L"opt., mot., indep.$$"]
-    N_sites_list = 10:10:200
+    # params_list = [("timeEvol", SP.να, zeros(3), "tr"), ("timeEvol", SP.να, SP.ηα, "tr"), ("eigbasis", SP.να, zeros(3), ""), ("eigbasis", SP.να, SP.ηα, "")]
+    # labels = [L"tri., no m., indep.$$", L"tri., mot., indep.$$", L"opt., no m., indep.$$", L"opt., mot., indep.$$"]
+    params_list = [("timeEvol", SP.να, SP.ηα, "Ga"), ("timeEvol", SP.να, SP.ηα, "tr")]
+    labels = [L"Gauss., mot.$$", L"tri., mot.$$"]
+    # N_sites_list = 10:10:200
     # N_sites_list = vcat(5:5:50, 60:10:200)
     # N_sites_list = vcat(10:10:200, 220:20:300, 340:40:420)
+    N_sites_list = 10:10:70
     ϵs = zeros(length(params_list), length(N_sites_list))
     
     # Load data
@@ -1760,19 +1795,19 @@ function plot_compareMemoryEfficiency_vs_N(SP)
     # setups = [setup_exp, setup_exp_asymp, setup_pol, setup_pol, setup_pol, setup_pol]
     # fitting_intervals = [10:19, 20:22, 20:22, 10:22, 10:22, 10:22]
     # setups = [setup_pol, setup_pol1, setup_pol1, setup_pol1, setup_pol1, setup_pol1]
-    fitting_intervals = [19:20, 19:20, 19:20, 19:20]
-    setups = [setup_pol1, setup_pol1, setup_pol1, setup_pol1]
+    # fitting_intervals = [19:20, 19:20, 19:20, 19:20]
+    # setups = [setup_pol1, setup_pol1, setup_pol1, setup_pol1]
     
-    ϵ_fits = fill(NaN, size(ϵs))
-    for i in eachindex(params_list)
-        model, p0, label = setups[i]
-        # pmin = fitComplexData(N_sites_list[fitting_intervals[i]], ϵs[i, fitting_intervals[i]], model, p0)
-        # ϵ_fits[i, :] = model.(N_sites_list, Ref(pmin))
-        pmin = fitComplexData(N_sites_list[fitting_intervals[i]], log.(ϵs[i, fitting_intervals[i]]), (N, p) -> log(abs(model(N, p))), p0)
-        ϵ_fits[i, :] = abs.(model.(N_sites_list, Ref(pmin)))
-        labels[i] *= label(pmin)
-    end
-    # ϵ_fits = nothing
+    # ϵ_fits = fill(NaN, size(ϵs))
+    # for i in eachindex(params_list)
+    #     model, p0, label = setups[i]
+    #     pmin = fitComplexData(N_sites_list[fitting_intervals[i]], ϵs[i, fitting_intervals[i]], model, p0)
+    #     ϵ_fits[i, :] = model.(N_sites_list, Ref(pmin))
+    #     # pmin = fitComplexData(N_sites_list[fitting_intervals[i]], log.(ϵs[i, fitting_intervals[i]]), (N, p) -> log(abs(model(N, p))), p0)
+    #     # ϵ_fits[i, :] = abs.(model.(N_sites_list, Ref(pmin)))
+    #     labels[i] *= label(pmin)
+    # end
+    ϵ_fits = nothing
     
     
     # Plot
@@ -1890,24 +1925,21 @@ function plot_memoryRetrievalErrorMatrixEigenmodes(SP)
     
     # display(ϵ_eigvals)
     
-    mode_i = 1
-    ϵ_eigval = ϵ_eigvals[mode_i]
-    ϵ_eigmod = ϵ_eigmods[mode_i]
-    # for (ϵ_eigval, ϵ_eigmod) in zip(ϵ_eigvals[1:6], ϵ_eigmods[1:6])
+    # mode_i = 1
+    # ϵ_eigval = ϵ_eigvals[mode_i]
+    # ϵ_eigmod = ϵ_eigmods[mode_i]
+    for (ϵ_eigval, ϵ_eigmod) in zip(ϵ_eigvals[1:1], ϵ_eigmods[1:1])
         σvar_ϵ_eigmod = unpack_σvarFromσvarVec(ϵ_eigmod, SP.N, SP.noPhonons, SP.include3rdLevel)
-        σge_ϵ_eigmod = σvar_ϵ_eigmod[1]
-        σgs_ϵ_eigmod = σvar_ϵ_eigmod[2]
-        
-        # fig_complexFunction(zs, σge_ϵ_eigmod, σgs_ϵ_eigmod, 
-        #     titl=L"$ ϵ = %$(ro(ϵ_eigval)) $", 
-        #     labels=[L"$ σ_{ge} $", L"$ σ_{gs} $"], 
-        #     format = "magphase")
         
         titl = L"$ ϵ = %$(ro(ϵ_eigval)) $"
         labels = [L"$ σ_{ge} $", L"$ σ_{gs} $"]
-        fig_state(zs, σvar_ϵ_eigmod, titl, labels)
+        if SP.noPhonons
+            fig_state(zs, σvar_ϵ_eigmod, titl, labels)
+        else
+            fig_state(zs, σvar_ϵ_eigmod[[1, 3]], titl, labels)
+        end
         # fig_presentation_state(σvar_ϵ_eigmod, labels, SP)
-    # end
+    end
 end
 
 

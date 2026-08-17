@@ -135,6 +135,33 @@ end
 
 
 """
+For memory efficiency with an imperfect array (positional uncertainty or imperfect filling)
+"""
+function get_postfix_memoryEfficiency_imperfectArray(ΔvariDescription, dDescription, να, ηα, noPhonons, n_inst, tildeG_flags, arrayDescription, fiberPostfix, initialStateDescription, tspan, dtmax, radDecayRateAndStateNorm_LowerTol, cDriveDescription, Δc, Ωc, cDriveArgs)
+    postfix_components = [
+        ΔvariDescription,
+        dDescription
+    ]
+    if noPhonons push!(postfix_components, "noPh") else push!(postfix_components, "tFr_$(join(ro.(να), ","))") end
+    if all(ηα .== 0) push!(postfix_components, "LD_0.0") else push!(postfix_components, "LD_$(join(ro.(ηα), ","))") end
+    push!(postfix_components, "nInst_$(n_inst)")
+    if any(tildeG_flags .!= 1) push!(postfix_components, "tGfl_$(join(Int.(tildeG_flags), ","))") end
+    append!(postfix_components, [
+        arrayDescription,
+        fiberPostfix,
+        initialStateDescription,
+        "t_$(join(ro.(tspan), ",")),$(ro(dtmax))",
+        "lTol_$(join(ro.(radDecayRateAndStateNorm_LowerTol), ","))",
+        "cDr_$cDriveDescription", 
+        "cDe_$Δc", 
+        "cOm_$Ωc"
+    ])
+    if cDriveDescription == "plW" push!(postfix_components, "kc_$(join(ro.(cDriveArgs.kc), ","))") end
+    return join(postfix_components, "_")
+end
+
+
+"""
 For memory retrieval error matrix  
 """
 function get_postfix_memoryRetrievalErrorMatrixEigenmodes(ΔvariDescription, dDescription, να, ηα, noPhonons, tildeG_flags, arrayDescription, fiberPostfix, cDriveDescription, Δc, Ωc, cDriveArgs)
