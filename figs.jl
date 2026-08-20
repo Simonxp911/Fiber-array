@@ -1276,7 +1276,7 @@ function fig_compareMemoryRetrievalError_vs_N(N_sites, ϵs, ϵ_fits, titl, label
     colors = distinguishable_colors(size(ϵs)[1], [RGB(1, 1, 1), RGB(0, 0, 0)], dropseed=true)
     
     # Start figure 
-    fig = Figure(size=(500, 500))
+    fig = Figure(size=(700, 500))
     
     # Make titles and axes
     Label(fig[1, 1], titl, tellwidth=false)
@@ -1285,7 +1285,6 @@ function fig_compareMemoryRetrievalError_vs_N(N_sites, ϵs, ϵ_fits, titl, label
     
     # Plot 
     for i in 1:size(ϵs)[1]
-        lines!(ax1, N_sites, ϵs[i, :], color=colors[i])
         scatter!(ax1, N_sites, ϵs[i, :], color=colors[i], label=labels[i])
         if !isnothing(ϵ_fits) lines!(ax1, N_sites, ϵ_fits[i, :], color=colors[i]) end
     end
@@ -1294,7 +1293,34 @@ function fig_compareMemoryRetrievalError_vs_N(N_sites, ϵs, ϵ_fits, titl, label
     # Legend(fig[2, 2], ax1)
     axislegend(position=:rc)
     display(GLMakie.Screen(), fig)
-    save("C:\\Users\\Simon\\Downloads\\compMem_cst_Csparams.png", fig)
+end
+
+
+"""
+Plot the memory retrieval error vs. number of atoms
+for different values of the Lamb-Dicke parameters
+"""
+function fig_compareMemoryRetrievalError_vs_N_imperfectArray(N_sites, ϵ_means, ϵ_stds, titl, labels)
+    colors = distinguishable_colors(size(ϵ_means)[1], [RGB(1, 1, 1), RGB(0, 0, 0)], dropseed=true)
+    
+    # Start figure 
+    fig = Figure(size=(700, 500))
+    
+    # Make titles and axes
+    Label(fig[1, 1], titl, tellwidth=false)
+    ax1 = Axis(fig[2, 1], yscale=log10, 
+               xlabel=L"$ N_{sites} $", ylabel=L"Infidelity, $ ϵ $")
+    
+    # Plot 
+    for i in 1:size(ϵ_means)[1]
+        scatter!(ax1, N_sites, ϵ_means[i, :], color=colors[i], label=labels[i])
+        lines!(ax1, N_sites, ϵ_means[i, :], color=colors[i])
+        band!( ax1, N_sites, ϵ_means[i, :] + ϵ_stds[i, :], ϵ_means[i, :] - ϵ_stds[i, :], color=colors[i], alpha=0.35)
+    end
+    
+    # Finish figure
+    axislegend(position=:rt)
+    display(GLMakie.Screen(), fig)
 end
 
 

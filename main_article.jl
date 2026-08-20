@@ -13,172 +13,13 @@ const page_width    = 650
 const figure_height = 250
 const fontsize      = 10
 
+state_labels = [L"Optimal$$", L"Optimal, w. motion$$", L"Gaussian$$", L"Triangular$$"]
+state_colors = distinguishable_colors(4, [RGB(1,1,1), RGB(0,0,0)], dropseed=true)
 
 # ================================================
 #   Main functions
 # ================================================
-function define_SP_BerlinCs()
-    # Fiber specs from "Magic-wavelength nanofiber-based two-color dipole trap with sub-λ/2 spacing"
-    λ0  = 852       #nm, guided mode wavelength, transition frequency of cs133
-    ω0  = 2π/λ0     #nm^-1, guided mode angular frequency
-    γ0  = 2π*5.22e3 #kHz, free decay rate of cs133
-    ρf0 = 200       #nm, fiber radius
-    n0  = 1.45      #unitless, index of refraction
-    
-    # Atomic array specs
-    ρa0 = 550   #nm, atomic array radial coordinate
-    a0  = 300   #nm, atomic array lattice constant
-    # a0  = 410   #nm, atomic array lattice constant
-    
-    # Trap specs
-    ν0_radial    = 2π*109 #kHz, radial atomic trap angular frequency
-    ν0_axial     = 2π*139 #kHz, axial atomic trap angular frequency
-    ν0_azimuthal = 2π*62  #kHz, azimuthal atomic trap angular frequency (estimate from graph: 18 kHz, but usually half of the others)
-    να0 = [ν0_radial, ν0_azimuthal, ν0_axial] #trap frequencies in a Cartesian basis (x, y, z) which matches with (radial, azimuthal, axial) if the position is taken to be on the x-axis
-    # να0 *= 0.444 # 0.444 0.64 1.777 4.0
-    # να0 = να0 .* [4, 4, 4]
-    
-    # Recoil energy
-    νR0 = 2π*2.0663 #kHz, recoil energy of cesium atoms (as an angular frequency)
-    
-    # Lamb-Dicke parameters in a Cartesian basis (x, y, z)
-    ηα0 = @. sqrt(νR0/να0) #[0.1377, 0.1826, 0.1219]
-    
-    # Unitless versions
-    ρf0_ul = ρf0/λ0 #unitless version of ρf0, 0.2347
-    ρa0_ul = ρa0/λ0 #unitless version of ρa0, 0.6455
-    a0_ul  = a0/λ0  #unitless version of a0 , 0.3521
-    να0_ul = να0/γ0 #unitless version of να0, [0.0209, 0.0119, 0.0266]
-    
-    # Define the fiber
-    fiber = Fiber(ρf0_ul, n0, ωa)
-    
-    # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
-    Δ_specs = (-1.0, 1.0, 300)
-    
-    # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
-    ΔvariDependence = "flat"
-    Δvari_args = -3, 50*a0_ul
-    ΔvariDescription = ΔvariDescript(ΔvariDependence, Δvari_args)
-    
-    # Lamb-Dicke parameters
-    ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
-    # ηα = [0., 0., 0.]
-    
-    # Whether phonons are excluded or not from the calculations (a finite ηα but noPhonons = true will result in including ground state motion into tildeG)
-    noPhonons = all(ηα .== 0)
-    # noPhonons = true
-    
-    # Whether to include a third (metastable) level to facilitate EIT
-    include3rdLevel = true
-    
-    # Set which kind of array to use ("1Dchain", "doubleChain", "randomZ")
-    arrayType = "1Dchain"
-    # arrayType = "randomZ"
-    
-    # Set number of atomic sites 
-    N_sites = 30
-    
-    # Set filling fraction, positional uncertainty, and number of instantiations 
-    ff = 1.0
-    pos_unc = 0.0
-    # pos_unc = ηα0/ωa
-    n_inst = 1
-    
-    # Generate the array, its description, and the number of atoms
-    array, arrayDescription, N = get_array(arrayType, N_sites, ρa0_ul, a0_ul, ff, pos_unc, n_inst)
-    
-    # Which time evolver to use ("OrdinaryDiffEq", "simple")
-    whichTimeEvolver = "simple"
-    
-    # Time span and maximum time step allowed in time evolution
-    tspan = (0, 100)
-    dtmax = 0.01
-    
-    # Prepare initial state for time evolution, as well as description for postfix
-    # initialState = groundstate(N, noPhonons, include3rdLevel)
-    # initialStateDescription = "gs"
-    initialState = Gaussian_sState(N, array, fiber, sqrt(N)*a0_ul, noPhonons, include3rdLevel)
-    initialStateDescription = "Ga"
-    
-    # Whether to have driving on the g-e transition or not
-    ΩDriveOn = false
-    
-    # Atomic dipole moment
-    # d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul, array)
-    # dDescription = "chiral"
-    d = rightCircularDipoleMoment(array)
-    dDescription = "rgtCrc"
-    # d = [[1, 0, 0] for site in array]
-    # dDescription = "xPol"
-    
-    # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
-    incField_wlf = [(1, 1, 1), (1, -1, 1)]
-    
-    # Whether to include the guided contribution, the radiated contribution, and the radiated interactions when calculating tildeG
-    tildeG_flags = (true, true, true)
-    
-    # Absolute tolerance in the calculations of Im_Grm_trans
-    abstol_Im_Grm_trans = 1e-5
-    
-    # Whether to approximate transverse part of radiation GF (real part and imaginary part respectively, usually (true, false))
-    approx_Grm_trans = (true, false)
-    
-    # Whether to interpolate Im_Grm_trans
-    interpolate_Im_Grm_trans = arrayType == "randomZ"
-    
-    # Whether to save individual results (Im_Grm_trans, steady states, time evolutions)
-    save_Im_Grm_trans = pos_unc == 0 && arrayType != "randomZ" && !interpolate_Im_Grm_trans
-    save_steadyState  = false # n_inst == 1 && ff == 1 && pos_unc == 0 && arrayType != "randomZ"
-    save_timeEvol     = false # n_inst == 1 && ff == 1 && pos_unc == 0 && arrayType != "randomZ"
-    
-    # Ranges of z and x values to define r_fields for calculating the radiated E-field
-    arrayL = (N_sites - 1)*a0_ul
-    margin = 0.1*arrayL
-    z_range = range(-margin, arrayL + margin, 30)
-    x_range = range(-ρf0_ul - margin, ρf0_ul + ρa0_ul + margin, 30)
-    y_fix   = ρa0_ul
-    
-    # Get the interpolation function for the imaginary, transverse part of the radiation Green's function, if needed
-    if interpolate_Im_Grm_trans interpolation_Im_Grm_trans = interpolation1D_Im_Grm_trans(fiber, Int(ceil(arrayL/0.1)) + 1, ρa0_ul, 0.1, ηα) else interpolation_Im_Grm_trans = nothing end
-    
-    # Type of control drive the third level transition
-    cDriveType = "constant" # "constant", "planeWave"
-    cDriveDescription = "cst" # "cst", "plW"
-    
-    # Detuning of the control drive with respect to the e-s transition
-    Δc = 0.0
-    
-    # Rabi frequency of the control drive with respect to the e-s transition
-    Ωc = 0.1
-    
-    # Additional arguments for the control drive ("planeWave" requires a momentum vector)
-    cDriveArgs = (kc = ωa*[-0.9, 0, 0], )
-    
-    # Lower tolerances of the radiative decay rate and state norm used to stop time evolution for calculation of memory retrieval error 
-    radDecayRateAndStateNorm_LowerTol = (1e-6, 0.01)
-    
-    
-    return SysPar(ρf0_ul, n0, ωa,
-                  fiber,
-                  Δ_specs,
-                  ΔvariDependence, Δvari_args, ΔvariDescription,
-                  whichTimeEvolver, tspan, dtmax,
-                  initialState, initialStateDescription,
-                  ΩDriveOn,
-                  arrayType, N_sites, ρa0_ul, a0_ul, ff, pos_unc, n_inst, array, arrayDescription, N,
-                  να0_ul, ηα, noPhonons,
-                  d, dDescription, incField_wlf, tildeG_flags, 
-                  interpolate_Im_Grm_trans, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans,
-                  save_steadyState, save_timeEvol,
-                  interpolation_Im_Grm_trans,
-                  z_range, x_range, y_fix,
-                  include3rdLevel, cDriveType, cDriveDescription, Δc, Ωc, cDriveArgs,
-                  radDecayRateAndStateNorm_LowerTol)
-end
-
-
-function define_SP_BerlinSr()
+function define_SP_BerlinSr_noMotion()
     # Fiber specs 
     λ0  = 689       #nm, guided mode wavelength, transition frequency of Sr
     ω0  = 2π/λ0     #nm^-1, guided mode angular frequency
@@ -347,17 +188,351 @@ function define_SP_BerlinSr()
 end
 
 
+function define_SP_BerlinSr_withMotion()
+    # Fiber specs 
+    λ0  = 689       #nm, guided mode wavelength, transition frequency of Sr
+    ω0  = 2π/λ0     #nm^-1, guided mode angular frequency
+    γ0  = 2π*7.4    #kHz, free decay rate of Sr88
+    ρf0 = 200       #nm, fiber radius, 115, 150, 100, 150, 200, 250, 300, 350, 400
+    n0  = 1.45      #unitless, index of refraction
+    
+    # Atomic array specs
+    ρa0 = ρf0 + 100   #nm, atomic array radial coordinate, 275 (115, 150), ρf0 + 100 (100, 150, 200, 250, 300, 350, 400, 450)
+    a0  = 200   #nm, atomic array lattice constant
+    
+    # Trap specs (might be lower than the Cs experiment)
+    ν0_radial    = 2π*109 #kHz, radial atomic trap angular frequency
+    ν0_axial     = 2π*139 #kHz, axial atomic trap angular frequency
+    ν0_azimuthal = 2π*62  #kHz, azimuthal atomic trap angular frequency (estimate from graph: 18 kHz, but usually half of the others)
+    να0 = [ν0_radial, ν0_azimuthal, ν0_axial] #trap frequencies in a Cartesian basis (x, y, z) which matches with (radial, azimuthal, axial) if the position is taken to be on the x-axis
+    
+    # Recoil energy
+    νR0 = 2π*4.775 #kHz, recoil energy of strontium atoms (as an angular frequency)
+    
+    # Lamb-Dicke parameters in a Cartesian basis (x, y, z)
+    ηα0 = @. sqrt(νR0/να0) # [0.2093, 0.2775, 0.1853]
+    
+    
+    # # Change trap/phonon frequencies to those of Caesium
+    # γ0_Cs  = 2π*5.22e3
+    # νR0_Cs = 2π*2.0663
+    # να0 *= νR0_Cs/νR0 * γ0/γ0_Cs
+    
+    
+    # Unitless versions
+    ρf0_ul = ρf0/λ0 #unitless version of ρf0, 0.1669
+    ρa0_ul = ρa0/λ0 #unitless version of ρa0, 0.3991
+    a0_ul  = a0/λ0  #unitless version of a0 , 0.2903
+    να0_ul = να0/γ0 #unitless version of να0, [14.7297, 8.3784, 18.7838]
+    
+    # Define the fiber
+    fiber = Fiber(ρf0_ul, n0, ωa)
+    
+    # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
+    Δ_specs = (-2, 2, 1000)
+    
+    # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
+    ΔvariDependence = "flat"
+    Δvari_args = -3, 50*a0_ul
+    ΔvariDescription = ΔvariDescript(ΔvariDependence, Δvari_args)
+    
+    # Lamb-Dicke parameters
+    ηα = ηα0 #assumes an atomic array of the type (ρa, 0, z)
+    
+    # Whether phonons are excluded or not from the calculations (a finite ηα but noPhonons = true will result in including ground state motion into tildeG)
+    noPhonons = true
+    
+    # Whether to include a third (metastable) level to facilitate EIT
+    include3rdLevel = true
+    
+    # Set which kind of array to use ("1Dchain", "doubleChain", "randomZ")
+    arrayType = "1Dchain"
+    
+    # Set number of atomic sites 
+    N_sites = 100
+    
+    # Set filling fraction, positional uncertainty, and number of instantiations 
+    ff = 1.0
+    pos_unc = 0.0
+    # pos_unc = ηα0/ωa
+    n_inst = 1
+    
+    # Generate the array, its description, and the number of atoms
+    array, arrayDescription, N = get_array(arrayType, N_sites, ρa0_ul, a0_ul, ff, pos_unc, n_inst)
+    
+    # Which time evolver to use ("OrdinaryDiffEq", "simple")
+    whichTimeEvolver = "OrdinaryDiffEq"
+    
+    # Time span and maximum time step allowed in time evolution
+    tspan = (0, 100)
+    dtmax = 0.01
+    
+    # Whether to have driving on the g-e transition or not
+    ΩDriveOn = false
+    
+    # Atomic dipole moment
+    # d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul, array)
+    # dDescription = "chiral"
+    d = rightCircularDipoleMoment(array)
+    dDescription = "rgtCrc"
+    # d = [[1, 0, 0] for site in array]
+    # dDescription = "xPol"
+    
+    # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
+    # While the relevant part of the drive naively is given simply its dot product with the dipole moment's orientation, the actual polarization/composition of the drive becomes relevant when you include motion
+    incField_wlf = [(1, 1, 1), (1, -1, 1)]
+    
+    # Whether to include the guided contribution, the radiated contribution, and the radiated interactions when calculating tildeG
+    tildeG_flags = (true, true, true)
+    
+    # Absolute tolerance in the calculations of Im_Grm_trans
+    abstol_Im_Grm_trans = 1e-7
+    
+    # Whether to approximate transverse part of radiation GF (real part and imaginary part respectively, usually (true, false))
+    approx_Grm_trans = (true, false)
+    
+    # Whether to interpolate Im_Grm_trans
+    interpolate_Im_Grm_trans = arrayType == "randomZ"
+    
+    # Whether to save individual results (Im_Grm_trans, steady states, time evolutions)
+    save_Im_Grm_trans = pos_unc == 0 && arrayType != "randomZ" && !interpolate_Im_Grm_trans
+    save_steadyState  = false # n_inst == 1 && ff == 1 && pos_unc == 0 && arrayType != "randomZ"
+    save_timeEvol     = false # n_inst == 1 && ff == 1 && pos_unc == 0 && arrayType != "randomZ"
+    
+    # Ranges of z and x values to define r_fields for calculating the radiated E-field
+    arrayL = (N_sites - 1)*a0_ul
+    margin = 0.1*arrayL
+    z_range = range(-margin, arrayL + margin, 100)
+    x_range = range(-ρf0_ul - margin, ρf0_ul + ρa0_ul + margin, 100)
+    y_fix   = ρa0_ul
+    
+    # Get the interpolation function for the imaginary, transverse part of the radiation Green's function, if needed
+    if interpolate_Im_Grm_trans interpolation_Im_Grm_trans = interpolation1D_Im_Grm_trans(fiber, Int(ceil(arrayL/0.1)) + 1, ρa0_ul, 0.1, ηα) else interpolation_Im_Grm_trans = nothing end
+    
+    # Type of control drive the third level transition
+    cDriveType = "hyperbolic" # "constant", "planeWave", "hyperbolic"
+    cDriveDescription = "hyp" # "cst", "plW", "hyp"
+    
+    # Detuning of the control drive with respect to the e-s transition
+    Δc = 0
+    
+    # Rabi frequency of the control drive with respect to the e-s transition
+    Ωc = 0.005
+    
+    # Additional arguments for the control drive ("planeWave" requires a momentum vector)
+    cDriveArgs = (kc = ωa*[-1, 0, 0], N_sites=N_sites, a=a0_ul)
+    
+    # Lower tolerances of the radiative decay rate and state norm used to stop time evolution for calculation of memory retrieval error 
+    radDecayRateAndStateNorm_LowerTol = (1e-6, 1e-2)
+    
+    # Prepare initial state for time evolution, as well as description for postfix
+    # initialState = groundstate(N, noPhonons, include3rdLevel)
+    # initialStateDescription = "gs"
+    initialState = Gaussian_sState(N, array, fiber, sqrt(N)*a0_ul, noPhonons, include3rdLevel)
+    initialStateDescription = "Ga"
+    # initialState = triangle_sState(N, array, fiber, noPhonons, include3rdLevel)
+    # initialStateDescription = "tr"
+    # initialState = interpolatedOptimalMemoryEigenstate(ΔvariDescription, dDescription, arrayType, N_sites, ρa0_ul, a0_ul, να0_ul, ηα, noPhonons, include3rdLevel, tildeG_flags, fiber, cDriveDescription, Δc, Ωc, cDriveArgs)
+    # initialStateDescription = "op"
+    
+    
+    return SysPar(ρf0_ul, n0, ωa,
+                  fiber,
+                  Δ_specs,
+                  ΔvariDependence, Δvari_args, ΔvariDescription,
+                  whichTimeEvolver, tspan, dtmax,
+                  initialState, initialStateDescription,
+                  ΩDriveOn,
+                  arrayType, N_sites, ρa0_ul, a0_ul, ff, pos_unc, n_inst, array, arrayDescription, N,
+                  να0_ul, ηα, noPhonons,
+                  d, dDescription, incField_wlf, tildeG_flags, 
+                  interpolate_Im_Grm_trans, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans,
+                  save_steadyState, save_timeEvol,
+                  interpolation_Im_Grm_trans,
+                  z_range, x_range, y_fix,
+                  include3rdLevel, cDriveType, cDriveDescription, Δc, Ωc, cDriveArgs,
+                  radDecayRateAndStateNorm_LowerTol) 
+end
+
+
+function define_SP_BerlinCs_matchSr_withMotion()
+    # Fiber specs from "Magic-wavelength nanofiber-based two-color dipole trap with sub-λ/2 spacing"
+    λ0  = 852       #nm, guided mode wavelength, transition frequency of cs133
+    λ0_Sr = 689
+    ω0  = 2π/λ0     #nm^-1, guided mode angular frequency
+    γ0  = 2π*5.22e3 #kHz, free decay rate of cs133
+    ρf0 = 200*λ0/λ0_Sr       #nm, fiber radius
+    n0  = 1.45      #unitless, index of refraction
+    
+    # Atomic array specs
+    ρa0 = 300*λ0/λ0_Sr   #nm, atomic array radial coordinate
+    a0  = 200*λ0/λ0_Sr   #nm, atomic array lattice constant
+    
+    # Trap specs
+    ν0_radial    = 2π*109 #kHz, radial atomic trap angular frequency
+    ν0_axial     = 2π*139 #kHz, axial atomic trap angular frequency
+    ν0_azimuthal = 2π*62  #kHz, azimuthal atomic trap angular frequency (estimate from graph: 18 kHz, but usually half of the others)
+    να0 = [ν0_radial, ν0_azimuthal, ν0_axial] #trap frequencies in a Cartesian basis (x, y, z) which matches with (radial, azimuthal, axial) if the position is taken to be on the x-axis
+    
+    # Recoil energy
+    νR0 = 2π*2.0663 #kHz, recoil energy of cesium atoms (as an angular frequency)
+    νR0_Sr = 2π*4.775
+    να0 *= νR0/νR0_Sr 
+    
+    # Lamb-Dicke parameters in a Cartesian basis (x, y, z)
+    ηα0 = @. sqrt(νR0/να0) # [0.2093, 0.2775, 0.1853]
+    
+    # Unitless versions
+    ρf0_ul = ρf0/λ0 #unitless version of ρf0, 0.1669
+    ρa0_ul = ρa0/λ0 #unitless version of ρa0, 0.3991
+    a0_ul  = a0/λ0  #unitless version of a0 , 0.2903
+    να0_ul = να0/γ0 #unitless version of να0, [14.7297, 8.3784, 18.7838]
+    
+    # Define the fiber
+    fiber = Fiber(ρf0_ul, n0, ωa)
+    
+    # Set specs and ranges for time evolution and related calculations (expects dimensionless quantities)
+    Δ_specs = (-2, 2, 1000)
+    
+    # Set up the spatial dependence of the detuning ("flat" (nothing), "Gaussian" (amp, edge_width), "linear" (amp, edge_width), "parabolic" (amp))
+    ΔvariDependence = "flat"
+    Δvari_args = -3, 50*a0_ul
+    ΔvariDescription = ΔvariDescript(ΔvariDependence, Δvari_args)
+    
+    # Lamb-Dicke parameters
+    ηα = [0.0, 0.0, 0.0] #assumes an atomic array of the type (ρa, 0, z)
+    
+    # Whether phonons are excluded or not from the calculations (a finite ηα but noPhonons = true will result in including ground state motion into tildeG)
+    noPhonons = all(ηα .== 0)
+    # noPhonons = true
+    
+    # Whether to include a third (metastable) level to facilitate EIT
+    include3rdLevel = true
+    
+    # Set which kind of array to use ("1Dchain", "doubleChain", "randomZ")
+    arrayType = "1Dchain"
+    
+    # Set number of atomic sites 
+    N_sites = 20
+    
+    # Set filling fraction, positional uncertainty, and number of instantiations 
+    ff = 1.0
+    # pos_unc = 0.0
+    pos_unc = ηα0/ωa
+    n_inst = 100
+    
+    # Generate the array, its description, and the number of atoms
+    array, arrayDescription, N = get_array(arrayType, N_sites, ρa0_ul, a0_ul, ff, pos_unc, n_inst)
+    
+    # Which time evolver to use ("OrdinaryDiffEq", "simple")
+    whichTimeEvolver = "OrdinaryDiffEq"
+    
+    # Time span and maximum time step allowed in time evolution
+    tspan = (0, 100)
+    dtmax = 0.01
+    
+    # Whether to have driving on the g-e transition or not
+    ΩDriveOn = false
+    
+    # Atomic dipole moment
+    # d = chiralDipoleMoment(Fiber(ρf0_ul, n0, ωa), ρa0_ul, array)
+    # dDescription = "chiral"
+    d = rightCircularDipoleMoment(array)
+    dDescription = "rgtCrc"
+    # d = [[1, 0, 0] for site in array]
+    # dDescription = "xPol"
+    
+    # Incoming field, described by a set of (w, l, f) corresponding to relative weigth, polarization index, and propagation direction index
+    # While the relevant part of the drive naively is given simply its dot product with the dipole moment's orientation, the actual polarization/composition of the drive becomes relevant when you include motion
+    incField_wlf = [(1, 1, 1), (1, -1, 1)]
+    
+    # Whether to include the guided contribution, the radiated contribution, and the radiated interactions when calculating tildeG
+    tildeG_flags = (true, true, true)
+    
+    # Absolute tolerance in the calculations of Im_Grm_trans
+    abstol_Im_Grm_trans = 1e-7
+    
+    # Whether to approximate transverse part of radiation GF (real part and imaginary part respectively, usually (true, false))
+    approx_Grm_trans = (true, false)
+    
+    # Whether to interpolate Im_Grm_trans
+    interpolate_Im_Grm_trans = arrayType == "randomZ"
+    
+    # Whether to save individual results (Im_Grm_trans, steady states, time evolutions)
+    save_Im_Grm_trans = pos_unc == 0 && arrayType != "randomZ" && !interpolate_Im_Grm_trans
+    save_steadyState  = false # n_inst == 1 && ff == 1 && pos_unc == 0 && arrayType != "randomZ"
+    save_timeEvol     = false # n_inst == 1 && ff == 1 && pos_unc == 0 && arrayType != "randomZ"
+    
+    # Ranges of z and x values to define r_fields for calculating the radiated E-field
+    arrayL = (N_sites - 1)*a0_ul
+    margin = 0.1*arrayL
+    z_range = range(-margin, arrayL + margin, 100)
+    x_range = range(-ρf0_ul - margin, ρf0_ul + ρa0_ul + margin, 100)
+    y_fix   = ρa0_ul
+    
+    # Get the interpolation function for the imaginary, transverse part of the radiation Green's function, if needed
+    if interpolate_Im_Grm_trans interpolation_Im_Grm_trans = interpolation1D_Im_Grm_trans(fiber, Int(ceil(arrayL/0.1)) + 1, ρa0_ul, 0.1, ηα) else interpolation_Im_Grm_trans = nothing end
+    
+    # Type of control drive the third level transition
+    cDriveType = "hyperbolic" # "constant", "planeWave", "hyperbolic"
+    cDriveDescription = "hyp" # "cst", "plW", "hyp"
+    
+    # Detuning of the control drive with respect to the e-s transition
+    Δc = 0
+    
+    # Rabi frequency of the control drive with respect to the e-s transition
+    Ωc = 0.005
+    
+    # Additional arguments for the control drive ("planeWave" requires a momentum vector)
+    cDriveArgs = (kc = ωa*[-1, 0, 0], N_sites=N_sites, a=a0_ul)
+    
+    # Lower tolerances of the radiative decay rate and state norm used to stop time evolution for calculation of memory retrieval error 
+    radDecayRateAndStateNorm_LowerTol = (1e-6, 1e-2)
+    
+    # Prepare initial state for time evolution, as well as description for postfix
+    # initialState = groundstate(N, noPhonons, include3rdLevel)
+    # initialStateDescription = "gs"
+    initialState = Gaussian_sState(N, array, fiber, sqrt(N)*a0_ul, noPhonons, include3rdLevel)
+    initialStateDescription = "Ga"
+    # initialState = triangle_sState(N, array, fiber, noPhonons, include3rdLevel)
+    # initialStateDescription = "tr"
+    # initialState = interpolatedOptimalMemoryEigenstate(ΔvariDescription, dDescription, arrayType, N_sites, ρa0_ul, a0_ul, να0_ul, ηα, noPhonons, include3rdLevel, tildeG_flags, fiber, cDriveDescription, Δc, Ωc, cDriveArgs)
+    # initialStateDescription = "op"
+    
+    
+    return SysPar(ρf0_ul, n0, ωa,
+                  fiber,
+                  Δ_specs,
+                  ΔvariDependence, Δvari_args, ΔvariDescription,
+                  whichTimeEvolver, tspan, dtmax,
+                  initialState, initialStateDescription,
+                  ΩDriveOn,
+                  arrayType, N_sites, ρa0_ul, a0_ul, ff, pos_unc, n_inst, array, arrayDescription, N,
+                  να0_ul, ηα, noPhonons,
+                  d, dDescription, incField_wlf, tildeG_flags, 
+                  interpolate_Im_Grm_trans, save_Im_Grm_trans, abstol_Im_Grm_trans, approx_Grm_trans,
+                  save_steadyState, save_timeEvol,
+                  interpolation_Im_Grm_trans,
+                  z_range, x_range, y_fix,
+                  include3rdLevel, cDriveType, cDriveDescription, Δc, Ωc, cDriveArgs,
+                  radDecayRateAndStateNorm_LowerTol) 
+end
+
+
 function main()
     # Define system parameters
-    # SP = define_SP_BerlinCs()
-    SP = define_SP_BerlinSr()
+    SP_Sr_noMo = define_SP_BerlinSr_noMotion()
+    SP_Sr_wiMo = define_SP_BerlinSr_withMotion()
+    SP_Cs_wiMo = define_SP_BerlinCs_matchSr_withMotion()
     # show(SP)
     
     
     # fig_evanescent_field_intensity()
-    # fig_states_comparison(SP)
-    # fig_scaling_noMotion_comparison(SP)
-    # fig_error_vs_fiberradius(SP)
+    # fig_states_comparison(SP_Sr_noMo, SP_Sr_wiMo)
+    # fig_scaling_noMotion_comparison(SP_Sr_noMo)
+    # fig_error_vs_fiberradius(SP_Sr_noMo)
+    # fig_scaling_withMotion_comparison(SP_Sr_wiMo, SP_Cs_wiMo)
+    fig_memoryError_vs_LambDicke(SP_Sr_wiMo)
     
     return nothing
 end
@@ -413,39 +588,39 @@ function fig_evanescent_field_intensity()
 end
 
 
-function fig_states_comparison(SP)
+function fig_states_comparison(SP_Sr_noMo, SP_Sr_wiMo)
     # Requires SP from BerlinSr, with N = 100, noPhonons = true, include3rdLevel = true
     
-    # Prepare optimal state
-    ϵ_eigvals, ϵ_eigmods = calc_memoryRetrievalErrorMatrixEigenmodes(SP)
-    optimal_state = unpack_σvarFromσvarVec(ϵ_eigmods[1], SP.N, SP.noPhonons, SP.include3rdLevel)[2]
+    # Prepare optimal state withmout motion
+    ϵ_eigvals, ϵ_eigmods = calc_memoryRetrievalErrorMatrixEigenmodes(SP_Sr_noMo)
+    optimal_state_noMo = unpack_σvarFromσvarVec(ϵ_eigmods[1], SP_Sr_noMo.N, SP_Sr_noMo.noPhonons, SP_Sr_noMo.include3rdLevel)[2]
+    
+    # Prepare optimal state with motion
+    ϵ_eigvals, ϵ_eigmods = calc_memoryRetrievalErrorMatrixEigenmodes(SP_Sr_wiMo)
+    optimal_state_wiMo = unpack_σvarFromσvarVec(ϵ_eigmods[1], SP_Sr_wiMo.N, SP_Sr_wiMo.noPhonons, SP_Sr_wiMo.include3rdLevel)[2]
     
     # Prepare Gaussian state
-    zs = [site[3] for site in SP.array]
+    zs = [site[3] for site in SP_Sr_noMo.array]
     zc = (maximum(zs) - minimum(zs))/2
-    w = sqrt(SP.N)*SP.a
-    Gaussian_state = GaussianState(SP.N, SP.array, SP.fiber.propagation_constant, zc, w, "e", true, false)[1]
+    w = sqrt(SP_Sr_noMo.N)*SP_Sr_noMo.a
+    Gaussian_state = GaussianState(SP_Sr_noMo.N, SP_Sr_noMo.array, SP_Sr_noMo.fiber.propagation_constant, zc, w, "e", true, false)[1]
     
     # Prepare triangular state
-    triangular_state = triangleState(SP.N, SP.array, SP.fiber.propagation_constant, "e", true, false)[1]
+    triangular_state = triangleState(SP_Sr_noMo.N, SP_Sr_noMo.array, SP_Sr_noMo.fiber.propagation_constant, "e", true, false)[1]
     
     # Gather the states
-    states = [optimal_state, Gaussian_state, triangular_state]
-    labels = [L"Optimal$$", L"Gaussian$$", L"Triangular$$"]
+    states = [optimal_state_noMo, optimal_state_wiMo, Gaussian_state, triangular_state]
     
     
     # Start figure 
     fig = Figure(size=(column_width, figure_height), figure_padding=5, fontsize=fontsize)
-    
-    # Colors
-    colors = distinguishable_colors(3, [RGB(1,1,1), RGB(0,0,0)], dropseed=true)
     
     # Make titles and axes
     ax1 = Axis(fig[1, 1], xticklabelsvisible=false, ylabel=L"Magnitude$$", xlabelsize=fontsize, xticklabelsize=fontsize, ylabelsize=fontsize, yticklabelsize=fontsize)
     ax2 = Axis(fig[2, 1], xlabel=L"$ z_{n}/L $", ylabel=L"Phase$/2\pi$", xlabelsize=fontsize, xticklabelsize=fontsize, ylabelsize=fontsize, yticklabelsize=fontsize)
     
     # Plot the real and imaginary part separately
-    for (state, color, label) in zip(states, colors, labels)
+    for (state, color, label) in zip(states, state_colors, state_labels)
         # lines!(ax1, zs/maximum(zs), abs.(state), color=color)
         # lines!(ax2, zs/maximum(zs), unwrapPhase(angle.(state/state[1]), "forcePositiveSlope")/2π, color=color, label=label)
         scatter!(ax1, zs/maximum(zs), abs.(state), color=color, markersize=3)
@@ -458,7 +633,7 @@ function fig_states_comparison(SP)
     text!(fig.scene, (0.03, 0.5, 0), text=L"\textbf{b)}$$", space=:relative, fontsize=fontsize+2)
     
     # Finish figure
-    axislegend(ax2, position=:lt, fontsize=fontsize, rowgap=1, patchsize=(15.0f0, 10.0f0))
+    axislegend(ax2, position=:lt, fontsize=fontsize, rowgap=1, patchsize=(15.0f0, 10.0f0), framevisible=false)
     display(GLMakie.Screen(), fig)
     save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Article 3, fiber memory\\figures\\states_comparison.png", fig, px_per_unit=4)
 end
@@ -469,7 +644,7 @@ function fig_scaling_noMotion_comparison(SP)
     
     
     params_list = [("eigbasis", SP.να, zeros(3), ""), ("timeEvol", SP.να, zeros(3), "Ga"), ("timeEvol", SP.να, zeros(3), "tr")]
-    labels = [L"Optimal$$", L"Gaussian, transient$$", L"Triangular$$", L"Gaussian$$"]
+    labels = [state_labels[1], L"Gaussian, transient$$", state_labels[4], state_labels[3]]
     # Ns = 10:10:200
     Ns = vcat(10:10:200, 220:20:500)
     # Ns = 20:20:440
@@ -558,22 +733,19 @@ function fig_scaling_noMotion_comparison(SP)
     # Start figure 
     fig = Figure(size=(column_width, figure_height), figure_padding=5, fontsize=fontsize)
     
-    # Colors
-    colors = distinguishable_colors(3, [RGB(1,1,1), RGB(0,0,0)], dropseed=true)
-    
     # Make titles and axes
     ax1 = Axis(fig[1, 1], xlabel=L"$ N $", ylabel=L"Memory error, $ ϵ $", yscale=log10, 
         limits=(0, 520, 10^(-8.5), 10^(1.7)),
         xlabelsize=fontsize, xticklabelsize=fontsize, ylabelsize=fontsize, yticklabelsize=fontsize)
     
     # Plot
-    scatter!(ax1, Ns, ϵs[1, :], color=colors[1])
-    # scatter!(ax1, Ns[vcat(2:2:20, 21:35)], ϵs[2, vcat(2:2:20, 21:35)], color=colors[2])
-    scatter!(ax1, Ns, ϵs[2, :], color=colors[2])
-    scatter!(ax1, Ns[vcat(2:2:20, 21:35)], ϵs[3, vcat(2:2:20, 21:35)], color=colors[3])
-    lines!(ax1, Ns       , ϵ_fits[1, :]   , color=colors[1], label=labels[1])
-    lines!(ax1, Ns[16:35], tail_fit[16:35], color=colors[2], label=labels[4])
-    lines!(ax1, Ns       , ϵ_fits[3, :]   , color=colors[3], label=labels[3])
+    scatter!(ax1, Ns, ϵs[1, :], color=state_colors[1])
+    # scatter!(ax1, Ns[vcat(2:2:20, 21:35)], ϵs[2, vcat(2:2:20, 21:35)], color=state_colors[2])
+    scatter!(ax1, Ns, ϵs[2, :], color=state_colors[3])
+    scatter!(ax1, Ns[vcat(2:2:20, 21:35)], ϵs[3, vcat(2:2:20, 21:35)], color=state_colors[4])
+    lines!(ax1, Ns       , ϵ_fits[1, :]   , color=state_colors[1], label=labels[1])
+    lines!(ax1, Ns[16:35], tail_fit[16:35], color=state_colors[3], label=labels[4])
+    lines!(ax1, Ns       , ϵ_fits[3, :]   , color=state_colors[4], label=labels[3])
     lines!(ax1, Ns[1:25] , ϵ_fits[2, 1:25], color=:black, label=labels[2])
     
     # Finish figure
@@ -590,7 +762,6 @@ function fig_error_vs_fiberradius(SP)
     # Set parameters
     ηα = zeros(3)
     params_list = [("eigbasis", ""), ("timeEvol", "Ga"), ("timeEvol", "tr")]
-    labels = [L"Optimal$$", L"Gaussian$$", L"Triangular$$"]
     N_sites = 140
     ρf_list = [0.1451, 0.1814, 0.2177, 0.2540, 0.2903, 0.3266, 0.3628, 0.3991, 0.4354, 0.4717, 0.508, 0.5443, 0.5806]
     ρf_list_nm = 100:25:400
@@ -656,9 +827,6 @@ function fig_error_vs_fiberradius(SP)
     fig = Figure(size=(column_width, figure_height), figure_padding=10, fontsize=fontsize)
     # fig = Figure(size=(page_width, figure_height), figure_padding=10, fontsize=fontsize)
     
-    # Colors
-    colors = distinguishable_colors(3, [RGB(1,1,1), RGB(0,0,0)], dropseed=true)
-    
     # Make titles and axes
     # ax1 = Axis(fig[1, 1], xlabel=L"$ ρ_{f} $ [nm]", ylabel=L"$ Γ_{rm} $", 
         # xlabelsize=fontsize, xticklabelsize=fontsize, ylabelsize=fontsize, yticklabelsize=fontsize)
@@ -672,7 +840,7 @@ function fig_error_vs_fiberradius(SP)
     # Plot
     # lines!(ax1, ρf_list_nm, Γs, color=:black)
     # lines!(ax2, ρf_list_nm, ls, color=:black)
-    for (ϵ, color, label) in zip(eachrow(ϵs), colors, labels)
+    for (ϵ, color, label) in zip(eachrow(ϵs), state_colors[[1, 3, 4]], state_labels[[1, 3, 4]])
         lines!(ax3, ρf_list_nm, ϵ, color=color, label=label)
     end
     
@@ -680,6 +848,236 @@ function fig_error_vs_fiberradius(SP)
     axislegend(ax3, position=:ct, fontsize=fontsize, rowgap=1, patchsize=(15.0f0, 10.0f0))
     display(GLMakie.Screen(), fig)
     save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Article 3, fiber memory\\figures\\error_vs_fiberradius.png", fig, px_per_unit=4)
+end
+
+
+function fig_scaling_withMotion_comparison(SP_Sr_wiMo, SP_Cs_wiMo)
+    # Load Cesium data
+    # Set parameters
+    params_list_Cs = [(SP_Cs_wiMo.pos_unc, "Ga"), (SP_Cs_wiMo.pos_unc, "tr")]
+    labels_Cs = state_labels[3:4]
+    Ns_Cs = 10:10:100
+    ϵ_Cs_means = zeros(length(params_list_Cs), length(Ns_Cs))
+    ϵ_Cs_stds  = zeros(length(params_list_Cs), length(Ns_Cs))
+    
+    # Load data
+    for (i, params) in enumerate(params_list_Cs)
+        pos_unc, initialStateDescription = params
+        for (j, N_sites) in enumerate(Ns_Cs)
+            arrayDescription = arrayDescript(SP_Cs_wiMo.arrayType, N_sites, SP_Cs_wiMo.ρa, SP_Cs_wiMo.a, SP_Cs_wiMo.ff, pos_unc)
+            
+            postfix = get_postfix_memoryEfficiency_imperfectArray(SP_Cs_wiMo.ΔvariDescription, SP_Cs_wiMo.dDescription, SP_Cs_wiMo.να, SP_Cs_wiMo.ηα, SP_Cs_wiMo.noPhonons, SP_Cs_wiMo.n_inst, SP_Cs_wiMo.tildeG_flags, arrayDescription, SP_Cs_wiMo.fiber.postfix, initialStateDescription, SP_Cs_wiMo.tspan, SP_Cs_wiMo.dtmax, SP_Cs_wiMo.radDecayRateAndStateNorm_LowerTol, SP_Cs_wiMo.cDriveDescription, SP_Cs_wiMo.Δc, SP_Cs_wiMo.Ωc, SP_Cs_wiMo.cDriveArgs)
+            filename = "memEff_meanstd_" * postfix
+            folder = "memoryEfficiency/"
+            
+            if isfile(saveDir * folder * filename * ".txt")
+                ϵ_Cs_means[i, j], ϵ_Cs_stds[i, j] = load_as_txt(saveDir * folder, filename)
+            else
+                throw(ArgumentError("The following file can not be found: " * filename))
+            end
+            
+            if ϵ_Cs_means[i, j] < 0 ϵ_Cs_means[i, j] = ϵ_Cs_stds[i, j] = NaN end
+        end
+    end
+    
+    # Load Strontium data
+    # Set parameters
+    params_list_Sr = [("eigbasis", SP_Sr_wiMo.να, SP_Sr_wiMo.ηα, ""), ("timeEvol", SP_Sr_wiMo.να, SP_Sr_wiMo.ηα, "Ga"), ("timeEvol", SP_Sr_wiMo.να, SP_Sr_wiMo.ηα, "tr")]
+    labels_Sr = state_labels[2:4]
+    Ns_Sr = 10:10:200
+    ϵs_Sr = zeros(length(params_list_Sr), length(Ns_Sr))
+    
+    # Load data
+    for (i, params) in enumerate(params_list_Sr)
+        timeEvol_or_eigbasis, να, ηα, initialStateDescription = params
+        for (j, N_sites) in enumerate(Ns_Sr)
+            arrayDescription = arrayDescript(SP_Sr_wiMo.arrayType, N_sites, SP_Sr_wiMo.ρa, SP_Sr_wiMo.a, SP_Sr_wiMo.ff, SP_Sr_wiMo.pos_unc)
+            
+            folder = "memoryEfficiency/"
+            if timeEvol_or_eigbasis == "timeEvol"
+                postfix = get_postfix_memoryEfficiency(SP_Sr_wiMo.ΔvariDescription, SP_Sr_wiMo.dDescription, να, ηα, SP_Sr_wiMo.noPhonons, SP_Sr_wiMo.tildeG_flags, arrayDescription, SP_Sr_wiMo.fiber.postfix, initialStateDescription, SP_Sr_wiMo.tspan, SP_Sr_wiMo.dtmax, SP_Sr_wiMo.radDecayRateAndStateNorm_LowerTol, SP_Sr_wiMo.cDriveDescription, SP_Sr_wiMo.Δc, SP_Sr_wiMo.Ωc, SP_Sr_wiMo.cDriveArgs)
+                filename = "memEff_" * postfix
+                
+                if isfile(saveDir * folder * filename * ".txt")
+                    ϵs_Sr[i, j] = load_as_txt(saveDir * folder, filename)[1]
+                else
+                    ϵs_Sr[i, j] = NaN
+                    # throw(ArgumentError("The following file can not be found: " * filename))
+                end
+            elseif timeEvol_or_eigbasis == "eigbasis"
+                postfix = get_postfix_memoryRetrievalErrorMatrixEigenmodes(SP_Sr_wiMo.ΔvariDescription, SP_Sr_wiMo.dDescription, να, ηα, SP_Sr_wiMo.noPhonons, SP_Sr_wiMo.tildeG_flags, arrayDescription, SP_Sr_wiMo.fiber.postfix, SP_Sr_wiMo.cDriveDescription, SP_Sr_wiMo.Δc, SP_Sr_wiMo.Ωc, SP_Sr_wiMo.cDriveArgs)
+                filename_eigvals = "memEff_eigvals_" * postfix
+            
+                if isfile(saveDir * folder * filename_eigvals * ".txt")
+                    ϵs_Sr[i, j] = minimum(load_as_txt(saveDir * folder, filename_eigvals))
+                else
+                    ϵs_Sr[i, j] = NaN
+                    # throw(ArgumentError("The following file can not be found: " * filename_eigvals))
+                end
+            end
+            if ϵs_Sr[i, j] < 0 ϵs_Sr[i, j] = NaN end
+        end
+    end
+    
+    # Remove outliers from optimal state error
+    ϵs_Sr[1, 17:17] .= NaN
+    
+    # Make fits
+    model_pol(N, (a, α)) = a*N^α
+    model_pol1(N, (a,))  = a/N
+    model_exp_asymp(N, (a, α, c)) = a*exp(-α*N) + c
+    model_cst(N, (c,)) = c
+    p0_pol  = [1.0, -1.0]
+    p0_pol1 = [0.1]
+    p0_exp_asymp  = [0.1, 0.01, 1e-1]
+    p0_cst  = [1e-1]
+    label_pol(p)  = L", $ \propto N^{%$(round(p[2], digits=2))} $"
+    label_pol1(p) = L", $ \propto N^{-1} $"
+    label_exp_asymp(p) = L", $ %$(round(p[1], digits=3)) * e^{-%$(round(p[2], digits=3)) * N} %$(formatNumberWithSign(round(p[3], digits=3))) $"
+    label_cst(p) = L", $ \propto $cst."
+    setup_pol  = [model_pol , p0_pol , label_pol]
+    setup_pol1 = [model_pol1, p0_pol1, label_pol1]
+    setup_exp_asymp  = [model_exp_asymp , p0_exp_asymp , label_exp_asymp]
+    setup_cst = [model_cst, p0_cst, label_cst]
+    
+    # For Cesium
+    fitting_intervals = [5:10, 5:10]
+    setups = [setup_cst, setup_pol]
+    ϵ_Cs_fits = fill(NaN, size(ϵ_Cs_means))
+    for i in eachindex(params_list_Cs)
+        model, p0, label = setups[i]
+        pmin = fitComplexData(Ns_Cs[fitting_intervals[i]], log.(ϵ_Cs_means[i, fitting_intervals[i]]), (N, p) -> log(abs(model(N, p))), p0)
+        ϵ_Cs_fits[i, :] = abs.(model.(Ns_Cs, Ref(pmin)))
+        labels_Cs[i] = L"Cs, $$" * labels_Cs[i] * label(pmin)
+    end
+    
+    # For Strontium
+    fitting_intervals = [5:16, 15:20, 5:20]
+    # setups = [setup_pol, setup_cst, setup_pol]
+    setups = [setup_pol1, setup_cst, setup_pol1]
+    ϵ_Sr_fits = fill(NaN, size(ϵs_Sr))
+    for i in eachindex(params_list_Sr)
+        model, p0, label = setups[i]
+        pmin = fitComplexData(Ns_Sr[fitting_intervals[i]], log.(ϵs_Sr[i, fitting_intervals[i]]), (N, p) -> log(abs(model(N, p))), p0)
+        ϵ_Sr_fits[i, :] = abs.(model.(Ns_Sr, Ref(pmin)))
+        labels_Sr[i] = L"Sr, $$" * labels_Sr[i] * label(pmin)
+    end
+    
+        
+    # Start figure 
+    fig = Figure(size=(column_width, figure_height), figure_padding=10, fontsize=fontsize)
+    
+    # Make titles and axes
+    ax1 = Axis(fig[1, 1], xlabel=L"$ N $", ylabel=L"Memory error, $ ϵ $", yscale=log10, 
+        limits=(0, 210, 10^(-2.5), 10^(0.5)),
+        xlabelsize=fontsize, xticklabelsize=fontsize, ylabelsize=fontsize, yticklabelsize=fontsize)
+    
+    # Plot
+    scatter!(ax1, Ns_Cs, ϵ_Cs_means[1, :], color=state_colors[3], marker=:x)
+    scatter!(ax1, Ns_Cs, ϵ_Cs_means[2, :], color=state_colors[4], marker=:x)
+    lines!(ax1, Ns_Cs[9:10], ϵ_Cs_fits[1, 9:10], color=state_colors[3])
+    lines!(ax1, Ns_Cs, ϵ_Cs_fits[2, :], color=state_colors[4])
+    scatter!(ax1, Ns_Sr, ϵs_Sr[1, :], color=state_colors[2])
+    scatter!(ax1, Ns_Sr, ϵs_Sr[2, :], color=state_colors[3])
+    scatter!(ax1, Ns_Sr, ϵs_Sr[3, :], color=state_colors[4])
+    lines!(ax1, Ns_Sr, ϵ_Sr_fits[1, :], color=state_colors[2])
+    lines!(ax1, Ns_Sr[9:20], ϵ_Sr_fits[2, 9:20], color=state_colors[3])
+    lines!(ax1, Ns_Sr, ϵ_Sr_fits[3, :], color=state_colors[4])
+    
+    # Finish figure
+    elems_Cs = [[LineElement(color=state_colors[2+i]),
+                MarkerElement(color=state_colors[2+i], marker=:x, markersize=10)] for i in 1:2]
+    elems_Sr = [[LineElement(color=state_colors[1+i]),
+                MarkerElement(color=state_colors[1+i], marker=:circle, markersize=10)] for i in 1:3]
+    Legend(fig[1, 1], [elems_Cs..., elems_Sr...],
+           [labels_Cs..., labels_Sr...],
+           halign=:right, valign=:top, margin=(6, 6, 6, 6), fontsize=fontsize, rowgap=1, patchsize=(15.0f0, 10.0f0), tellwidth=false)
+    display(GLMakie.Screen(), fig)
+    save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Article 3, fiber memory\\figures\\scaling_withMotion_comparison.png", fig, px_per_unit=4)
+    # save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Article 3, fiber memory\\figures\\scaling_withMotion_comparison_variableExponents.png", fig, px_per_unit=4)
+end
+
+
+function fig_memoryError_vs_LambDicke(SP)
+    # Set parameters
+    params_list = [(SP.να, SP.ηα), (1.777*SP.να, 0.75*SP.ηα), (4*SP.να, 0.5*SP.ηα), (16*SP.να, 0.25*SP.ηα), (100*SP.να, 0.1*SP.ηα), (400*SP.να, 0.05*SP.ηα), (SP.να, zeros(3))]
+    labels = [L"$ 100\% $", L"$ 75\% $", L"$ 50\% $", L"$ 25\% $", L"$ 10\% $", L"$ 5\% $", L"$ 0\% $"]
+    Ns = 10:10:200
+    ϵs = zeros(length(params_list), length(Ns))
+    
+    # Load data
+    for (i, params) in enumerate(params_list)
+        να, ηα = params
+        for (j, N_sites) in enumerate(Ns)
+            arrayDescription = arrayDescript(SP.arrayType, N_sites, SP.ρa, SP.a, SP.ff, SP.pos_unc)
+            
+            folder = "memoryEfficiency/"
+            postfix = get_postfix_memoryRetrievalErrorMatrixEigenmodes(SP.ΔvariDescription, SP.dDescription, να, ηα, SP.noPhonons, SP.tildeG_flags, arrayDescription, SP.fiber.postfix, SP.cDriveDescription, SP.Δc, SP.Ωc, SP.cDriveArgs)
+            filename_eigvals = "memEff_eigvals_" * postfix
+            if isfile(saveDir * folder * filename_eigvals * ".txt")
+                ϵs[i, j] = minimum(load_as_txt(saveDir * folder, filename_eigvals))
+            else
+                throw(ArgumentError("The following file can not be found: " * filename_eigvals))
+            end
+            if ϵs[i, j] < 0 ϵs[i, j] = NaN end
+        end
+    end
+    
+    # Remove outliers 
+    ϵs[1, 17:17] .= NaN
+    ϵs[2, 17:17] .= NaN
+    ϵs[4, 18:18] .= NaN
+    ϵs[5, 17:17] .= NaN
+    # ϵs[6, 17:17] .= NaN
+    ϵs[7, 15:16] .= NaN
+    
+    # Make fits
+    model_pol(N, (a, α)) = a*N^α
+    model_pol1(N, (a,))  = a/N
+    model_pol4(N, (a,))  = a/N^4
+    p0_pol  = [1000.0, -4.0]
+    p0_pol1 = [0.1]
+    p0_pol4 = [1000.0]
+    label_pol(p)  = L", $ \propto N^{%$(round(p[2], digits=2))} $"
+    label_pol1(p) = L", $ \propto N^{-1} $"
+    label_pol4(p) = L", $ \propto N^{-4} $"
+    setup_pol  = [model_pol , p0_pol , label_pol]
+    setup_pol1 = [model_pol1, p0_pol1, label_pol1]
+    setup_pol4 = [model_pol4, p0_pol4, label_pol4]
+    
+    fitting_intervals = [10:15, 10:15, 10:15, 10:15, 10:15, 10:15, 10:14]
+    # setups = [setup_pol, setup_pol, setup_pol, setup_pol, setup_pol, setup_pol, setup_pol]
+    setups = [setup_pol1, setup_pol1, setup_pol1, setup_pol1, setup_pol1, setup_pol1, setup_pol4]
+    
+    ϵ_fits = fill(NaN, size(ϵs))
+    for i in eachindex(params_list)
+        model, p0, label = setups[i]
+        pmin = fitComplexData(Ns[fitting_intervals[i]], log.(ϵs[i, fitting_intervals[i]]), (N, p) -> log(abs(model(N, p))), p0)
+        ϵ_fits[i, :] = abs.(model.(Ns, Ref(pmin)))
+        # labels[i] *= label(pmin)
+    end
+    
+    
+    # Start figure 
+    fig = Figure(size=(column_width, figure_height), figure_padding=5, fontsize=fontsize)
+    colors = range(state_colors[2], state_colors[1], size(ϵs)[1])
+    
+    # Make titles and axes
+    ax1 = Axis(fig[1, 1], xlabel=L"$ N $", ylabel=L"Memory error, $ ϵ $", xscale=log10, yscale=log10, 
+        # limits=(0, 520, 10^(-8.5), 10^(1.7)),
+        xlabelsize=fontsize, xticklabelsize=fontsize, ylabelsize=fontsize, yticklabelsize=fontsize)
+    
+    # Plot
+    for i in 1:size(ϵs)[1]
+        scatter!(ax1, Ns[1:16], ϵs[i, 1:16], color=colors[i], label=labels[i])
+        lines!(ax1, Ns, ϵ_fits[i, :], color=colors[i])
+    end
+    
+    # Finish figure
+    axislegend(ax1, L"$ r_{η} = $...", position=:lb, fontsize=fontsize, rowgap=1, patchsize=(15.0f0, 10.0f0))
+    display(GLMakie.Screen(), fig)
+    # save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Article 3, fiber memory\\figures\\memoryError_vs_LambDicke.png", fig, px_per_unit=4)
+    # save("C:\\Users\\Simon\\Forskning\\Dokumenter\\Article 3, fiber memory\\figures\\memoryError_vs_LambDicke_variableExponents.png", fig, px_per_unit=4)
 end
 
 

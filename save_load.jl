@@ -215,6 +215,7 @@ end
 
 
 function save_as_jld2(data, saveDir, filename)
+    mkpath(saveDir)
     JLD2.save(saveDir * filename * ".jld2", "data", data)
 end
 
@@ -225,6 +226,7 @@ end
 
 
 function save_as_txt(data, saveDir, filename)
+    mkpath(saveDir)
     writedlm(saveDir * filename * ".txt", data)
 end
 
